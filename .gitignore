@@ -28,3 +28,6 @@ tests/
 # AI 工程目录
 .workbuddy/
 .zcode/
+
+# 工具
+tool/
