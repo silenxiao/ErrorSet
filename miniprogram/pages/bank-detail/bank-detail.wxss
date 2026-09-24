@@ -1,0 +1,120 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sec {
+  font-size: 26rpx;
+  color: #888;
+  margin: 24rpx 0 8rpx;
+}
+
+.qtext {
+  font-size: 27rpx;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.answer {
+  font-size: 27rpx;
+  line-height: 1.6;
+  word-break: break-word;
+  background: #fafafa;
+  border: 1rpx solid #f0f0f0;
+  border-radius: 10rpx;
+  padding: 16rpx;
+}
+
+.ills {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.ill-img {
+  width: 100%;
+  border-radius: 8rpx;
+  border: 1rpx solid #eee;
+}
+
+.del-btn {
+  margin-top: 32rpx;
+  text-align: center;
+  color: #ff4d4f;
+  border: 1rpx solid #ffccc7;
+  border-radius: 10rpx;
+  padding: 18rpx 0;
+  font-size: 28rpx;
+  transition: background-color 0.15s ease;
+}
+.del-btn:active {
+  background: #fff1f0;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.label {
+  width: 150rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.picker {
+  flex: 1;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 28rpx;
+  background: #fff;
+}
+
+.input {
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 28rpx;
+}
+
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.dialog-btns {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.dlg-btn {
+  flex: 1;
+  margin: 0;
+  border-radius: 10rpx;
+  line-height: 72rpx;
+  height: 72rpx;
+  font-size: 28rpx;
+}

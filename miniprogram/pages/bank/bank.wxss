@@ -1,0 +1,116 @@
+.wrow {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.wrow:last-child {
+  border-bottom: none;
+}
+
+.whead {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 10rpx;
+}
+
+.wtext {
+  font-size: 26rpx;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.ills {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.ill-img {
+  width: 100%;
+  border-radius: 8rpx;
+  border: 1rpx solid #eee;
+}
+
+.wactions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 14rpx;
+  flex-wrap: wrap;
+}
+
+.more {
+  text-align: center;
+  color: #1677ff;
+  padding: 24rpx 0;
+  font-size: 26rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.label {
+  width: 150rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.picker {
+  flex: 1;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 28rpx;
+  background: #fff;
+}
+
+.input {
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 28rpx;
+}
+
+/* 弹窗 */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.dialog-btns {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.dlg-btn {
+  flex: 1;
+  margin: 0;
+  border-radius: 10rpx;
+  line-height: 72rpx;
+  height: 72rpx;
+  font-size: 28rpx;
+}

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "识别结果",
+  "usingComponents": {
+    "bbox-editor": "/components/bbox-editor/bbox-editor",
+    "question-tree": "/components/question-tree/question-tree"
+  }
+}

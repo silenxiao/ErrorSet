@@ -1,0 +1,2027 @@
+# AI 试卷识别与错题库系统
+
+## 1. 项目概述
+
+开发一个基于 Web 的 AI 试卷/作业识别与错题管理系统。
+
+用户上传试卷或作业照片后，系统通过第三方 Vision API 自动识别整张试卷中的所有独立题目，包括大题下面的所有小题，并提取：
+
+- 题目编号
+- 完整题干
+- 选择题全部选项
+- 数学公式 LaTeX
+- 题目 bbox
+- 题目中的插图、表格、几何图形等区域
+- 识别置信度
+- 后续错题相关信息
+
+系统采用**两阶段 Vision 识别架构**：
+
+```text
+试卷图片
+   ↓
+第一阶段：Global Vision
+   ↓
+整页题目识别
+   ↓
+Question + BBox
+   ↓
+人工检查 / BBox 调整
+   ↓
+Validator
+   ↓
+发现可疑题目
+   ↓
+Crop
+   ↓
+第二阶段：Local Vision
+   ↓
+局部 OCR / LaTeX / 内容纠正
+   ↓
+Merger
+   ↓
+最终题目
+   ↓
+错题库
+```
+
+---
+
+# 2. MVP 技术原则
+
+## 2.1 前端
+
+使用 Web 前端：
+
+- React
+- TypeScript
+- Vite
+- Ant Design
+- SVG
+- Axios 或 Fetch
+
+---
+
+## 2.2 后端
+
+使用：
+
+- Python 3.12+
+- FastAPI
+- Pydantic
+- SQLAlchemy
+- SQLite
+- httpx
+- Pillow
+- OpenCV（按需）
+
+---
+
+## 2.3 AI
+
+只使用第三方 Vision API。
+
+第一阶段和第二阶段都通过统一的 Provider 接口调用。
+
+MVP 不使用：
+
+- 本地视觉模型
+- Ollama
+- oMLX
+- 本地 LLM
+- Redis
+- Celery
+- RabbitMQ
+- PostgreSQL
+- 向量数据库
+- Kubernetes
+- 微服务架构
+
+---
+
+# 3. 总体架构
+
+```text
+                    ┌─────────────────────┐
+                    │      Web Frontend   │
+                    │ React + TypeScript  │
+                    └──────────┬──────────┘
+                               │ HTTP
+                               ↓
+                    ┌─────────────────────┐
+                    │      FastAPI        │
+                    │      Backend        │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+              ↓                ↓                ↓
+        ┌──────────┐     ┌───────────┐    ┌───────────┐
+        │ SQLite   │     │ Pipeline  │    │ File      │
+        │          │     │           │    │ Storage   │
+        └──────────┘     └─────┬─────┘    └───────────┘
+                               │
+                      ┌────────┴────────┐
+                      ↓                 ↓
+               Global Vision      Local Vision
+                    API                API
+```
+
+---
+
+# 4. 项目目录
+
+```text
+wrong-question/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── exam.ts
+│   │   │   └── question.ts
+│   │   │
+│   │   ├── components/
+│   │   │   ├── ImageViewer/
+│   │   │   ├── BoundingBox/
+│   │   │   ├── QuestionList/
+│   │   │   └── UploadPanel/
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Upload/
+│   │   │   ├── Recognition/
+│   │   │   └── QuestionBank/
+│   │   │
+│   │   ├── hooks/
+│   │   │   └── useRecognition.ts
+│   │   │
+│   │   ├── types/
+│   │   │   ├── exam.ts
+│   │   │   └── question.ts
+│   │   │
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   │
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   │
+│   │   ├── api/
+│   │   │   ├── upload.py
+│   │   │   ├── recognition.py
+│   │   │   └── questions.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── logging.py
+│   │   │   └── exceptions.py
+│   │   │
+│   │   ├── schemas/
+│   │   │   ├── common.py
+│   │   │   ├── exam.py
+│   │   │   ├── question.py
+│   │   │   └── recognition.py
+│   │   │
+│   │   ├── pipeline/
+│   │   │   ├── orchestrator.py
+│   │   │   ├── preprocess.py
+│   │   │   ├── global_recognition.py
+│   │   │   ├── validator.py
+│   │   │   ├── suspicious.py
+│   │   │   ├── crop.py
+│   │   │   ├── local_recognition.py
+│   │   │   └── merger.py
+│   │   │
+│   │   ├── providers/
+│   │   │   ├── base.py
+│   │   │   ├── openai.py
+│   │   │   ├── qwen.py
+│   │   │   ├── gemini.py
+│   │   │   └── factory.py
+│   │   │
+│   │   ├── prompts/
+│   │   │   ├── global_question.py
+│   │   │   └── local_question.py
+│   │   │
+│   │   ├── database/
+│   │   │   ├── database.py
+│   │   │   ├── models.py
+│   │   │   └── repository.py
+│   │   │
+│   │   ├── services/
+│   │   │   ├── recognition_service.py
+│   │   │   └── question_service.py
+│   │   │
+│   │   └── workers/
+│   │       └── recognition_worker.py
+│   │
+│   ├── data/
+│   │   ├── originals/
+│   │   ├── working/
+│   │   ├── crops/
+│   │   └── results/
+│   │
+│   └── pyproject.toml
+│
+├── tests/
+│   ├── backend/
+│   └── frontend/
+│
+├── .env
+├── .env.example
+├── .gitignore
+├── README.md
+└── PROJECT_SPEC.md
+```
+
+---
+
+# 5. 核心业务流程
+
+## 5.1 上传
+
+用户上传：
+
+- JPG
+- JPEG
+- PNG
+- WebP
+
+接口：
+
+```http
+POST /api/v1/exams
+```
+
+使用 multipart/form-data。
+
+返回：
+
+```http
+202 Accepted
+```
+
+```json
+{
+  "id": 123,
+  "status": "processing"
+}
+```
+
+---
+
+# 6. 异步任务机制
+
+MVP 不引入 Redis、Celery、RabbitMQ。
+
+使用 FastAPI BackgroundTasks 或简单后台任务机制。
+
+流程：
+
+```text
+HTTP 上传
+   ↓
+保存原始图片
+   ↓
+创建 Exam
+   ↓
+创建 RecognitionTask
+   ↓
+立即返回 202
+   ↓
+后台执行 Pipeline
+```
+
+前端 MVP 使用轮询：
+
+```text
+每 1～2 秒
+    ↓
+GET /api/v1/exams/{exam_id}
+```
+
+未来可以升级：
+
+- SSE
+- WebSocket
+- Redis
+- Celery
+
+但不属于 MVP。
+
+---
+
+# 7. 第一阶段：Global Vision
+
+第一阶段 Vision API 负责分析整张试卷。
+
+目标：
+
+> 从整张图片中识别所有独立题目，包括大题下面的全部小题。
+
+必须做到：
+
+- 不遗漏题目
+- 不把多个独立题目合并
+- 正确识别大题和小题
+- 识别选择题所有选项
+- 识别数学公式
+- 识别插图
+- 排除学生手写内容
+- 排除红笔批改内容
+
+---
+
+# 8. Question 数据
+
+每一道独立题目：
+
+```json
+{
+  "question_no": "3",
+  "text": "已知 $x^2-2x+1=0$，求 $x$ 的值。",
+  "bbox": [120, 250, 880, 430],
+  "ai_bbox": [125, 245, 870, 425],
+  "bbox_source": "ai",
+  "confidence": 0.96,
+  "illustrations": []
+}
+```
+
+---
+
+# 9. Text 识别要求
+
+`text` 必须是：
+
+> 完整、干净、可读的印刷原文。
+
+必须：
+
+- 保留完整题干
+- 保留所有选项
+- 保留题目编号
+- 保留必要的文字说明
+- 数学公式使用 LaTeX
+- 不包含学生手写答案
+- 不包含草稿
+- 不包含老师红笔批改
+- 不包含与题目无关的页面内容
+
+数学公式：
+
+行内：
+
+```text
+$x^2 + 2x + 1$
+```
+
+独立公式：
+
+```text
+$$
+x^2 + 2x + 1 = 0
+$$
+```
+
+---
+
+# 10. BBox 规范
+
+统一：
+
+```text
+[x1, y1, x2, y2]
+```
+
+坐标范围：
+
+```text
+0～1000
+```
+
+相对于原始图片宽高归一化。
+
+必须满足：
+
+```text
+0 <= x1 < x2 <= 1000
+0 <= y1 < y2 <= 1000
+```
+
+bbox 必须覆盖：
+
+```text
+题号
++
+题干
++
+选项
++
+题目必要内容
+```
+
+不应该主动包含：
+
+- 学生手写答案
+- 红笔批改
+- 相邻题目
+
+---
+
+# 11. BBox 人工调整
+
+BBox 手动调整属于 MVP 核心功能。
+
+AI 自动识别后，用户必须可以在 Web 页面中检查并修改 bbox。
+
+## 11.1 支持的操作
+
+用户可以：
+
+- 拖动整个 bbox
+- 拖动左上角
+- 拖动右上角
+- 拖动左下角
+- 拖动右下角
+- 拖动上边
+- 拖动下边
+- 拖动左边
+- 拖动右边
+
+---
+
+## 11.2 题目与 bbox 双向联动
+
+点击右侧题目：
+
+```text
+题目 1
+题目 2
+题目 3
+```
+
+图片中对应 bbox 高亮。
+
+点击图片中的 bbox：
+
+```text
+┌────────────────────┐
+│       第 2 题       │
+└────────────────────┘
+```
+
+右侧自动选择对应题目。
+
+---
+
+## 11.3 AI bbox 与最终 bbox 分离
+
+Question 保存两个 bbox：
+
+```text
+ai_bbox
+bbox
+```
+
+其中：
+
+```text
+ai_bbox
+```
+
+保存 AI 第一次识别的原始结果。
+
+```text
+bbox
+```
+
+保存当前最终生效的结果。
+
+---
+
+## 11.4 bbox_source
+
+```text
+ai
+manual
+```
+
+AI 原始结果：
+
+```text
+bbox_source = "ai"
+```
+
+用户修改后：
+
+```text
+bbox_source = "manual"
+```
+
+---
+
+# 12. BBox 数据模型
+
+```python
+class Question:
+    id: int
+    exam_id: int
+    question_no: str
+    text: str
+
+    bbox: list[int]
+    ai_bbox: list[int]
+
+    bbox_source: str
+
+    confidence: float | None
+```
+
+---
+
+# 13. BBox API
+
+## 修改 bbox
+
+```http
+PATCH /api/v1/questions/{question_id}/bbox
+```
+
+Request：
+
+```json
+{
+  "bbox": [125, 280, 875, 430]
+}
+```
+
+Response：
+
+```json
+{
+  "id": 12,
+  "bbox": [125, 280, 875, 430],
+  "ai_bbox": [130, 275, 860, 420],
+  "bbox_source": "manual"
+}
+```
+
+---
+
+## 恢复 AI bbox
+
+```http
+POST /api/v1/questions/{question_id}/bbox/reset
+```
+
+执行：
+
+```text
+bbox = ai_bbox
+bbox_source = ai
+```
+
+---
+
+# 14. BBox 前端实现
+
+推荐：
+
+```text
+React + TypeScript + SVG
+```
+
+结构：
+
+```text
+ImageViewer
+├── OriginalImage
+└── SVG Overlay
+    ├── QuestionBBox
+    │   ├── Move
+    │   ├── TopLeft
+    │   ├── TopRight
+    │   ├── BottomLeft
+    │   ├── BottomRight
+    │   ├── Top
+    │   ├── Bottom
+    │   ├── Left
+    │   └── Right
+    └── IllustrationBBox
+```
+
+原因：
+
+- bbox 与图片容易同步
+- 支持拖动
+- 支持 resize
+- 支持选中
+- 支持高亮
+- 支持缩放
+- 比 Canvas 更适合交互式框选
+
+---
+
+# 15. Illustration
+
+每道题可以包含：
+
+- 图片
+- 几何图形
+- 表格
+- 坐标系
+- 柱状图
+- 折线图
+- 电路图
+- 其他题目插图
+
+结构：
+
+```json
+{
+  "bbox": [500, 300, 850, 450],
+  "type": "geometry"
+}
+```
+
+没有插图：
+
+```json
+{
+  "illustrations": []
+}
+```
+
+MVP：
+
+- 题目 bbox 支持人工编辑
+- Illustration bbox 暂时只自动识别
+- 后续再增加 Illustration bbox 编辑
+
+---
+
+# 16. Validator
+
+Global Vision 返回结果后进行验证。
+
+Validator 检查：
+
+### 16.1 JSON
+
+- 是否为合法 JSON
+- 是否符合 Pydantic Schema
+
+### 16.2 Question
+
+- 是否有空题目
+- 是否缺少题号
+- 是否存在明显重复
+- 是否存在异常题目范围
+
+### 16.3 BBox
+
+检查：
+
+```text
+0 <= x1 < x2 <= 1000
+0 <= y1 < y2 <= 1000
+```
+
+并检查：
+
+- bbox 是否过小
+- bbox 是否过大
+- bbox 是否异常重叠
+- 是否覆盖整道题
+
+### 16.4 LaTeX
+
+检查：
+
+- 是否存在明显格式错误
+- `$` 是否成对
+- `$$` 是否成对
+- 是否存在明显 OCR 异常
+
+---
+
+# 17. Suspicious Question
+
+Validator 根据规则判断哪些题目需要第二阶段识别。
+
+例如：
+
+```text
+OCR 置信度低
+LaTeX 异常
+题目文本过短
+题目文本异常
+bbox 异常
+插图识别异常
+模型输出不完整
+```
+
+只有可疑题目进入第二阶段。
+
+这样可以降低 API 成本。
+
+---
+
+# 18. Crop
+
+对于需要二次识别的题目：
+
+```text
+question.bbox
+      ↓
+转换成实际像素坐标
+      ↓
+增加 padding
+      ↓
+裁剪
+      ↓
+Local Vision API
+```
+
+重要规则：
+
+> Crop 必须使用当前 `question.bbox`，不能重新使用 `ai_bbox`。
+
+即：
+
+```python
+effective_bbox = question.bbox
+```
+
+而不是：
+
+```python
+effective_bbox = question.ai_bbox
+```
+
+---
+
+# 19. 第二阶段 Local Vision
+
+第二阶段只处理单道题目的局部图片。
+
+主要任务：
+
+- 修正 OCR
+- 修正 LaTeX
+- 补全遗漏文字
+- 修正选项
+- 修正题号
+- 排除手写内容
+- 排除红笔批改
+- 修正第一阶段明显错误
+
+第二阶段原则：
+
+> 主要修正题目内容，不重新决定整张试卷的题目结构。
+
+---
+
+# 20. Merger
+
+第一阶段：
+
+```text
+Global Result
+```
+
+第二阶段：
+
+```text
+Local Result
+```
+
+最终通过 Merger 合并。
+
+原则：
+
+```text
+Global
+  ↓
+结构、题目顺序、bbox
+
+Local
+  ↓
+OCR、LaTeX、局部内容
+```
+
+最终得到：
+
+```text
+Final Question
+```
+
+---
+
+# 21. Vision Provider 抽象
+
+业务逻辑不得直接依赖任何厂商 SDK。
+
+定义统一接口：
+
+```python
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass
+class VisionRequest:
+    image_path: str
+    prompt: str
+    temperature: float = 0
+
+
+@dataclass
+class VisionResponse:
+    text: str
+    provider: str
+    model: str
+    latency_ms: int
+    raw: dict | None = None
+
+
+class VisionProvider(ABC):
+
+    @abstractmethod
+    async def analyze(
+        self,
+        request: VisionRequest
+    ) -> VisionResponse:
+        pass
+```
+
+---
+
+# 22. Provider
+
+支持：
+
+```text
+OpenAIProvider
+QwenProvider
+GeminiProvider
+```
+
+以及未来其他 Vision Provider。
+
+通过 Factory：
+
+```python
+provider = ProviderFactory.create(
+    provider_name="qwen",
+    model="xxx"
+)
+```
+
+业务层不关心具体供应商。
+
+---
+
+# 23. 环境变量
+
+```env
+GLOBAL_PROVIDER=qwen
+GLOBAL_MODEL=xxx
+
+LOCAL_PROVIDER=openai
+LOCAL_MODEL=xxx
+
+QWEN_API_KEY=
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+```
+
+---
+
+# 24. API 成本记录
+
+每一次 Vision API 调用必须记录：
+
+```text
+provider
+model
+prompt_version
+input_tokens
+output_tokens
+total_tokens
+cost
+latency_ms
+status
+error
+raw_output
+```
+
+便于统计：
+
+- 每张试卷成本
+- 每道题成本
+- 每个模型成本
+- 第一阶段成本
+- 第二阶段成本
+- 失败率
+- 平均延迟
+
+---
+
+# 25. Database
+
+MVP 使用 SQLite。
+
+## Exam
+
+```text
+exam
+```
+
+字段：
+
+```text
+id
+original_image
+width
+height
+status
+created_at
+updated_at
+```
+
+状态：
+
+```text
+uploaded
+processing
+completed
+failed
+```
+
+---
+
+## Question
+
+```text
+question
+```
+
+字段：
+
+```text
+id
+exam_id
+question_no
+text
+bbox
+ai_bbox
+bbox_source
+confidence
+status
+created_at
+updated_at
+```
+
+---
+
+## Illustration
+
+```text
+illustration
+```
+
+字段：
+
+```text
+id
+question_id
+bbox
+type
+```
+
+---
+
+## RecognitionTask
+
+```text
+recognition_task
+```
+
+字段：
+
+```text
+id
+exam_id
+question_id
+stage
+provider
+model
+prompt_version
+input_image
+output_json
+input_tokens
+output_tokens
+total_tokens
+cost
+latency_ms
+status
+error
+created_at
+```
+
+---
+
+# 26. API
+
+## 创建试卷
+
+```http
+POST /api/v1/exams
+```
+
+---
+
+## 查询试卷
+
+```http
+GET /api/v1/exams/{exam_id}
+```
+
+返回：
+
+```json
+{
+  "id": 123,
+  "status": "completed",
+  "questions": []
+}
+```
+
+---
+
+## 查询题目
+
+```http
+GET /api/v1/questions/{question_id}
+```
+
+---
+
+## 修改 bbox
+
+```http
+PATCH /api/v1/questions/{question_id}/bbox
+```
+
+---
+
+## 恢复 AI bbox
+
+```http
+POST /api/v1/questions/{question_id}/bbox/reset
+```
+
+---
+
+# 27. Web 页面
+
+## 27.1 上传页面
+
+支持：
+
+- 点击上传
+- 拖拽上传
+- 图片预览
+- 上传进度
+- 识别状态
+
+---
+
+## 27.2 识别结果页面
+
+布局：
+
+```text
+┌──────────────────────────┬────────────────────────────┐
+│                          │                            │
+│       原始试卷图片        │       题目列表              │
+│                          │                            │
+│    ┌──────────────┐      │  第1题                     │
+│    │    第1题      │      │  第2题                     │
+│    └──────────────┘      │  第3题                     │
+│                          │                            │
+│    ┌──────────────┐      │                            │
+│    │    第2题      │      │                            │
+│    └──────────────┘      │                            │
+│                          │                            │
+└──────────────────────────┴────────────────────────────┘
+```
+
+左侧：
+
+- 原始图片
+- bbox
+- bbox 编辑
+- 选中高亮
+
+右侧：
+
+- 题目列表
+- 题目文本
+- 识别状态
+- 修改状态
+
+---
+
+# 28. 错题库
+
+MVP 第二阶段实现。
+
+每道错题可以保存：
+
+```text
+question
+answer
+correct_answer
+wrong_reason
+knowledge_points
+source_exam
+image
+```
+
+后续支持：
+
+- 搜索
+- 标签
+- 学科
+- 年级
+- 题型
+- 知识点
+- 收藏
+- 重做
+- 错题统计
+
+---
+
+# 29. Recognition Pipeline
+
+核心代码逻辑：
+
+```python
+class RecognitionPipeline:
+
+    async def run(self, image_path):
+
+        image = await self.preprocess(image_path)
+
+        global_result = await (
+            self.global_model
+            .recognize(image.path)
+        )
+
+        questions = self.validator.validate(
+            global_result
+        )
+
+        suspicious = (
+            self.validator
+            .find_suspicious(questions)
+        )
+
+        local_results = []
+
+        for question in suspicious:
+
+            # 必须使用当前 bbox
+            crop = self.crop(
+                image,
+                question.bbox
+            )
+
+            result = await (
+                self.local_model
+                .recognize(crop)
+            )
+
+            local_results.append(result)
+
+        return self.merger.merge(
+            questions,
+            local_results
+        )
+```
+
+---
+
+# 30. JSON Schema
+
+Global Vision 最终只允许输出 JSON。
+
+示例：
+
+```json
+{
+  "questions": [
+    {
+      "question_no": "1",
+      "text": "下列说法正确的是（  ）",
+      "bbox": [100, 100, 900, 250],
+      "illustrations": [],
+      "confidence": 0.98
+    },
+    {
+      "question_no": "2",
+      "text": "已知 $x^2-2x+1=0$，求 $x$。",
+      "bbox": [100, 260, 900, 430],
+      "illustrations": [
+        {
+          "bbox": [600, 300, 850, 420],
+          "type": "geometry"
+        }
+      ],
+      "confidence": 0.93
+    }
+  ]
+}
+```
+
+禁止输出：
+
+```text
+这里是识别结果：
+```
+
+必须：
+
+```text
+纯 JSON
+```
+
+---
+
+# 31. Prompt 核心要求
+
+Global Vision Prompt：
+
+```text
+仔细识别这张试卷/作业照片中的所有题目。
+
+必须识别整张图片中的每一道独立小题，
+包括大题下面的所有小题。
+
+要求：
+
+1. text 是题目的完整干净原文。
+2. 不包含学生手写答案。
+3. 不包含老师红笔批改。
+4. 选择题必须保留全部选项。
+5. 数学公式使用 LaTeX。
+6. bbox 使用 [x1,y1,x2,y2]。
+7. 坐标范围为 0-1000。
+8. bbox 必须覆盖完整题目。
+9. illustrations 记录题目中的插图、图形、表格等。
+10. 没有插图时返回空数组。
+11. 只输出 JSON。
+12. 不要输出任何其他文字。
+```
+
+---
+
+# 32. 错误处理
+
+## JSON 解析失败
+
+允许重试：
+
+```text
+最多 1～2 次
+```
+
+---
+
+## 网络错误
+
+允许重试。
+
+---
+
+## 429
+
+采用指数退避。
+
+---
+
+## 5xx
+
+允许重试。
+
+---
+
+## API Key / Authentication 错误
+
+不重试。
+
+---
+
+## 图片格式错误
+
+不重试，直接返回错误。
+
+---
+
+# 33. 文件存储
+
+MVP 本地文件系统：
+
+```text
+backend/data/
+├── originals/
+├── working/
+├── crops/
+└── results/
+```
+
+数据库只保存路径。
+
+未来可以升级：
+
+- S3
+- OSS
+- COS
+- MinIO
+
+---
+
+# 34. 前端状态
+
+```typescript
+interface Question {
+  id: number;
+  questionNo: string;
+  text: string;
+
+  bbox: [
+    number,
+    number,
+    number,
+    number
+  ];
+
+  aiBbox: [
+    number,
+    number,
+    number,
+    number
+  ];
+
+  bboxSource: "ai" | "manual";
+
+  confidence?: number;
+
+  illustrations: Illustration[];
+}
+```
+
+---
+
+# 35. BBox 编辑状态
+
+前端拖动流程：
+
+```text
+Mouse Down
+    ↓
+确定操作类型
+    ↓
+Move / Resize
+    ↓
+计算新的像素坐标
+    ↓
+转换为 0～1000
+    ↓
+前端实时更新
+    ↓
+Mouse Up
+    ↓
+用户点击保存
+    ↓
+PATCH API
+```
+
+前端实时编辑可以暂时不保存数据库。
+
+只有点击保存后才持久化。
+
+---
+
+# 36. BBox 校验
+
+前端和后端都必须校验。
+
+```text
+0 <= x1 < x2 <= 1000
+0 <= y1 < y2 <= 1000
+```
+
+限制最小尺寸：
+
+```text
+width > 1
+height > 1
+```
+
+超出图片范围时自动限制：
+
+```text
+0～1000
+```
+
+---
+
+# 37. AI 与人工结果关系
+
+数据关系：
+
+```text
+                 ┌─────────────┐
+                 │ Global AI   │
+                 └──────┬──────┘
+                        ↓
+                    ai_bbox
+                        │
+                        ↓
+                ┌──────────────┐
+                │ 用户检查/调整 │
+                └──────┬───────┘
+                       ↓
+                     bbox
+                       │
+                       ↓
+                  后续 Pipeline
+```
+
+核心原则：
+
+> `ai_bbox` 永远保存 AI 原始结果，`bbox` 保存当前最终结果。
+
+---
+
+# 38. MVP 不做的功能
+
+以下暂时不加入：
+
+- 用户登录
+- 多租户
+- 权限系统
+- Redis
+- Celery
+- RabbitMQ
+- PostgreSQL
+- 向量数据库
+- 本地 AI 模型
+- Ollama
+- oMLX
+- Kubernetes
+- 微服务
+- WebSocket
+- SSE
+- 自动答案判定
+- 自动批改整张试卷
+- OCR 本地模型
+
+先把：
+
+```text
+上传
+→ 全页识别
+→ BBox
+→ 人工调整
+→ 二次识别
+→ 题目保存
+→ 错题库
+```
+
+跑通。
+
+---
+
+# 39. MVP 开发阶段
+
+## Phase 1：基础识别
+
+实现：
+
+```text
+上传图片
+↓
+Global Vision
+↓
+JSON
+↓
+SQLite
+↓
+API
+↓
+Web 显示
+```
+
+目标：
+
+> 能正确识别整张试卷中的所有题目。
+
+---
+
+## Phase 2：BBox 编辑
+
+实现：
+
+```text
+显示 bbox
+↓
+点击题目
+↓
+高亮 bbox
+↓
+拖动 bbox
+↓
+调整大小
+↓
+保存
+↓
+恢复 AI bbox
+```
+
+这是 MVP 核心功能。
+
+---
+
+## Phase 3：二次 Vision
+
+实现：
+
+```text
+Validator
+↓
+Suspicious
+↓
+Crop
+↓
+Local Vision
+↓
+Merger
+```
+
+---
+
+## Phase 4：错题库
+
+实现：
+
+```text
+题目
+↓
+错题
+↓
+错题列表
+↓
+错题详情
+```
+
+---
+
+## Phase 5：增强功能
+
+未来再考虑：
+
+```text
+用户系统
+标签
+搜索
+知识点
+答案
+错因
+统计
+SSE/WebSocket
+PostgreSQL
+Redis
+对象存储
+向量检索
+```
+
+---
+
+# 40. 质量指标
+
+项目需要重点关注：
+
+## 题目召回率
+
+```text
+识别出的题目数量
+/
+实际题目数量
+```
+
+重点指标：
+
+> 漏题率
+
+---
+
+## 题目切分准确率
+
+检查：
+
+- 是否把两题合成一题
+- 是否把一道题拆成多题
+
+---
+
+## BBox 准确率
+
+检查：
+
+- 是否完整框住题目
+- 是否包含相邻题目
+- 是否遗漏选项
+- 是否包含手写内容
+
+同时统计：
+
+```text
+AI bbox
+vs
+人工 bbox
+```
+
+---
+
+## OCR 准确率
+
+检查：
+
+- 汉字
+- 数字
+- 英文
+- 特殊符号
+
+---
+
+## LaTeX 准确率
+
+重点检查：
+
+- 分数
+- 根号
+- 上下标
+- 积分
+- 矩阵
+- 方程组
+- 几何符号
+
+---
+
+## 手写/批改排除率
+
+重点保证：
+
+```text
+题目原文
+≠
+学生答案
+≠
+老师批改
+```
+
+---
+
+## API 成本
+
+统计：
+
+```text
+每张试卷
+每道题
+Global
+Local
+总成本
+```
+
+---
+
+## 延迟
+
+统计：
+
+```text
+上传
+→ Global
+→ Validator
+→ Local
+→ 完成
+```
+
+---
+
+# 41. MVP 最终流程
+
+```text
+┌──────────────┐
+│ 上传试卷图片  │
+└──────┬───────┘
+       ↓
+┌──────────────┐
+│ 保存原始图片  │
+└──────┬───────┘
+       ↓
+┌─────────────────┐
+│ Global Vision   │
+│ 整页识别         │
+└──────┬──────────┘
+       ↓
+┌─────────────────┐
+│ Question +      │
+│ ai_bbox         │
+└──────┬──────────┘
+       ↓
+┌─────────────────┐
+│ Web 识别结果页   │
+│ 人工检查 bbox    │
+└──────┬──────────┘
+       ↓
+   ┌───┴────┐
+   │ 修改？  │
+   └───┬────┘
+       │
+      是
+       ↓
+┌─────────────────┐
+│ 手动调整 bbox    │
+│ bbox_source=     │
+│ manual           │
+└──────┬──────────┘
+       ↓
+┌─────────────────┐
+│ 保存最终 bbox    │
+└──────┬──────────┘
+       ↓
+┌─────────────────┐
+│ Validator       │
+└──────┬──────────┘
+       ↓
+   可疑题目？
+      / \
+    否   是
+    │     │
+    │     ↓
+    │  ┌─────────────┐
+    │  │ Crop        │
+    │  │ 使用 bbox   │
+    │  └──────┬──────┘
+    │         ↓
+    │  ┌─────────────┐
+    │  │ Local Vision│
+    │  └──────┬──────┘
+    │         ↓
+    │  ┌─────────────┐
+    └─→│ Merger      │
+       └──────┬──────┘
+              ↓
+       ┌─────────────┐
+       │ 最终 Question│
+       └──────┬──────┘
+              ↓
+       ┌─────────────┐
+       │ SQLite      │
+       │ 错题库       │
+       └─────────────┘
+```
+
+---
+
+# 42. 最终 MVP 验收标准
+
+## 上传
+
+- [ ] 可以上传试卷图片
+- [ ] 支持 JPG/JPEG/PNG/WebP
+- [ ] 上传后返回 202
+- [ ] 后台开始识别
+
+## AI 识别
+
+- [ ] 识别整张试卷
+- [ ] 识别所有独立题目
+- [ ] 识别所有小题
+- [ ] 保留选择题选项
+- [ ] 数学公式输出 LaTeX
+- [ ] 排除手写
+- [ ] 排除红笔批改
+
+## BBox
+
+- [ ] 每道题都有 bbox
+- [ ] bbox 使用 0～1000 坐标
+- [ ] 可以点击 bbox
+- [ ] 可以点击题目定位 bbox
+- [ ] 可以拖动 bbox
+- [ ] 可以调整四角
+- [ ] 可以调整四边
+- [ ] 可以保存 bbox
+- [ ] 保存后 bbox_source = manual
+- [ ] 可以恢复 AI bbox
+- [ ] 恢复后 bbox_source = ai
+- [ ] ai_bbox 永久保留
+
+## 二次识别
+
+- [ ] Validator 可以发现可疑题目
+- [ ] 使用当前 bbox 进行 crop
+- [ ] Local Vision 可以修正题目
+- [ ] Merger 可以生成最终结果
+
+## 数据
+
+- [ ] SQLite 保存 Exam
+- [ ] SQLite 保存 Question
+- [ ] SQLite 保存 Illustration
+- [ ] SQLite 保存 RecognitionTask
+- [ ] 保存 AI 调用成本
+- [ ] 保存模型和 Provider
+- [ ] 保存错误信息
+
+## Web
+
+- [ ] 上传页面
+- [ ] 识别结果页面
+- [ ] bbox 可视化
+- [ ] bbox 编辑
+- [ ] 题目列表
+- [ ] 错题库基础页面
+
+---
+
+# 43. 最终技术栈
+
+| 层 | 技术 |
+|---|---|
+| Frontend | React |
+| Language | TypeScript |
+| Build | Vite |
+| UI | Ant Design |
+| Image Overlay | SVG |
+| HTTP | Fetch / Axios |
+| Backend | Python |
+| API | FastAPI |
+| Validation | Pydantic |
+| ORM | SQLAlchemy |
+| Database | SQLite |
+| Image | Pillow / OpenCV |
+| HTTP Client | httpx |
+| AI | Third-party Vision API |
+| Testing | pytest / Vitest |
+| Task | FastAPI BackgroundTasks |
+
+---
+
+# 44. 核心设计原则
+
+整个项目遵循以下原则：
+
+### 原则 1：AI 负责识别，人负责最终确认
+
+AI 提供：
+
+```text
+题目
++
+bbox
+```
+
+用户可以修正 bbox。
+
+---
+
+### 原则 2：AI 原始结果不能丢
+
+始终保留：
+
+```text
+ai_bbox
+```
+
+最终使用：
+
+```text
+bbox
+```
+
+---
+
+### 原则 3：人工修改优先
+
+用户修改后的 bbox 是最终生效结果。
+
+---
+
+### 原则 4：二次识别只解决局部问题
+
+Global Vision：
+
+```text
+解决整页结构
+```
+
+Local Vision：
+
+```text
+解决局部内容质量
+```
+
+---
+
+### 原则 5：业务代码与 AI 厂商解耦
+
+业务代码只依赖：
+
+```text
+VisionProvider
+```
+
+不直接依赖具体厂商 SDK。
+
+---
+
+### 原则 6：先简单跑通，再扩展
+
+MVP 优先：
+
+```text
+React
++
+FastAPI
++
+SQLite
++
+第三方 Vision API
+```
+
+不要提前引入复杂基础设施。
+
+---
+
+# 45. 后续扩展方向
+
+MVP 稳定后，可以逐步增加：
+
+```text
+答案识别
+↓
+错题自动判断
+↓
+错因分析
+↓
+知识点提取
+↓
+相似题推荐
+↓
+错题复习
+↓
+自动生成练习
+↓
+用户账户
+↓
+云存储
+↓
+PostgreSQL
+↓
+Redis / Queue
+↓
+向量检索
+```
+
+最终形成：
+
+```text
+拍照
+ ↓
+AI 识别
+ ↓
+人工确认
+ ↓
+错题入库
+ ↓
+错因分析
+ ↓
+知识点分析
+ ↓
+智能复习
+ ↓
+相似题训练
+```
+
+这套架构在 MVP 阶段保持简单，同时为后续扩展保留足够的接口和数据结构。

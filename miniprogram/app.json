@@ -1,0 +1,37 @@
+{
+  "pages": [
+    "pages/upload/upload",
+    "pages/recognition/recognition",
+    "pages/bank/bank",
+    "pages/bank-detail/bank-detail",
+    "pages/add-wrong/add-wrong"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#1677ff",
+    "navigationBarTitleText": "AI 错题本",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/upload/upload",
+        "text": "试卷",
+        "iconPath": "assets/icons/exam.png",
+        "selectedIconPath": "assets/icons/exam-active.png"
+      },
+      {
+        "pagePath": "pages/bank/bank",
+        "text": "错题库",
+        "iconPath": "assets/icons/bank.png",
+        "selectedIconPath": "assets/icons/bank-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

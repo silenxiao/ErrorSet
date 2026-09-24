@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "md-render": "../md-render/md-render"
+  }
+}

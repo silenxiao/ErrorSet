@@ -1,0 +1,33 @@
+<view class="tree">
+  <view wx:if="{{items.length === 0}}" class="empty">暂无题目</view>
+
+  <view
+    wx:for="{{items}}"
+    wx:key="id"
+    class="qitem {{item.selected ? 'sel' : ''}}"
+    style="margin-left: {{item.depth * 28}}rpx;"
+    data-id="{{item.id}}"
+    bindtap="onSelect"
+  >
+    <view class="qbadge {{item.selected ? 'sel' : ''}}">{{item.no}}</view>
+
+    <view class="qbody">
+      <view class="qhead">
+        <text class="tag" style="background:{{item.statusColor}}1a;color:{{item.statusColor}};">{{item.statusText}}</text>
+        <text wx:if="{{item.suspicious}}" class="tag" style="background:#faad141a;color:#fa8c16;">可疑</text>
+        <text wx:if="{{item.manual}}" class="tag" style="background:#8c8c8c1a;color:#666;">已手动调整</text>
+        <text wx:if="{{item.illCount > 0}}" class="tag" style="background:#722ed11a;color:#722ed1;">含插图 ×{{item.illCount}}</text>
+        <text wx:if="{{item.subject}}" class="tag" style="background:#1677ff1a;color:#1677ff;">{{item.subject}}</text>
+      </view>
+
+      <view class="qtext">
+        <md-render content="{{item.text}}" />
+      </view>
+
+      <view class="qactions" catchtap="noop">
+        <view class="act-btn primary" data-id="{{item.id}}" catchtap="onAddWrong">加入错题库</view>
+        <view class="act-btn" data-id="{{item.id}}" catchtap="onReset">恢复 AI bbox</view>
+      </view>
+    </view>
+  </view>
+</view>

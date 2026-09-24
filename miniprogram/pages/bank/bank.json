@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "错题库",
+  "usingComponents": {
+    "md-render": "../../components/md-render/md-render"
+  }
+}

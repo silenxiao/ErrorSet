@@ -1,0 +1,159 @@
+/* 状态色来自 JS 计算的 statusColor / statusText / dateText，需在 wxml 中引用 */
+.exam-card {
+  display: flex;
+  overflow: hidden;
+  padding: 0;
+}
+
+.exam-accent {
+  width: 8rpx;
+  flex-shrink: 0;
+  border-radius: 16rpx 0 0 16rpx;
+}
+
+.exam-main {
+  flex: 1;
+  padding: 24rpx;
+  min-width: 0;
+}
+
+.exam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.exam-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-pill {
+  flex-shrink: 0;
+  padding: 4rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.exam-meta {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 12rpx;
+  color: #999;
+  font-size: 24rpx;
+}
+
+.meta-dot {
+  color: #d0d0d0;
+}
+
+.bar {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  flex-wrap: wrap;
+}
+
+.bar-btn {
+  margin: 0;
+  font-size: 26rpx;
+  border-radius: 10rpx;
+  padding: 0 28rpx;
+  line-height: 64rpx;
+  height: 64rpx;
+}
+.bar-btn::after {
+  border: none;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title-row .count {
+  font-size: 24rpx;
+  font-weight: 400;
+}
+
+.tip {
+  margin: 8rpx 0 16rpx;
+  line-height: 1.5;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  margin-top: 20rpx;
+}
+
+.label {
+  width: 160rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.field-col {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20rpx;
+}
+
+.textarea {
+  margin-top: 10rpx;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 26rpx;
+  width: 100%;
+  box-sizing: border-box;
+  height: 140rpx;
+}
+
+/* 弹窗 */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  width: 620rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.dialog-btns {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.dlg-btn {
+  flex: 1;
+  margin: 0;
+  border-radius: 10rpx;
+  line-height: 72rpx;
+  height: 72rpx;
+  font-size: 28rpx;
+}

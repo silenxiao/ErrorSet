@@ -1,0 +1,144 @@
+import { useRef, useState } from "react";
+import { message } from "antd";
+
+import { updateIllustrationBbox } from "../../api/question";
+import type { BBox, Illustration } from "../../types/question";
+import { applyDrag, type DragMode } from "../../utils/bbox";
+
+interface Props {
+  illustration: Illustration;
+  parentSelected: boolean;
+  onSelectParent: () => void;
+  onUpdated: () => void;
+}
+
+const HANDLES: { mode: DragMode; fx: number; fy: number; cursor: string }[] = [
+  { mode: "nw", fx: 0, fy: 0, cursor: "nwse-resize" },
+  { mode: "n", fx: 0.5, fy: 0, cursor: "ns-resize" },
+  { mode: "ne", fx: 1, fy: 0, cursor: "nesw-resize" },
+  { mode: "e", fx: 1, fy: 0.5, cursor: "ew-resize" },
+  { mode: "se", fx: 1, fy: 1, cursor: "nwse-resize" },
+  { mode: "s", fx: 0.5, fy: 1, cursor: "ns-resize" },
+  { mode: "sw", fx: 0, fy: 1, cursor: "nesw-resize" },
+  { mode: "w", fx: 0, fy: 0.5, cursor: "ew-resize" },
+];
+
+const HANDLE_SIZE = 12;
+
+function pointInSvg(svg: SVGSVGElement, clientX: number, clientY: number) {
+  const rect = svg.getBoundingClientRect();
+  return {
+    x: ((clientX - rect.left) / rect.width) * 1000,
+    y: ((clientY - rect.top) / rect.height) * 1000,
+  };
+}
+
+/** 可编辑插图框：拖动移动 + 八向手柄缩放，松手即保存（bbox_source = manual）。 */
+export default function IllustrationBox({
+  illustration,
+  parentSelected,
+  onSelectParent,
+  onUpdated,
+}: Props) {
+  const [preview, setPreview] = useState<BBox | null>(null);
+  const drag = useRef<{
+    mode: DragMode;
+    startX: number;
+    startY: number;
+    startBBox: BBox;
+    svg: SVGSVGElement;
+  } | null>(null);
+
+  const bbox = preview ?? illustration.bbox;
+  const [x1, y1, x2, y2] = bbox;
+  const manual = illustration.bboxSource === "manual";
+  const color = parentSelected ? "#fa8c16" : "#8c8c8c";
+
+  const startDrag = (mode: DragMode) => (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    onSelectParent();
+    const svg = (e.currentTarget as SVGElement).ownerSVGElement;
+    if (!svg) return;
+
+    const start = pointInSvg(svg, e.clientX, e.clientY);
+    const startBBox: BBox = [...illustration.bbox];
+    drag.current = { mode, startX: start.x, startY: start.y, startBBox, svg };
+    setPreview(startBBox);
+
+    const onMove = (ev: PointerEvent) => {
+      const d = drag.current;
+      if (!d) return;
+      const p = pointInSvg(d.svg, ev.clientX, ev.clientY);
+      setPreview(applyDrag(d.startBBox, p.x - d.startX, p.y - d.startY, d.mode));
+    };
+
+    const onUp = async (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      const d = drag.current;
+      drag.current = null;
+      if (!d) return;
+      const p = pointInSvg(d.svg, ev.clientX, ev.clientY);
+      const next = applyDrag(d.startBBox, p.x - d.startX, p.y - d.startY, d.mode);
+      setPreview(null);
+      if (next.every((v, i) => v === illustration.bbox[i])) return;
+      try {
+        await updateIllustrationBbox(illustration.id, next);
+        message.success("插图框已保存");
+        onUpdated();
+      } catch (err) {
+        message.error(err instanceof Error ? err.message : "保存插图框失败");
+        onUpdated();
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  return (
+    <g>
+      <rect
+        x={x1}
+        y={y1}
+        width={x2 - x1}
+        height={y2 - y1}
+        fill={parentSelected ? "rgba(250, 140, 22, 0.10)" : "transparent"}
+        stroke={color}
+        strokeDasharray={manual ? undefined : "10 6"}
+        strokeWidth={parentSelected ? 3 : 1.5}
+        vectorEffect="non-scaling-stroke"
+        rx={4}
+        style={{ cursor: "move" }}
+        onPointerDown={startDrag("move")}
+      />
+      <text
+        x={x1 + 4}
+        y={Math.max(14, y1 - 4)}
+        fill={color}
+        fontSize={20}
+        style={{ userSelect: "none", pointerEvents: "none" }}
+      >
+        {illustration.type}
+        {manual ? "（已调整）" : ""}
+      </text>
+      {parentSelected &&
+        HANDLES.map((h) => (
+          <rect
+            key={h.mode}
+            x={x1 + (x2 - x1) * h.fx - HANDLE_SIZE / 2}
+            y={y1 + (y2 - y1) * h.fy - HANDLE_SIZE / 2}
+            width={HANDLE_SIZE}
+            height={HANDLE_SIZE}
+            fill="#fff"
+            stroke={color}
+            strokeWidth={2}
+            vectorEffect="non-scaling-stroke"
+            style={{ cursor: h.cursor }}
+            onPointerDown={startDrag(h.mode)}
+          />
+        ))}
+    </g>
+  );
+}

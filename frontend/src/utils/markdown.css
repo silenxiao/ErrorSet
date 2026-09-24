@@ -1,0 +1,87 @@
+.answer-markdown-preview {
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.answer-markdown-preview > *:first-child {
+  margin-top: 0;
+}
+
+.answer-markdown-preview > *:last-child {
+  margin-bottom: 0;
+}
+
+.answer-markdown-preview p {
+  margin: 0.4em 0;
+}
+
+.answer-markdown-preview ul,
+.answer-markdown-preview ol {
+  margin: 0.4em 0;
+  padding-left: 1.5em;
+}
+
+.answer-markdown-preview li {
+  margin: 0.15em 0;
+}
+
+.answer-markdown-preview blockquote {
+  margin: 0.5em 0;
+  padding: 0.2em 0.8em;
+  border-left: 3px solid #d9d9d9;
+  color: #595959;
+  background: #fafafa;
+}
+
+.answer-markdown-preview code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.answer-markdown-preview pre {
+  background: #f6f8fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.answer-markdown-preview pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.answer-markdown-preview table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.answer-markdown-preview th,
+.answer-markdown-preview td {
+  border: 1px solid #d9d9d9;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.answer-markdown-preview th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.answer-markdown-preview hr {
+  border: none;
+  border-top: 1px solid #d9d9d9;
+  margin: 1em 0;
+}
+
+.answer-markdown-preview img {
+  max-width: 100%;
+}

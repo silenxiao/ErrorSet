@@ -1,0 +1,76 @@
+<view class="page">
+
+  <!-- 科目（必填） -->
+  <view class="section">
+    <view class="label-row">
+      <text class="req">*</text>
+      <text class="label">科目</text>
+    </view>
+    <picker mode="selector" range="{{subjectOptions}}" value="{{subjectIndex}}" bindchange="onSubject">
+      <view class="select-box">
+        <text class="select-value">{{subjectOptions[subjectIndex]}}</text>
+        <text class="arrow">⌄</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 正确答案：默认 Markdown 预览，框内右上角铅笔图标切换编辑 -->
+  <view class="section">
+    <view class="label-row">
+      <text class="label">正确答案</text>
+    </view>
+    <view class="ans-box">
+      <view class="edit-icon" catchtap="toggleCorrect">✎</view>
+      <view wx:if="{{!editCorrect}}" class="preview-area" bindtap="toggleCorrect">
+        <md-render wx:if="{{correctAnswer}}" content="{{correctAnswer}}"></md-render>
+        <text wx:else class="ph">AI 分析后显示正确答案</text>
+      </view>
+      <textarea
+        wx:else
+        class="box-textarea"
+        value="{{correctAnswer}}"
+        placeholder="填写正确答案"
+        bindinput="onCorrect"
+        auto-height
+        maxlength="{{-1}}"
+      ></textarea>
+    </view>
+  </view>
+
+  <!-- AI 分析按钮 -->
+  <button class="ai-btn" hover-class="none" loading="{{analyzing}}" bindtap="aiAnalyze">AI 分析</button>
+
+  <!-- AI 分析结果：仅展示（Markdown 渲染），不可编辑 -->
+  <view class="section">
+    <view class="label-row">
+      <text class="label">AI 分析结果</text>
+    </view>
+    <view class="ans-box">
+      <view class="preview-area">
+        <md-render wx:if="{{analysis}}" content="{{analysis}}"></md-render>
+        <text wx:else class="ph">点击 AI 分析后显示结果</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="section">
+    <view class="label-row">
+      <text class="label">备注</text>
+    </view>
+    <textarea
+      class="box-textarea note"
+      value="{{note}}"
+      placeholder="可选"
+      bindinput="onNote"
+      maxlength="{{-1}}"
+    ></textarea>
+  </view>
+
+  <!-- 底部操作：取消 / 确定 -->
+  <view class="footer">
+    <button class="btn-ghost btn-sm" hover-class="none" bindtap="cancel">取 消</button>
+    <button class="btn-primary btn-sm" hover-class="none" loading="{{saving}}" bindtap="save">确 定</button>
+  </view>
+
+</view>

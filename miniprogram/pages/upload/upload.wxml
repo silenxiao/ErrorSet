@@ -1,0 +1,60 @@
+<view class="card">
+  <view class="card-title">上传试卷</view>
+
+  <view class="uploader" bindtap="chooseImage" wx:if="{{!previewImage}}">
+    <view class="plus">＋</view>
+    <view class="muted">点击选择试卷照片（JPG/PNG/WebP，≤10MB，一张图=一份试卷）</view>
+  </view>
+
+  <view wx:if="{{previewImage}}" class="preview">
+    <image class="preview-img" src="{{previewImage}}" mode="widthFix" bindtap="chooseImage"></image>
+    <view class="text-btn danger" bindtap="clearImage">移除</view>
+  </view>
+
+  <view class="field">
+    <text class="label">年级</text>
+    <picker mode="selector" range="{{gradeOptions}}" value="{{gradeIndex}}" bindchange="onGrade">
+      <view class="picker">{{gradeOptions[gradeIndex]}}</view>
+    </picker>
+  </view>
+
+  <view class="field">
+    <text class="label">试卷名称</text>
+    <input class="input" value="{{name}}" placeholder="例如：数学月考（默认取文件名）" bindinput="onName" />
+  </view>
+
+  <view class="field">
+    <text class="label">包含插图</text>
+    <switch checked="{{includeIllustrations}}" bindchange="onInclude" color="#1677ff" />
+    <text class="muted" style="margin-left:8rpx;">开=识别题目和插图（更慢更贵）</text>
+  </view>
+
+  <button class="btn-primary submit btn-block" hover-class="none" loading="{{uploading}}" bindtap="upload">上传并开始识别</button>
+</view>
+
+<view class="card">
+  <view class="card-title">历史试卷</view>
+
+  <view wx:if="{{error && error !== 'empty'}}" class="err-box">
+    <view class="err-msg">加载失败：{{error}}</view>
+    <view class="err-hint">后端地址：{{backendBase}}（请确认后端已启动，且开发者工具已勾选「不校验合法域名」）</view>
+    <view class="text-btn danger" bindtap="retry">点击重试</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="muted" style="padding:20rpx 0;">加载中…</view>
+  <view wx:if="{{!loading && !error && exams.length === 0}}" class="muted" style="padding:20rpx 0;">暂无试卷</view>
+
+  <view wx:for="{{exams}}" wx:key="id" class="exam-row">
+    <view class="exam-main" bindtap="openExam" data-id="{{item.id}}">
+      <view class="exam-name">{{item.name}}</view>
+      <view class="muted">题目数 {{item.questionCount}} · {{item.createdAtText}}</view>
+    </view>
+    <view class="exam-side">
+      <text class="tag" style="background:{{item.statusColor}}1a;color:{{item.statusColor}};">{{item.statusText}}</text>
+      <view class="exam-btns">
+        <view class="text-btn" data-id="{{item.id}}" bindtap="openExam">打开</view>
+        <view class="text-btn danger" data-id="{{item.id}}" bindtap="delExam">删除</view>
+      </view>
+    </view>
+  </view>
+</view>

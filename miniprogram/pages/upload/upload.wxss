@@ -1,0 +1,106 @@
+.uploader {
+  border: 2rpx dashed #d9d9d9;
+  border-radius: 12rpx;
+  padding: 48rpx 20rpx;
+  text-align: center;
+  background: #fafafa;
+}
+
+.plus {
+  font-size: 64rpx;
+  color: #1677ff;
+  line-height: 1;
+}
+
+.uploader .muted {
+  margin-top: 12rpx;
+}
+
+.preview {
+  position: relative;
+}
+
+.preview-img {
+  width: 100%;
+  border-radius: 12rpx;
+  border: 1rpx solid #eee;
+}
+
+.preview .text-btn {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border-radius: 8rpx;
+  padding: 4rpx 16rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  margin-top: 24rpx;
+}
+
+.label {
+  width: 150rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.input {
+  flex: 1;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 28rpx;
+}
+
+.picker {
+  flex: 1;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 8rpx;
+  padding: 12rpx 16rpx;
+  font-size: 28rpx;
+  background: #fff;
+}
+
+.submit {
+  margin-top: 32rpx;
+  border-radius: 12rpx;
+}
+
+.exam-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.exam-row:last-child {
+  border-bottom: none;
+}
+
+.exam-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.exam-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  margin-bottom: 6rpx;
+}
+
+.exam-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10rpx;
+}
+
+.exam-btns {
+  display: flex;
+  gap: 16rpx;
+}

@@ -1,0 +1,142 @@
+page {
+  background: #f5f5f5;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin-bottom: 16rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.muted {
+  color: #999;
+  font-size: 24rpx;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2rpx 14rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  margin-right: 8rpx;
+}
+
+.danger {
+  color: #ff4d4f;
+}
+
+/* ===== 全局按钮系统 ===== */
+button {
+  padding: 0;
+  margin: 0;
+  font-size: 30rpx;
+  line-height: normal;
+  background: transparent;
+}
+/* 去掉微信 button 默认边框 */
+button::after {
+  border: none;
+}
+
+.btn-primary,
+.btn-ghost,
+.btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 88rpx;
+  padding: 0 32rpx;
+  border-radius: 14rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  line-height: 1;
+  border: none;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary {
+  background: #1677ff;
+  color: #fff;
+}
+.btn-primary:active {
+  background: #0958d9;
+}
+
+.btn-ghost {
+  background: #fff;
+  color: #1f2329;
+  border: 1rpx solid #e2e5ea;
+}
+.btn-ghost:active {
+  background: #f2f3f5;
+}
+
+.btn-danger {
+  background: #ff4d4f;
+  color: #fff;
+}
+.btn-danger:active {
+  background: #d9363e;
+}
+
+/* 通栏主按钮 */
+.btn-block {
+  width: 100%;
+}
+
+/* 行内文字按钮（通常为 view，bindtap 触发） */
+.text-btn {
+  display: inline-block;
+  color: #1677ff;
+  font-size: 26rpx;
+  padding: 8rpx 12rpx;
+  line-height: 1.4;
+  border-radius: 8rpx;
+}
+.text-btn:active {
+  opacity: 0.6;
+}
+.text-btn.danger {
+  color: #ff4d4f;
+}
+
+/* 加载失败提示框（替代无提示的空白页） */
+.err-box {
+  background: #fff2f0;
+  border: 1rpx solid #ffccc7;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.err-msg {
+  color: #cf1322;
+  font-size: 26rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.err-hint {
+  color: #999;
+  font-size: 22rpx;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+}

@@ -1,0 +1,142 @@
+.page {
+  padding: 32rpx 32rpx 48rpx;
+  box-sizing: border-box;
+  background: #fff;
+  min-height: 100vh;
+}
+
+.section {
+  margin-bottom: 36rpx;
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.req {
+  color: #ff4d4f;
+  font-size: 30rpx;
+  margin-right: 6rpx;
+  line-height: 1;
+}
+
+.label {
+  font-size: 30rpx;
+  color: #1f2329;
+  font-weight: 500;
+}
+
+/* 科目下拉框 */
+.select-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1rpx solid #e2e5ea;
+  border-radius: 12rpx;
+  padding: 22rpx 26rpx;
+  background: #fff;
+}
+
+.select-value {
+  font-size: 30rpx;
+  color: #1f2329;
+}
+
+.arrow {
+  color: #a9aeb8;
+  font-size: 30rpx;
+  transform: rotate(-45deg);
+  line-height: 1;
+}
+
+/* 答案 / 分析结果展示框 */
+.ans-box {
+  position: relative;
+  border: 1rpx solid #e2e5ea;
+  border-radius: 12rpx;
+  background: #fff;
+  padding: 24rpx 68rpx 24rpx 24rpx;
+  min-height: 160rpx;
+  box-sizing: border-box;
+}
+
+.edit-icon {
+  position: absolute;
+  top: 20rpx;
+  right: 22rpx;
+  font-size: 32rpx;
+  color: #4e5969;
+  padding: 8rpx;
+  line-height: 1;
+}
+
+.preview-area {
+  min-height: 120rpx;
+}
+
+.ph {
+  font-size: 28rpx;
+  color: #b4bac4;
+  line-height: 1.6;
+}
+
+/* 编辑态文本域（复用框样式，去掉外框避免双框） */
+.box-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  font-size: 28rpx;
+  color: #1f2329;
+  line-height: 1.6;
+  box-sizing: border-box;
+}
+
+.box-textarea.tall {
+  min-height: 320rpx;
+}
+
+.box-textarea.note {
+  border: 1rpx solid #e2e5ea;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  height: 160rpx;
+}
+
+/* AI 分析按钮：主色描边样式，左对齐 */
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 220rpx;
+  margin: 0 0 36rpx;
+  padding: 18rpx 0;
+  background: #f0f6ff;
+  color: #1677ff;
+  font-size: 28rpx;
+  font-weight: 500;
+  border: 1rpx solid #d6e4ff;
+  border-radius: 12rpx;
+  line-height: 1.4;
+}
+
+.ai-btn::after {
+  border: none;
+}
+
+.ai-btn:active {
+  background: #e2eeff;
+}
+
+/* 底部 取消 / 确定 */
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24rpx;
+  margin-top: 48rpx;
+}
+
+.btn-sm {
+  width: 220rpx;
+  margin: 0;
+}

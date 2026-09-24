@@ -1,0 +1,49 @@
+<view wx:if="{{loadError}}" class="card">
+  <view class="muted" style="padding:30rpx 0;">原题已被删除，仅剩错题记录信息</view>
+</view>
+
+<block wx:if="{{detail}}">
+  <view class="card">
+    <view class="row">
+      <view class="card-title" style="margin:0;">第 {{detail.questionNo}} 题</view>
+      <text class="tag" style="background:{{detail.subject ? '#1677ff1a' : '#9999991a'}};color:{{detail.subject ? '#1677ff' : '#999'}};" bindtap="editSubject">{{detail.subject || '未设置'}}</text>
+    </view>
+
+    <view class="sec">题目原文</view>
+    <view wx:if="{{question}}" class="qtext">
+      <md-render content="{{question.text}}"></md-render>
+      <view wx:if="{{question.illustrations.length > 0}}" class="ills">
+        <image wx:for="{{question.illustrations}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="widthFix"></image>
+      </view>
+    </view>
+    <view wx:else class="muted">加载中…</view>
+
+    <view class="sec">正确答案</view>
+    <view class="answer"><md-render content="{{detail.correctAnswer || '—'}}"></md-render></view>
+
+    <view class="sec">AI 分析结果</view>
+    <view class="answer"><md-render content="{{detail.analysis || '—'}}"></md-render></view>
+
+    <view class="sec">备注</view>
+    <view class="muted">{{detail.note || '—'}}</view>
+
+    <view class="del-btn" bindtap="del">删除该题</view>
+  </view>
+</block>
+
+<view wx:if="{{editVisible}}" class="mask" bindtap="closeEdit">
+  <view class="dialog" catchtap="noop">
+    <view class="dialog-title">编辑科目</view>
+    <view class="field">
+      <text class="label">选择科目</text>
+      <picker mode="selector" range="{{subjectOptions}}" value="{{subjectOptions.indexOf(editValue)}}" bindchange="onSubjectPick">
+        <view class="picker">{{editValue || '未设置'}}</view>
+      </picker>
+    </view>
+    <input class="input" value="{{editValue}}" placeholder="或自由输入（留空为未设置）" bindinput="onEditValue" />
+    <view class="dialog-btns">
+      <button class="btn-ghost dlg-btn" hover-class="none" bindtap="closeEdit">取消</button>
+      <button class="btn-primary dlg-btn" hover-class="none" bindtap="saveSubject">保存</button>
+    </view>
+  </view>
+</view>

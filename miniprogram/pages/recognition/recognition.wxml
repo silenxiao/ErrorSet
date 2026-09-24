@@ -1,0 +1,80 @@
+<view wx:if="{{error}}" class="card">
+  <view class="danger" style="padding:20rpx 0;">{{error}}</view>
+</view>
+
+<view wx:if="{{!error && !exam}}" class="card">
+  <view class="muted" style="padding:40rpx 0;text-align:center;">加载中…</view>
+</view>
+
+<block wx:if="{{exam}}">
+  <view class="card exam-card">
+    <view class="exam-accent" style="background:{{statusColor}};"></view>
+    <view class="exam-main">
+      <view class="exam-head">
+        <view class="exam-title">{{exam.name || ('试卷 #' + exam.id)}}</view>
+        <text class="status-pill" style="background:{{statusColor}}1a;color:{{statusColor}};">{{statusText}}</text>
+      </view>
+      <view class="exam-meta">
+        <text class="meta-item">共 {{questionCount}} 题</text>
+        <text class="meta-dot">·</text>
+        <text class="meta-item">上传于 {{dateText}}</text>
+      </view>
+
+      <view class="bar">
+        <button wx:if="{{exam.status === 'awaiting_review'}}" class="btn-primary bar-btn" hover-class="none" loading="{{saving}}" bindtap="confirm">二次识别</button>
+        <button wx:if="{{exam.status === 'failed' || exam.status === 'completed'}}" class="btn-ghost bar-btn" hover-class="none" loading="{{saving}}" bindtap="openRerecog">重新识别</button>
+        <button wx:if="{{polling}}" class="btn-ghost bar-btn" hover-class="none" bindtap="refresh">刷新</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title title-row">
+      <text>试卷原图与题目框</text>
+      <text class="count muted">{{questionCount}} 个框</text>
+    </view>
+    <view class="tip muted">点选题目可高亮对应框；选中后拖动框体或八向手柄可调整边界，松手自动保存。</view>
+    <bbox-editor
+      imageUrl="{{exam.imageUrl}}"
+      questions="{{exam.questions}}"
+      selectedId="{{selectedId}}"
+      bind:select="onSelect"
+      bind:updatebbox="onUpdateBbox"
+    />
+  </view>
+
+  <view class="card">
+    <view class="card-title">题目列表</view>
+    <question-tree
+      questions="{{exam.questions}}"
+      selectedId="{{selectedId}}"
+      canReview="{{exam.status === 'awaiting_review'}}"
+      bind:select="onSelect"
+      bind:addwrong="onAddWrong"
+      bind:reset="onReset"
+    />
+  </view>
+</block>
+
+<!-- 重新识别弹窗 -->
+<view wx:if="{{rerecogVisible}}" class="mask" bindtap="closeRerecog">
+  <view class="dialog" catchtap="noop">
+    <view class="dialog-title">重新识别</view>
+    <view class="muted" style="margin-bottom:16rpx;">将清除当前识别结果并重新识别整张试卷。</view>
+
+    <view class="field">
+      <text class="label">包含插图</text>
+      <switch checked="{{rerecogInclude}}" bindchange="onRerecogInclude" color="#1677ff" />
+    </view>
+
+    <view class="field-col">
+      <text class="label">补充提示词（可选）</text>
+      <textarea class="textarea" value="{{rerecogExtra}}" maxlength="2000" placeholder="例如：这是一年级数学卷，注意区分手写答案与印刷题目" bindinput="onRerecogExtra" />
+    </view>
+
+    <view class="dialog-btns">
+      <button class="btn-ghost dlg-btn" hover-class="none" bindtap="closeRerecog">取消</button>
+      <button class="btn-primary dlg-btn" hover-class="none" bindtap="doRerecog">开始识别</button>
+    </view>
+  </view>
+</view>
