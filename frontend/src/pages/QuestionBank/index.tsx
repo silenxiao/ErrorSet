@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Button,
   Card,
-  Descriptions,
   Empty,
   Image,
   Modal,
@@ -182,7 +181,7 @@ export default function QuestionBankPage() {
         width="85%"
         style={{ top: 40 }}
       >
-        {detail && <DetailBody detail={detail} onSubject={handleSubject} />}
+        {detail && <DetailBody detail={detail} />}
       </Modal>
     </Card>
   );
@@ -326,13 +325,14 @@ function WrongQuestionItem({
   );
 }
 
-function DetailBody({
-  detail,
-  onSubject,
-}: {
-  detail: WrongQuestion;
-  onSubject: (row: WrongQuestion, subject: string) => Promise<void>;
-}) {
+/** 小程序详情页同款小节标题：灰色小字 */
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ color: "#888", fontSize: 13, margin: "16px 0 4px" }}>{children}</div>
+  );
+}
+
+function DetailBody({ detail }: { detail: WrongQuestion }) {
   const [question, setQuestion] = useState<Question | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -353,7 +353,7 @@ function DetailBody({
   }, [detail.questionId, detail.id]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column" }}>
       {loadError ? (
         <Card size="small">原题已被删除，仅剩错题记录信息</Card>
       ) : (
@@ -379,18 +379,24 @@ function DetailBody({
           )}
         </Card>
       )}
-      <Descriptions column={1} bordered size="small">
-        <Descriptions.Item label="科目">
-          <SubjectTag subject={detail.subject} onSave={(v) => onSubject(detail, v)} />
-        </Descriptions.Item>
-        <Descriptions.Item label="正确答案">
-          <div className="answer-markdown-preview">{renderMarkdown(detail.correctAnswer || "—")}</div>
-        </Descriptions.Item>
-        <Descriptions.Item label="AI 分析结果">
-          <div className="answer-markdown-preview">{renderMarkdown(detail.analysis || "—")}</div>
-        </Descriptions.Item>
-        <Descriptions.Item label="备注">{detail.note || "—"}</Descriptions.Item>
-      </Descriptions>
+      <SectionTitle>正确答案</SectionTitle>
+      <div
+        className="answer-markdown-preview"
+        style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 12px" }}
+      >
+        {renderMarkdown(detail.correctAnswer || "—")}
+      </div>
+      <SectionTitle>AI 分析结果</SectionTitle>
+      <div
+        className="answer-markdown-preview"
+        style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 12px" }}
+      >
+        {renderMarkdown(detail.analysis || "—")}
+      </div>
+      <SectionTitle>备注</SectionTitle>
+      <div style={{ color: detail.note ? "#333" : "#bbb", whiteSpace: "pre-wrap" }}>
+        {detail.note || "—"}
+      </div>
     </div>
   );
 }
