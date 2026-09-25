@@ -64,7 +64,7 @@ export default function App() {
           style={{ color: "#fff", fontSize: 16 }}
           onClick={() => setSettingsOpen(true)}
         >
-          设置
+          模型管理
         </Button>
       </Header>
       <Content style={{ padding: 24 }}>

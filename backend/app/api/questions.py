@@ -14,6 +14,7 @@ from app.schemas.question import (
     WrongQuestionCreate,
     WrongQuestionOut,
     WrongQuestionResult,
+    WrongQuestionSort,
     WrongQuestionUpdate,
 )
 from app.services import question_service
@@ -137,6 +138,18 @@ def record_wrong_question_result(
 ) -> WrongQuestionOut:
     """做对/做错打卡：correct 使做对次数 +1，wrong 使做错次数 +1。"""
     row = question_service.record_wrong_question_result(db, wrong_id, payload.result)
+    return _wrong_question_out(db, row)
+
+
+@router.post(
+    "/api/v1/wrong-questions/{wrong_id}/sort",
+    response_model=WrongQuestionOut,
+)
+def sort_wrong_question(
+    wrong_id: int, payload: WrongQuestionSort, db: DbSession
+) -> WrongQuestionOut:
+    """置顶（top）/置底（bottom）错题，排序持久化。"""
+    row = question_service.sort_wrong_question(db, wrong_id, payload.position)
     return _wrong_question_out(db, row)
 
 

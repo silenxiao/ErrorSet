@@ -40,6 +40,7 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE wrong_question ADD COLUMN analysis TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE wrong_question ADD COLUMN correct_count INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE wrong_question ADD COLUMN wrong_count INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE wrong_question ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE illustration ADD COLUMN ai_bbox JSON",
         "ALTER TABLE illustration ADD COLUMN bbox_source VARCHAR(16) DEFAULT 'ai'",
     ]
@@ -49,6 +50,38 @@ def _sqlite_lightweight_migrations() -> None:
                 conn.exec_driver_sql(sql)
             except OperationalError:
                 pass  # 列已存在
+
+    _migrate_provider_setting_to_model_profile()
+
+
+def _migrate_provider_setting_to_model_profile() -> None:
+    """旧的 provider_setting 单行配置迁入 model_profile 列表（作为启用项）。"""
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        count = conn.execute(
+            text("SELECT COUNT(*) FROM model_profile")
+        ).scalar_one()
+        if count > 0:
+            return
+        row = conn.execute(
+            text(
+                "SELECT provider, base_url, model, api_key FROM provider_setting "
+                "WHERE provider != '' LIMIT 1"
+            )
+        ).first()
+        if row is None:
+            return
+        conn.execute(
+            text(
+                "INSERT INTO model_profile "
+                "(name, provider, base_url, model, api_key, enabled, created_at, updated_at) "
+                "VALUES (:name, :provider, :base_url, :model, :api_key, 1, "
+                "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            ),
+            {"name": "", "provider": row.provider, "base_url": row.base_url,
+             "model": row.model, "api_key": row.api_key},
+        )
 
 
 def get_db() -> "Generator[Session, None, None]":

@@ -40,6 +40,18 @@ Page({
       .catch(() => {});
   },
 
+  mark(e) {
+    const result = e.currentTarget.dataset.result;
+    api
+      .recordWrongResult(this.data.detail.id, result)
+      .then((up) => {
+        const detail = Object.assign({}, this.data.detail, up);
+        this.setData({ detail });
+        wx.showToast({ title: result === 'correct' ? '做对 +1' : '做错 +1', icon: 'success' });
+      })
+      .catch((err) => wx.showToast({ title: err.message || '记录失败', icon: 'none' }));
+  },
+
   del() {
     wx.showModal({
       title: '删除错题',

@@ -99,10 +99,6 @@ Page({
 
   save() {
     if (this.data.saving) return;
-    if (!this.data.correctAnswer && !this.data.analysis) {
-      wx.showToast({ title: '请先填写正确答案或进行 AI 分析', icon: 'none' });
-      return;
-    }
     const subject = SUBJECT_OPTIONS[this.data.subjectIndex];
     this.setData({ saving: true });
     api

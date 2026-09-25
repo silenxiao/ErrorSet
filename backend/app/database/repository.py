@@ -316,5 +316,24 @@ def delete_wrong_question(db: Session, row: WrongQuestion) -> None:
 
 
 def list_wrong_questions(db: Session) -> list[WrongQuestion]:
-    stmt = select(WrongQuestion).order_by(WrongQuestion.created_at.desc())
+    """错题列表：按手动排序号降序（置顶在前），同序号按创建时间降序。"""
+    stmt = select(WrongQuestion).order_by(
+        WrongQuestion.sort_order.desc(), WrongQuestion.created_at.desc()
+    )
     return list(db.scalars(stmt))
+
+
+def wrong_question_sort_bounds(db: Session) -> tuple[int, int]:
+    """当前错题排序号的最大/最小值，供置顶（max+1）与置底（min-1）使用。"""
+    max_order = db.scalar(select(func.max(WrongQuestion.sort_order))) or 0
+    min_order = db.scalar(select(func.min(WrongQuestion.sort_order))) or 0
+    return max_order, min_order
+
+
+def set_wrong_question_sort_order(
+    db: Session, row: WrongQuestion, order: int
+) -> WrongQuestion:
+    row.sort_order = order
+    db.commit()
+    db.refresh(row)
+    return row

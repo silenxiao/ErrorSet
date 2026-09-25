@@ -9,13 +9,13 @@
     </view>
 
     <view class="sec">题目原文</view>
-    <view wx:if="{{question}}" class="qtext">
+    <view wx:if="{{question}}" class="answer">
       <md-render content="{{question.text}}"></md-render>
       <view wx:if="{{question.illustrations.length > 0}}" class="ills">
         <image wx:for="{{question.illustrations}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="widthFix"></image>
       </view>
     </view>
-    <view wx:else class="muted">加载中…</view>
+    <view wx:else class="answer muted">加载中…</view>
 
     <view class="sec">正确答案</view>
     <view class="answer"><md-render content="{{detail.correctAnswer || '—'}}"></md-render></view>
@@ -26,7 +26,13 @@
     <view class="sec">备注</view>
     <view class="muted">{{detail.note || '—'}}</view>
 
-    <view class="del-btn" bindtap="del">删除该题</view>
+    <view class="sec">打卡</view>
+    <view class="mark-row">
+      <text class="mark-btn" data-result="correct" bindtap="mark">😀 做对</text>
+      <text class="mark-btn" data-result="wrong" bindtap="mark">😢 做错</text>
+      <text class="del-link" bindtap="del">删 除</text>
+      <text class="mark-count">做对 {{detail.correctCount}} 次 · 做错 {{detail.wrongCount}} 次</text>
+    </view>
   </view>
 </block>
 

@@ -105,6 +105,22 @@ class ProviderSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
 
+class ModelProfile(Base):
+    """模型管理：用户配置的模型列表。enabled 表示当前启用的模型（最多一条）。"""
+
+    __tablename__ = "model_profile"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(64), default="")
+    provider: Mapped[str] = mapped_column(String(64))
+    base_url: Mapped[str] = mapped_column(String(512), default="")
+    model: Mapped[str] = mapped_column(String(128), default="")
+    api_key: Mapped[str] = mapped_column(String(512), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
 class WrongQuestion(Base):
     __tablename__ = "wrong_question"
 
@@ -121,5 +137,7 @@ class WrongQuestion(Base):
     knowledge_points: Mapped[list] = mapped_column(JSON, default=list)
     image: Mapped[str] = mapped_column(String(512), default="")
     note: Mapped[str] = mapped_column(Text, default="")
+    # 手动排序：0 为默认；置顶取最大+1，置底取最小-1；同序号按 created_at 降序
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)

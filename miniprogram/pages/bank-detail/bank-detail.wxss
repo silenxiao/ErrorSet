@@ -4,16 +4,28 @@
   justify-content: space-between;
 }
 
-.sec {
-  font-size: 26rpx;
-  color: #888;
-  margin: 24rpx 0 8rpx;
+/* 底部留白，避免打卡行被底部横条（Home Indicator）压住 */
+.card {
+  padding-bottom: 80rpx;
 }
 
-.qtext {
-  font-size: 27rpx;
-  line-height: 1.6;
-  word-break: break-word;
+/* 小节标题：蓝色竖条 + 加粗深色文字，醒目区分各区块 */
+.sec {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2329;
+  margin: 24rpx 0 10rpx;
+}
+
+.sec::before {
+  content: "";
+  width: 6rpx;
+  height: 26rpx;
+  border-radius: 4rpx;
+  background: #1677ff;
 }
 
 .answer {
@@ -39,18 +51,40 @@
   border: 1rpx solid #eee;
 }
 
-.del-btn {
+/* 打卡行：做对/做错/删除 + 次数 */
+.mark-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 28rpx;
   margin-top: 32rpx;
-  text-align: center;
+}
+
+.mark-btn {
+  font-size: 28rpx;
+  color: #1677ff;
+}
+
+.mark-btn:active {
+  opacity: 0.6;
+}
+
+.del-link {
   color: #ff4d4f;
   border: 1rpx solid #ffccc7;
   border-radius: 10rpx;
-  padding: 18rpx 0;
-  font-size: 28rpx;
-  transition: background-color 0.15s ease;
+  padding: 8rpx 28rpx;
+  font-size: 26rpx;
 }
-.del-btn:active {
+
+.del-link:active {
   background: #fff1f0;
+}
+
+.mark-count {
+  margin-left: auto;
+  color: #8c8c8c;
+  font-size: 26rpx;
 }
 
 .field {

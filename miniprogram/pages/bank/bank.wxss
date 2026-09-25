@@ -1,3 +1,26 @@
+/* 科目筛选标签行 */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-bottom: 8rpx;
+}
+
+.filter-tag {
+  padding: 6rpx 20rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid #e2e5ea;
+  background: #fff;
+  color: #555;
+  font-size: 24rpx;
+}
+
+.filter-tag.active {
+  background: #e6f4ff;
+  border-color: #91caff;
+  color: #1677ff;
+}
+
 .wrow {
   padding: 20rpx 0;
   border-bottom: 1rpx solid #f0f0f0;

@@ -69,3 +69,10 @@ export function analyzeQuestion(questionId: number): Promise<string> {
 export function deleteWrongQuestion(id: number): Promise<void> {
   return request(`/api/v1/wrong-questions/${id}`, { method: "DELETE" });
 }
+
+export function sortWrongQuestion(
+  id: number,
+  position: "top" | "bottom",
+): Promise<WrongQuestion> {
+  return request(`/api/v1/wrong-questions/${id}/sort`, jsonInit("POST", { position }));
+}

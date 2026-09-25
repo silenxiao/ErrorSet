@@ -8,13 +8,21 @@ import UploadPanel from "../../components/UploadPanel";
 import type { ExamListItem, ExamStatus } from "../../types/exam";
 
 const STATUS_LABEL: Record<ExamStatus, { text: string; color: string }> = {
-  uploaded: { text: "已上传", color: "default" },
+  uploaded: { text: "排队中", color: "default" },
   global_processing: { text: "整页识别中", color: "processing" },
   awaiting_review: { text: "待人工确认", color: "gold" },
   local_processing: { text: "二次识别中", color: "processing" },
   completed: { text: "已完成", color: "success" },
   failed: { text: "失败", color: "error" },
 };
+
+/** 未到终态的状态：存在时列表需要轮询同步 */
+const ACTIVE_STATUSES: ExamStatus[] = [
+  "uploaded",
+  "global_processing",
+  "local_processing",
+];
+const POLL_INTERVAL_MS = 3000;
 
 /** 上传页面（§27.1）：上传面板 + 历史试卷列表。 */
 export default function UploadPage() {
@@ -23,18 +31,28 @@ export default function UploadPage() {
   /** "打开"浮窗中展示的试卷 id，null 表示关闭 */
   const [openedExamId, setOpenedExamId] = useState<number | null>(null);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+  const reload = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       setExams(await listExams());
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // 有试卷处于识别流程中时轮询同步状态，全部到终态后停止
+  useEffect(() => {
+    const hasActive = exams.some((exam) =>
+      ACTIVE_STATUSES.includes(exam.status),
+    );
+    if (!hasActive) return;
+    const timer = setInterval(() => void reload(true), POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [exams, reload]);
 
   const handleDelete = async (exam: ExamListItem) => {
     try {

@@ -82,6 +82,16 @@ def delete_wrong_question(db: Session, wrong_id: int) -> None:
         image.unlink(missing_ok=True)
 
 
+def sort_wrong_question(db: Session, wrong_id: int, position: str) -> WrongQuestion:
+    """置顶/置底：置顶取当前最大排序号+1，置底取最小排序号-1。"""
+    row = repo.get_wrong_question(db, wrong_id)
+    if row is None:
+        raise NotFoundError(f"错题 {wrong_id} 不存在")
+    max_order, min_order = repo.wrong_question_sort_bounds(db)
+    order = max_order + 1 if position == "top" else min_order - 1
+    return repo.set_wrong_question_sort_order(db, row, order)
+
+
 def record_wrong_question_result(
     db: Session, wrong_id: int, result: str
 ) -> WrongQuestion:

@@ -84,6 +84,12 @@ class WrongQuestionResult(CamelModel):
     result: Literal["correct", "wrong"]
 
 
+class WrongQuestionSort(CamelModel):
+    """置顶/置底：position 为 top（置顶）或 bottom（置底）。"""
+
+    position: Literal["top", "bottom"]
+
+
 class WrongQuestionUpdate(CamelModel):
     """PATCH /api/v1/wrong-questions/{id} 可编辑字段，None 表示不修改。"""
 

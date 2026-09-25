@@ -1,6 +1,10 @@
 const api = require('../../utils/api');
 const { EXAM_STATUS, GRADE_OPTIONS, formatDate } = require('../../utils/format');
 
+// 未到终态的状态：存在时列表需要轮询同步
+const ACTIVE_STATUSES = ['uploaded', 'global_processing', 'local_processing'];
+const POLL_INTERVAL = 3000;
+
 Page({
   data: {
     exams: [],
@@ -20,8 +24,16 @@ Page({
     this.loadExams();
   },
 
-  loadExams() {
-    this.setData({ loading: true, error: '' });
+  onHide() {
+    this.stopPolling();
+  },
+
+  onUnload() {
+    this.stopPolling();
+  },
+
+  loadExams(silent) {
+    this.setData({ loading: !silent, error: '' });
     api
       .listExams()
       .then((list) => {
@@ -32,11 +44,33 @@ Page({
           createdAtText: formatDate(e.createdAt),
         }));
         this.setData({ exams, loading: false, error: exams.length ? '' : 'empty' });
+        this.syncPolling();
       })
       .catch((err) => {
         wx.showToast({ title: err.message || '加载失败', icon: 'none' });
         this.setData({ loading: false, error: err.message || '加载失败' });
       });
+  },
+
+  // 有试卷处于识别流程中时轮询同步状态，全部到终态后停止
+  syncPolling() {
+    const active = (this.data.exams || []).some(
+      (e) => ACTIVE_STATUSES.indexOf(e.status) !== -1
+    );
+    if (active) this.startPolling();
+    else this.stopPolling();
+  },
+
+  startPolling() {
+    if (this.pollTimer) return;
+    this.pollTimer = setInterval(() => this.loadExams(true), POLL_INTERVAL);
+  },
+
+  stopPolling() {
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
   },
 
   retry() {

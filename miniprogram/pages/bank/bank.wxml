@@ -1,5 +1,14 @@
 <view class="card">
-  <view class="card-title">错题库（共 {{rows.length}} 道）</view>
+  <view wx:if="{{subjectTags.length > 0}}" class="filter-row">
+    <text class="filter-tag {{subjectFilter === null ? 'active' : ''}}" data-name="" bindtap="onFilterTap">全部 {{totalAll}}</text>
+    <text
+      wx:for="{{subjectTags}}"
+      wx:key="name"
+      class="filter-tag {{subjectFilter === item.name ? 'active' : ''}}"
+      data-name="{{item.name}}"
+      bindtap="onFilterTap"
+    >{{item.name}} {{item.count}}</text>
+  </view>
 
   <view wx:if="{{error && error !== 'empty'}}" class="err-box">
     <view class="err-msg">加载失败：{{error}}</view>
@@ -9,8 +18,9 @@
 
   <view wx:if="{{loading && rows.length === 0}}" class="muted" style="padding:20rpx 0;">加载中…</view>
   <view wx:if="{{!loading && !error && rows.length === 0}}" class="muted" style="padding:20rpx 0;">暂无错题，去识别结果页把题目加入错题库吧</view>
+  <view wx:if="{{!loading && rows.length > 0 && visibleRows.length === 0}}" class="muted" style="padding:20rpx 0;">该科目下暂无错题</view>
 
-  <view wx:for="{{rows}}" wx:key="id" class="wrow">
+  <view wx:for="{{visibleRows}}" wx:key="id" class="wrow">
     <view class="whead">
       <text class="tag" style="background:{{item.subjectColor}}1a;color:{{item.subjectColor}};" bindtap="editSubject" data-id="{{item.id}}" data-subject="{{item.subject}}">{{item.subject || '未设置'}}</text>
       <text class="muted">第 {{item.questionNo}} 题</text>
@@ -33,6 +43,8 @@
 
     <view class="wactions">
       <view class="text-btn" data-id="{{item.id}}" bindtap="openDetail">详情</view>
+      <view class="text-btn" data-id="{{item.id}}" data-position="top" bindtap="sort">置顶</view>
+      <view class="text-btn" data-id="{{item.id}}" data-position="bottom" bindtap="sort">置底</view>
       <view class="text-btn danger" data-id="{{item.id}}" bindtap="del">删除</view>
       <view class="text-btn" data-id="{{item.id}}" data-result="correct" bindtap="mark">😀 做对</view>
       <view class="text-btn" data-id="{{item.id}}" data-result="wrong" bindtap="mark">😢 做错</view>
@@ -46,7 +58,7 @@
   </view>
 </view>
 
-<!-- 科目编辑弹窗 -->
+<!-- 科目编辑弹窗：只能从固定科目中选择 -->
 <view wx:if="{{editVisible}}" class="mask" bindtap="closeEdit">
   <view class="dialog" catchtap="noop">
     <view class="dialog-title">编辑科目</view>
@@ -56,7 +68,6 @@
         <view class="picker">{{editValue || '未设置'}}</view>
       </picker>
     </view>
-    <input class="input" value="{{editValue}}" placeholder="或自由输入（留空为未设置）" bindinput="onEditValue" />
     <view class="dialog-btns">
       <button class="btn-ghost dlg-btn" hover-class="none" bindtap="closeEdit">取消</button>
       <button class="btn-primary dlg-btn" hover-class="none" bindtap="saveSubject">保存</button>

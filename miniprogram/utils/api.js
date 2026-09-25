@@ -77,6 +77,9 @@ const api = {
   deleteWrongQuestion: (id) =>
     request(`/api/v1/wrong-questions/${id}`, { method: 'DELETE' }),
 
+  sortWrongQuestion: (id, position) =>
+    request(`/api/v1/wrong-questions/${id}/sort`, { method: 'POST', data: { position } }),
+
   analyzeQuestion: (qid) => request(`/api/v1/questions/${qid}/analyze`),
 
   illustrationImageUrl: (id) => absUrl(`/api/v1/illustrations/${id}/image`),

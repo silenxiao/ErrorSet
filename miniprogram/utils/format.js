@@ -1,7 +1,7 @@
 // 状态文案、科目/年级选项、日期格式化。
 
 const EXAM_STATUS = {
-  uploaded: { text: '已上传', color: '#999999' },
+  uploaded: { text: '排队中', color: '#999999' },
   global_processing: { text: '整页识别中', color: '#1677ff' },
   awaiting_review: { text: '待人工确认', color: '#fa8c16' },
   local_processing: { text: '二次识别中', color: '#1677ff' },

@@ -20,6 +20,7 @@ import {
   getQuestion,
   listWrongQuestions,
   recordWrongResult,
+  sortWrongQuestion,
   updateWrongQuestion,
 } from "../../api/question";
 import type { Question, WrongQuestion } from "../../types/question";
@@ -105,9 +106,21 @@ export default function QuestionBankPage() {
     try {
       const updated = await recordWrongResult(row.id, result);
       setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      // 详情浮窗开着时同步次数
+      setDetail((current) => (current?.id === updated.id ? updated : current));
       message.success(result === "correct" ? "做对次数 +1" : "做错次数 +1");
     } catch (err) {
       message.error(err instanceof Error ? err.message : "记录失败");
+    }
+  };
+
+  const handleSort = async (row: WrongQuestion, position: "top" | "bottom") => {
+    try {
+      await sortWrongQuestion(row.id, position);
+      message.success(position === "top" ? "已置顶" : "已置底");
+      void reload();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "操作失败");
     }
   };
 
@@ -158,6 +171,7 @@ export default function QuestionBankPage() {
                 onDelete={handleDelete}
                 onMark={handleMark}
                 onSubject={handleSubject}
+                onSort={handleSort}
               />
             ))}
           </div>
@@ -181,7 +195,9 @@ export default function QuestionBankPage() {
         width="85%"
         style={{ top: 40 }}
       >
-        {detail && <DetailBody detail={detail} />}
+        {detail && (
+        <DetailBody detail={detail} onMark={handleMark} onDelete={handleDelete} />
+      )}
       </Modal>
     </Card>
   );
@@ -249,12 +265,14 @@ function WrongQuestionItem({
   onDelete,
   onMark,
   onSubject,
+  onSort,
 }: {
   row: WrongQuestion;
   onDetail: (row: WrongQuestion) => void;
   onDelete: (row: WrongQuestion) => void;
   onMark: (row: WrongQuestion, result: "correct" | "wrong") => void;
   onSubject: (row: WrongQuestion, subject: string) => Promise<void>;
+  onSort: (row: WrongQuestion, position: "top" | "bottom") => void;
 }) {
   return (
     <div
@@ -295,26 +313,36 @@ function WrongQuestionItem({
           <Button size="small" onClick={() => onDetail(row)}>
             详情
           </Button>
+          <Button size="small" title="放到列表最前面" onClick={() => onSort(row, "top")}>
+            置顶
+          </Button>
+          <Button size="small" title="放到列表最后面" onClick={() => onSort(row, "bottom")}>
+            置底
+          </Button>
           <Popconfirm title="确定删除该错题？" onConfirm={() => onDelete(row)}>
             <Button size="small" danger>
               删除
             </Button>
           </Popconfirm>
           <Button
+            type="link"
             size="small"
+            style={{ padding: 0 }}
             title="做对了，做对次数 +1"
             aria-label="做对了"
             onClick={() => onMark(row, "correct")}
           >
-            😀
+            😀 做对
           </Button>
           <Button
+            type="link"
             size="small"
+            style={{ padding: 0 }}
             title="做错了，做错次数 +1"
             aria-label="做错了"
             onClick={() => onMark(row, "wrong")}
           >
-            😢
+            😢 做错
           </Button>
         </Space>
         <span style={{ color: "#8c8c8c", whiteSpace: "nowrap" }}>
@@ -325,14 +353,35 @@ function WrongQuestionItem({
   );
 }
 
-/** 小程序详情页同款小节标题：灰色小字 */
+/** 详情小节标题：蓝色竖条 + 加粗深色文字，醒目区分各区块 */
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <div style={{ color: "#888", fontSize: 13, margin: "16px 0 4px" }}>{children}</div>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        margin: "16px 0 6px",
+        fontWeight: 600,
+        fontSize: 14,
+        color: "#1f2329",
+      }}
+    >
+      <span style={{ width: 4, height: 14, borderRadius: 2, background: "#1677ff" }} />
+      {children}
+    </div>
   );
 }
 
-function DetailBody({ detail }: { detail: WrongQuestion }) {
+function DetailBody({
+  detail,
+  onMark,
+  onDelete,
+}: {
+  detail: WrongQuestion;
+  onMark: (row: WrongQuestion, result: "correct" | "wrong") => void;
+  onDelete: (row: WrongQuestion) => void;
+}) {
   const [question, setQuestion] = useState<Question | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -354,31 +403,33 @@ function DetailBody({ detail }: { detail: WrongQuestion }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
-      {loadError ? (
-        <Card size="small">原题已被删除，仅剩错题记录信息</Card>
-      ) : (
-        <Card size="small">
-          {question ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ whiteSpace: "pre-wrap" }}>
-                {renderMathText(question.text)}
-              </div>
-              {question.illustrations.map((ill) => (
-                <Image
-                  key={ill.id}
-                  src={`/api/v1/illustrations/${ill.id}/image`}
-                  alt={`插图（${ill.type}）`}
-                  // width:auto 覆盖 antd 默认的 width:100% 拉伸，
-                  // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
-                  style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
-                />
-              ))}
+      <SectionTitle>题目原文</SectionTitle>
+      <div
+        className="answer-markdown-preview"
+        style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 12px" }}
+      >
+        {loadError ? (
+          <span style={{ color: "#bbb" }}>原题已被删除，仅剩错题记录信息</span>
+        ) : question ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ whiteSpace: "pre-wrap" }}>
+              {renderMathText(question.text)}
             </div>
-          ) : (
-            <span>加载中…</span>
-          )}
-        </Card>
-      )}
+            {question.illustrations.map((ill) => (
+              <Image
+                key={ill.id}
+                src={`/api/v1/illustrations/${ill.id}/image`}
+                alt={`插图（${ill.type}）`}
+                // width:auto 覆盖 antd 默认的 width:100% 拉伸，
+                // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
+                style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+              />
+            ))}
+          </div>
+        ) : (
+          <span style={{ color: "#bbb" }}>加载中…</span>
+        )}
+      </div>
       <SectionTitle>正确答案</SectionTitle>
       <div
         className="answer-markdown-preview"
@@ -396,6 +447,21 @@ function DetailBody({ detail }: { detail: WrongQuestion }) {
       <SectionTitle>备注</SectionTitle>
       <div style={{ color: detail.note ? "#333" : "#bbb", whiteSpace: "pre-wrap" }}>
         {detail.note || "—"}
+      </div>
+      <SectionTitle>打卡</SectionTitle>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <Button type="link" style={{ padding: 0 }} onClick={() => onMark(detail, "correct")}>
+          😀 做对
+        </Button>
+        <Button type="link" style={{ padding: 0 }} onClick={() => onMark(detail, "wrong")}>
+          😢 做错
+        </Button>
+        <Popconfirm title="确定删除该错题？" onConfirm={() => onDelete(detail)}>
+          <Button danger>删除</Button>
+        </Popconfirm>
+        <span style={{ color: "#8c8c8c", marginLeft: "auto" }}>
+          做对 {detail.correctCount ?? 0} 次 · 做错 {detail.wrongCount ?? 0} 次
+        </span>
       </div>
     </div>
   );
