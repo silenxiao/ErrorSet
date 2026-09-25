@@ -158,16 +158,22 @@
   font-size: 28rpx;
 }
 
-/* 编辑题目弹窗 */
+/* 编辑题目弹窗：固定高度，内容区用 scroll-view 独立滚动，底部按钮固定 */
 .edit-dialog {
   width: 680rpx;
-  max-height: 80vh;
+  height: 90vh;
   box-sizing: border-box;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-scroll {
+  flex: 1;
+  min-height: 0;
 }
 
 .edit-textarea {
-  height: 220rpx;
+  height: 320rpx;
 }
 
 .edit-label {

@@ -57,33 +57,35 @@
 </block>
 
 <!-- 编辑题目弹窗：二次识别完成后单击题目打开 -->
-<view wx:if="{{editQuestion}}" class="mask" bindtap="closeEdit">
+<view wx:if="{{editQuestion}}" class="mask" bindtap="closeEdit" catchtouchmove="noop">
   <view class="dialog edit-dialog" catchtap="noop">
     <view class="dialog-title">编辑题目：第 {{editQuestion.questionNo}} 题</view>
 
-    <textarea
-      class="textarea edit-textarea"
-      value="{{editText}}"
-      maxlength="{{-1}}"
-      placeholder="题目文本（数学公式用 $...$ 包裹）"
-      bindinput="onEditInput"
-    />
-
-    <view class="edit-label muted">预览：</view>
-    <view class="edit-preview">
-      <md-render content="{{editText}}" />
-    </view>
-
-    <block wx:if="{{editIlls.length > 0}}">
-      <view class="edit-label muted">插图（{{editIlls.length}} 张，按当前 bbox 裁剪）：</view>
-      <image
-        wx:for="{{editIlls}}"
-        wx:key="id"
-        class="edit-ill"
-        src="{{item.url}}"
-        mode="widthFix"
+    <scroll-view scroll-y class="edit-scroll">
+      <textarea
+        class="textarea edit-textarea"
+        value="{{editText}}"
+        maxlength="{{-1}}"
+        placeholder="题目文本（数学公式用 $...$ 包裹）"
+        bindinput="onEditInput"
       />
-    </block>
+
+      <view class="edit-label muted">预览：</view>
+      <view class="edit-preview">
+        <md-render content="{{editText}}" />
+      </view>
+
+      <block wx:if="{{editIlls.length > 0}}">
+        <view class="edit-label muted">插图（{{editIlls.length}} 张，按当前 bbox 裁剪）：</view>
+        <image
+          wx:for="{{editIlls}}"
+          wx:key="id"
+          class="edit-ill"
+          src="{{item.url}}"
+          mode="widthFix"
+        />
+      </block>
+    </scroll-view>
 
     <view class="dialog-btns">
       <button class="btn-ghost dlg-btn" hover-class="none" bindtap="closeEdit">取消</button>
@@ -93,7 +95,7 @@
 </view>
 
 <!-- 重新识别弹窗 -->
-<view wx:if="{{rerecogVisible}}" class="mask" bindtap="closeRerecog">
+<view wx:if="{{rerecogVisible}}" class="mask" bindtap="closeRerecog" catchtouchmove="noop">
   <view class="dialog" catchtap="noop">
     <view class="dialog-title">重新识别</view>
     <view class="muted" style="margin-bottom:16rpx;">将清除当前识别结果并重新识别整张试卷。</view>
