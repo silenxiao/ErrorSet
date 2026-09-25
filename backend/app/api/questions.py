@@ -10,6 +10,7 @@ from app.schemas.question import (
     BBoxUpdate,
     IllustrationOut,
     QuestionOut,
+    QuestionUpdate,
     WrongQuestionCreate,
     WrongQuestionOut,
     WrongQuestionResult,
@@ -27,6 +28,17 @@ def get_question(question_id: int, db: DbSession) -> QuestionOut:
     """查询题目（§26）。"""
     return QuestionOut.model_validate(
         question_service.get_question_or_404(db, question_id)
+    )
+
+
+@router.patch("/api/v1/questions/{question_id}", response_model=QuestionOut)
+def update_question(
+    question_id: int, payload: QuestionUpdate, db: DbSession
+) -> QuestionOut:
+    """编辑题目字段（目前支持 text），仅传入的字段会被修改。"""
+    fields = payload.model_dump(by_alias=False, exclude_unset=True)
+    return QuestionOut.model_validate(
+        question_service.update_question_fields(db, question_id, **fields)
     )
 
 

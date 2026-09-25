@@ -1556,7 +1556,7 @@ class RecognitionPipeline:
 
 Global Vision 最终只允许输出 JSON。
 
-题目为层级结构：独立题目的 `sub_questions` 为空数组；大题的小题放在 `sub_questions` 中。入库时展开为扁平的 question 表，通过 `parent_id` 关联（见 §8.1）。
+自 global-v4 起，大题与其所有小题合并为一道题输出：`text` 完整包含大题题干、共享材料和全部小题（保留小题编号），不再输出 `sub_questions`。Validator 仍兼容旧版层级输出（`sub_questions` 展平为 question 表并以 `parent_id` 关联，见 §8.1）。
 
 示例：
 

@@ -1,30 +1,20 @@
 """Global Vision Prompt（PROJECT_SPEC.md §31）。"""
 
-PROMPT_VERSION = "global-v3"
+PROMPT_VERSION = "global-v4"
 
 _GLOBAL_SCHEMA_EXAMPLE = """\
-输出 JSON 顶层必须是对象，包含 questions 数组，字段名必须完全一致：
+输出 JSON 顶层必须是对象，包含 questions 数组，字段名必须完全一致。
+questions 数组中的每个元素就是一道完整的题，不允许嵌套：
 
 {
   "questions": [
     {
       "question_no": "3",
-      "text": "大题题干与共享材料",
+      "text": "大题题干、共享材料与所有小题的完整内容（保留 3(1)、3(2) 等小题编号）",
       "subject": "数学",
       "bbox": [x1, y1, x2, y2],
-      "illustrations": [],
-      "confidence": 0.95,
-      "sub_questions": [
-        {
-          "question_no": "3(1)",
-          "text": "小题题干（含选项）",
-          "subject": "数学",
-          "bbox": [x1, y1, x2, y2],
-          "illustrations": [{"bbox": [x1, y1, x2, y2], "type": "geometry"}],
-          "confidence": 0.93,
-          "sub_questions": []
-        }
-      ]
+      "illustrations": [{"bbox": [x1, y1, x2, y2], "type": "geometry"}],
+      "confidence": 0.95
     }
   ]
 }
@@ -48,14 +38,14 @@ GLOBAL_PROMPT = f"""\
 8. bbox 必须覆盖完整题目。
 9. illustrations 记录题目中的插图、图形、表格等。
 10. 没有插图时返回空数组。
-11. 大题作为父题目，其题干和共享材料放在 text 中，
-    所有小题放在 sub_questions 数组中。
-12. 小题编号必须带大题编号前缀，如 "3(1)"。
-13. 独立题目的 sub_questions 为空数组。
-14. subject 是这道题所属科目的判断结果，
+11. 大题必须与其所有小题合并为一道题输出：
+    text 完整包含大题题干、共享材料和全部小题（保留小题编号如 3(1)），
+    question_no 使用大题编号，bbox 覆盖整道大题。
+12. 不要把大题拆分成多道题，不要输出 sub_questions 字段。
+13. subject 是这道题所属科目的判断结果，
     只能是：数学、语文、英语、物理、化学、生物、历史、地理、政治 之一。
-15. 只输出 JSON。
-16. 不要输出任何其他文字。
+14. 只输出 JSON。
+15. 不要输出任何其他文字。
 
 {_GLOBAL_SCHEMA_EXAMPLE}
 """

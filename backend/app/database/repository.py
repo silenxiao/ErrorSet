@@ -61,6 +61,21 @@ def set_exam_size(db: Session, exam: Exam, *, width: int, height: int) -> Exam:
     return exam
 
 
+def list_exam_image_files(db: Session, exam_id: int) -> list[str]:
+    """收集试卷识别过程产生的图片路径：task 输入图（crops/processed）+ 错题快照。"""
+    task_images = db.scalars(
+        select(RecognitionTask.input_image).where(
+            RecognitionTask.exam_id == exam_id
+        )
+    ).all()
+    snapshots = db.scalars(
+        select(WrongQuestion.image).where(
+            WrongQuestion.exam_id == exam_id, WrongQuestion.image != ""
+        )
+    ).all()
+    return [path for path in (*task_images, *snapshots) if path]
+
+
 def delete_recognition_results(db: Session, exam_id: int) -> None:
     """清空一张试卷的全部识别结果（重新识别前调用）。"""
     db.execute(
@@ -174,6 +189,14 @@ def save_questions(
 def update_question_bbox(db: Session, question: Question, bbox: list[int]) -> Question:
     question.bbox = bbox
     question.bbox_source = "manual"
+    db.commit()
+    db.refresh(question)
+    return question
+
+
+def update_question(db: Session, question: Question, **fields) -> Question:
+    for name, value in fields.items():
+        setattr(question, name, value)
     db.commit()
     db.refresh(question)
     return question

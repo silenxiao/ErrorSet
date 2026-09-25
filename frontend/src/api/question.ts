@@ -5,6 +5,13 @@ export function getQuestion(questionId: number): Promise<Question> {
   return request(`/api/v1/questions/${questionId}`);
 }
 
+export function updateQuestion(
+  questionId: number,
+  fields: { text?: string },
+): Promise<Question> {
+  return request(`/api/v1/questions/${questionId}`, jsonInit("PATCH", fields));
+}
+
 export function updateBbox(questionId: number, bbox: BBox): Promise<Question> {
   return request(`/api/v1/questions/${questionId}/bbox`, jsonInit("PATCH", { bbox }));
 }

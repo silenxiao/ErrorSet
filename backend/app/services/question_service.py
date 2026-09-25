@@ -41,6 +41,12 @@ def reset_bbox(db: Session, question_id: int) -> Question:
     return repo.reset_question_bbox(db, question)
 
 
+def update_question_fields(db: Session, question_id: int, **fields) -> Question:
+    """编辑题目字段（目前支持 text），仅传入的字段会被修改。"""
+    question = get_question_or_404(db, question_id)
+    return repo.update_question(db, question, **fields)
+
+
 def get_illustration_or_404(db: Session, illustration_id: int):
     from app.core.exceptions import NotFoundError
     from app.database.models import Illustration
@@ -62,19 +68,18 @@ def reset_illustration_bbox(db: Session, illustration_id: int):
 
 
 def delete_wrong_question(db: Session, wrong_id: int) -> None:
-    """删除错题记录，并清理题图快照文件。"""
+    """删除错题记录，并清理题图快照文件（插图本身按 bbox 动态裁剪、无独立文件）。"""
 
-    from pathlib import Path
+    from app.services.recognition_service import resolve_data_file
 
     row = repo.get_wrong_question(db, wrong_id)
     if row is None:
         raise NotFoundError(f"错题 {wrong_id} 不存在")
 
-    image = Path(row.image) if row.image else None
+    image = resolve_data_file(row.image) if row.image else None
     repo.delete_wrong_question(db, row)
     if image is not None:
-        path = image if image.is_absolute() else Path.cwd() / image
-        path.unlink(missing_ok=True)
+        image.unlink(missing_ok=True)
 
 
 def record_wrong_question_result(

@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  AutoComplete,
   Button,
   Card,
   Descriptions,
   Empty,
   Image,
-  Input,
   Modal,
   Popconfirm,
   Popover,
   Pagination,
+  Select,
   Space,
   Spin,
   Tag,
@@ -28,7 +27,7 @@ import type { Question, WrongQuestion } from "../../types/question";
 import { renderMathText } from "../../utils/math";
 import { renderMarkdown } from "../../utils/markdown";
 
-/** 常用科目建议项，也允许自由输入 */
+/** 常用科目，科目只能从中选择 */
 const SUBJECT_OPTIONS = [
   "数学",
   "语文",
@@ -47,6 +46,8 @@ export default function QuestionBankPage() {
   const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<WrongQuestion | null>(null);
   const [page, setPage] = useState(1);
+  /** 当前筛选科目，null 表示全部 */
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -60,6 +61,35 @@ export default function QuestionBankPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const subjectCounts = new Map<string, number>();
+  for (const row of rows) {
+    const key = row.subject || "未设置";
+    subjectCounts.set(key, (subjectCounts.get(key) ?? 0) + 1);
+  }
+  // 固定科目顺序在前（仅显示有试题的），九科之外的旧科目名排在最后
+  const fixedNames = SUBJECT_OPTIONS.map((option) => option.value);
+  const subjects = [
+    ...fixedNames.filter((name) => subjectCounts.has(name)),
+    ...[...subjectCounts.keys()].filter((name) => !fixedNames.includes(name)),
+  ];
+
+  // 筛选的科目被删光后自动回到"全部"
+  useEffect(() => {
+    if (subjectFilter !== null && !subjectCounts.has(subjectFilter)) {
+      setSubjectFilter(null);
+    }
+  });
+
+  const visibleRows =
+    subjectFilter === null
+      ? rows
+      : rows.filter((row) => (row.subject || "未设置") === subjectFilter);
+
+  const handleFilter = (subject: string | null) => {
+    setSubjectFilter(subject);
+    setPage(1);
+  };
 
   const handleDelete = async (row: WrongQuestion) => {
     try {
@@ -89,11 +119,34 @@ export default function QuestionBankPage() {
     message.success("科目已更新");
   };
 
-  const currentRows = rows.slice((page - 1) * 10, page * 10);
+  const currentRows = visibleRows.slice((page - 1) * 10, page * 10);
 
   return (
-    <Card title="错题库">
+    <Card>
       <Spin spinning={loading}>
+        {rows.length > 0 && (
+          <Space size={4} wrap style={{ marginBottom: 12 }}>
+            <Tag
+              color={subjectFilter === null ? "blue" : "default"}
+              style={{ cursor: "pointer" }}
+              onClick={() => handleFilter(null)}
+            >
+              全部 {rows.length}
+            </Tag>
+            {subjects.map((subject) => (
+              <Tag
+                key={subject}
+                color={subjectFilter === subject ? "blue" : "default"}
+                style={{ cursor: "pointer" }}
+                onClick={() =>
+                  handleFilter(subjectFilter === subject ? null : subject)
+                }
+              >
+                {subject} {subjectCounts.get(subject)}
+              </Tag>
+            ))}
+          </Space>
+        )}
         {rows.length === 0 && !loading ? (
           <Empty description="暂无错题" />
         ) : (
@@ -111,12 +164,12 @@ export default function QuestionBankPage() {
           </div>
         )}
       </Spin>
-      {rows.length > 0 && (
+      {visibleRows.length > 0 && (
         <Pagination
           style={{ marginTop: 16, textAlign: "right" }}
           current={page}
           pageSize={10}
-          total={rows.length}
+          total={visibleRows.length}
           showTotal={(total) => `共 ${total} 道试题`}
           onChange={setPage}
         />
@@ -126,7 +179,7 @@ export default function QuestionBankPage() {
         open={detail !== null}
         onCancel={() => setDetail(null)}
         footer={null}
-        width="75%"
+        width="85%"
         style={{ top: 40 }}
       >
         {detail && <DetailBody detail={detail} onSubject={handleSubject} />}
@@ -170,19 +223,14 @@ function SubjectTag({
       trigger="click"
       content={
         <Space.Compact>
-          <AutoComplete
+          <Select
             options={SUBJECT_OPTIONS}
-            value={value}
-            onChange={setValue}
+            value={value || undefined}
+            onChange={(v) => setValue(v ?? "")}
+            placeholder="选择科目（清除为未设置）"
+            allowClear
             style={{ width: 180 }}
-          >
-            <Input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onPressEnter={() => void save()}
-              placeholder="科目（留空为未设置）"
-            />
-          </AutoComplete>
+          />
           <Button type="primary" size="small" loading={saving} onClick={() => void save()}>
             保存
           </Button>

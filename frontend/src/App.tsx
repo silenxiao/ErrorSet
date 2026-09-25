@@ -1,7 +1,7 @@
 import { SettingOutlined } from "@ant-design/icons";
 import { Button, Layout, Menu } from "antd";
-import { useState } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import SettingsModal from "./components/SettingsModal";
 import QuestionBankPage from "./pages/QuestionBank";
@@ -10,13 +10,36 @@ import UploadPage from "./pages/Upload";
 
 const { Header, Content } = Layout;
 
+/** 路由变化时把页面滚回顶部（菜单跳转、"打开"进入识别页等） */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const selectedKey = location.pathname.startsWith("/wrong-questions")
+    ? "wrong-questions"
+    : "upload";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Header style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <ScrollToTop />
+      <Header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 24,
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+        }}
+      >
         <div
           style={{ color: "#fff", fontSize: 18, whiteSpace: "nowrap" }}
         >
@@ -26,7 +49,7 @@ export default function App() {
           theme="dark"
           mode="horizontal"
           style={{ flex: 1, minWidth: 0 }}
-          defaultSelectedKeys={["upload"]}
+          selectedKeys={[selectedKey]}
           items={[
             { key: "upload", label: "上传试卷" },
             { key: "wrong-questions", label: "错题库" },

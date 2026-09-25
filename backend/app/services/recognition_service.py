@@ -15,6 +15,12 @@ from app.pipeline.preprocess import processed_path_for
 logger = get_logger(__name__)
 
 
+def resolve_data_file(path_str: str) -> Path:
+    """DB 里的图片路径可能是相对路径（相对后端工作目录），统一解析成绝对 Path。"""
+    path = Path(path_str)
+    return path if path.is_absolute() else Path.cwd() / path
+
+
 def get_exam_or_404(db: Session, exam_id: int) -> Exam:
     exam = repo.get_exam(db, exam_id)
     if exam is None:
@@ -102,19 +108,25 @@ def rerecognize_exam(
     if dirty:
         db.commit()
         db.refresh(exam)
+    # 先收集上一轮识别产生的文件（crops 等），随识别结果一起清掉，
+    # 否则这些文件与任何记录脱钩后会永远残留在 data/ 下。
+    stale_files = repo.list_exam_image_files(db, exam.id)
     repo.delete_recognition_results(db, exam.id)
+    for path_str in stale_files:
+        resolve_data_file(path_str).unlink(missing_ok=True)
     return repo.set_exam_status(db, exam, "uploaded")
 
 
 def delete_exam_and_files(db: Session, exam_id: int) -> None:
-    """删除试卷及其图片文件。"""
+    """删除试卷及其全部图片文件（原图、预处理图、题目裁剪图、错题快照）。"""
     settings = get_settings()
     exam = get_exam_or_404(db, exam_id)
     paths = [
-        Path(exam.original_image),
+        resolve_data_file(exam.original_image),
         processed_path_for(exam.original_image, settings.data_dir),
+        *(resolve_data_file(p) for p in repo.list_exam_image_files(db, exam.id)),
     ]
     repo.delete_exam(db, exam)
     for path in paths:
         path.unlink(missing_ok=True)
-    logger.info("试卷 %s 已删除", exam_id)
+    logger.info("试卷 %s 已删除，清理图片 %d 个", exam_id, len(paths))

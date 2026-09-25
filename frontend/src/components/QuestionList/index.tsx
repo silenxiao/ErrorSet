@@ -3,6 +3,7 @@ import {
   Button,
   Empty,
   Form,
+  Image,
   Input,
   Modal,
   Select,
@@ -10,10 +11,11 @@ import {
   Tag,
   message,
 } from "antd";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { addWrongQuestion, resetBbox, analyzeQuestion } from "../../api/question";
+import { addWrongQuestion, resetBbox, analyzeQuestion, updateQuestion } from "../../api/question";
 import type { Question, QuestionStatus } from "../../types/question";
+import { extractAnswerFromAnalysis } from "../../utils/analysis";
 import { renderMathText } from "../../utils/math";
 import { renderMarkdown } from "../../utils/markdown";
 
@@ -40,7 +42,12 @@ export default function QuestionList({
   onSelect,
   onChanged,
 }: Props) {
-  const [wrongTarget, setWrongTarget] = useState<Question | null>(null);
+  const [wrongTarget, setWrongTarget] = useState<{
+    question: Question;
+    /** 含父题继承的科目，用于弹窗默认值 */
+    subject: string;
+  } | null>(null);
+  const [editTarget, setEditTarget] = useState<Question | null>(null);
 
   if (questions.length === 0) {
     return <Empty description="暂无题目" />;
@@ -55,13 +62,15 @@ export default function QuestionList({
 
   const renderQuestion = (q: Question, depth: number, node: ReactNode[], parentSubject?: string) => {
     const subject = q.subject || parentSubject || "";
-    node.push(<QuestionItem key={q.id} question={q} depth={depth} subject={subject} {...{
+    node.push(<QuestionItem key={q.id} question={q} depth={depth} {...{
       selectedId,
       onSelect,
-      onAddWrong: setWrongTarget,
+      onAddWrong: (target: Question, targetSubject: string) =>
+        setWrongTarget({ question: target, subject: targetSubject }),
+      onEdit: setEditTarget,
       onReset: async () => {
         await resetBbox(q.id);
-        message.success(`题目 ${q.questionNo} 已恢复 AI bbox`);
+        message.success(`题目 ${q.questionNo} 的插图位置已重置`);
         onChanged();
       },
     }} />);
@@ -76,11 +85,21 @@ export default function QuestionList({
       </div>
 
       <WrongQuestionModal
-        question={wrongTarget}
+        question={wrongTarget?.question ?? null}
+        defaultSubject={wrongTarget?.subject ?? ""}
         onClose={() => setWrongTarget(null)}
         onSaved={() => {
           setWrongTarget(null);
           message.success("已加入错题库");
+        }}
+      />
+
+      <EditQuestionModal
+        question={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => {
+          setEditTarget(null);
+          onChanged();
         }}
       />
     </>
@@ -90,19 +109,18 @@ export default function QuestionList({
 function QuestionItem({
   question,
   depth,
-  subject,
   selectedId,
   onSelect,
   onAddWrong,
+  onEdit,
   onReset,
 }: {
   question: Question;
   depth: number;
-  /** 展示科目：自身识别结果，小题继承父题 */
-  subject: string;
   selectedId: number | null;
   onSelect: (id: number) => void;
-  onAddWrong: (q: Question) => void;
+  onAddWrong: (q: Question, subject: string) => void;
+  onEdit: (q: Question) => void;
   onReset: () => void;
 }) {
   const status = STATUS_LABEL[question.status];
@@ -111,7 +129,13 @@ function QuestionItem({
 
   return (
     <div
-      onClick={() => onSelect(question.id)}
+      onClick={() => {
+        onSelect(question.id);
+        // 二次识别完成后，点击题目打开编辑浮窗
+        if (question.status === "completed") {
+          onEdit(question);
+        }
+      }}
       style={{
         marginLeft: depth * 24,
         padding: "8px 12px",
@@ -146,26 +170,28 @@ function QuestionItem({
             size="small"
             onClick={(e) => {
               e.stopPropagation();
-              onAddWrong(question);
+              onAddWrong(question, question.subject ?? "");
             }}
           >
             加入错题库
           </Button>
-          <Button
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onReset();
-            }}
-          >
-            恢复 AI bbox
-          </Button>
+          {question.illustrations.length > 0 && (
+            <Button
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReset();
+              }}
+            >
+              重置插图位置
+            </Button>
+          )}
         </Space>
-        {subject && (
-          <Tag color="geekblue" style={{ marginRight: 0 }} title="识别判断的科目">
-            {subject}
-          </Tag>
-        )}
+        <span style={{ color: "#8c8c8c", whiteSpace: "nowrap" }}>
+          {question.status === "completed"
+            ? "单击可编辑试题"
+            : "二次识别后可编辑试题"}
+        </span>
       </div>
     </div>
   );
@@ -173,10 +199,13 @@ function QuestionItem({
 
 function WrongQuestionModal({
   question,
+  defaultSubject,
   onClose,
   onSaved,
 }: {
   question: Question | null;
+  /** 识别阶段判断的科目（小题继承父题），作为下拉默认值 */
+  defaultSubject: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -204,9 +233,14 @@ function WrongQuestionModal({
         ? result.slice(analysisMarker.index + analysisMarker[0].length)
             .replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim()
         : "";
+      // "正确答案"以 AI 分析推导出的最终结论为准（两者不一致时用分析结论）
+      const extractedAnswer = extractAnswerFromAnalysis(analysisContent);
+      if (extractedAnswer && extractedAnswer !== answerContent.trim()) {
+        message.info("已按 AI 分析的结论显示正确答案");
+      }
       form.setFieldsValue({
         ...(subjectMatch ? { subject: subjectMatch[1] } : {}),
-        correctAnswer: answerContent,
+        correctAnswer: extractedAnswer || answerContent,
         analysis: analysisContent,
       });
     } catch (err) {
@@ -252,12 +286,14 @@ function WrongQuestionModal({
       onCancel={onClose}
       confirmLoading={saving}
       destroyOnClose
+      width="75%"
+      style={{ top: 40 }}
     >
       <Form
         form={form}
         layout="vertical"
         // 默认填充识别阶段判断的科目；无识别结果时回退"语文"
-        initialValues={{ subject: question?.subject || "语文" }}
+        initialValues={{ subject: defaultSubject || "语文" }}
       >
         <Form.Item name="subject" label="科目" rules={[{ required: true, message: "请选择科目" }]}>
           <Select
@@ -310,6 +346,91 @@ function WrongQuestionModal({
           <Input.TextArea rows={2} />
         </Form.Item>
       </Form>
+    </Modal>
+  );
+}
+
+/** 编辑题目浮窗：二次识别完成后点击题目打开，可修改题目文本 */
+function EditQuestionModal({
+  question,
+  onClose,
+  onSaved,
+}: {
+  question: Question | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (question) {
+      setText(question.text);
+    }
+  }, [question]);
+
+  const save = async () => {
+    if (!question) return;
+    setSaving(true);
+    try {
+      await updateQuestion(question.id, { text: text.trim() });
+      message.success("题目已更新");
+      onSaved();
+      onClose();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={`编辑题目：第 ${question?.questionNo ?? ""} 题`}
+      open={question !== null}
+      onOk={() => void save()}
+      onCancel={onClose}
+      okText="保存"
+      confirmLoading={saving}
+      width={640}
+    >
+      <Input.TextArea
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+        autoSize={{ minRows: 6, maxRows: 14 }}
+        placeholder="题目文本（数学公式用 $...$ 包裹）"
+      />
+      <div style={{ marginTop: 12 }}>
+        <div style={{ color: "#8c8c8c", marginBottom: 4 }}>预览：</div>
+        <div
+          style={{
+            whiteSpace: "pre-wrap",
+            border: "1px solid #f0f0f0",
+            borderRadius: 8,
+            padding: "8px 12px",
+            background: "#fafafa",
+          }}
+        >
+          {renderMathText(text)}
+        </div>
+      </div>
+      {(question?.illustrations ?? []).length > 0 && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ color: "#8c8c8c", marginBottom: 4 }}>
+            插图（{question?.illustrations.length} 张，按当前 bbox 裁剪）：
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {question?.illustrations.map((ill) => (
+              <Image
+                key={ill.id}
+                src={`/api/v1/illustrations/${ill.id}/image`}
+                alt={`插图（${ill.type}）`}
+                style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

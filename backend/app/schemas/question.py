@@ -40,6 +40,12 @@ class BBoxUpdate(BaseModel):
         return v
 
 
+class QuestionUpdate(CamelModel):
+    """PATCH /api/v1/questions/{id} 可编辑字段，None 表示不修改。"""
+
+    text: str | None = None
+
+
 class WrongQuestionCreate(CamelModel):
     question_id: int
     answer: str = ""

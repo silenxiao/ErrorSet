@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, Popconfirm, Space, Table, Tag, message } from "antd";
+import { Card, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 import { deleteExam, listExams } from "../../api/exam";
+import RecognitionPage from "../Recognition";
 import UploadPanel from "../../components/UploadPanel";
 import type { ExamListItem, ExamStatus } from "../../types/exam";
 
@@ -20,7 +20,8 @@ const STATUS_LABEL: Record<ExamStatus, { text: string; color: string }> = {
 export default function UploadPage() {
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  /** "打开"浮窗中展示的试卷 id，null 表示关闭 */
+  const [openedExamId, setOpenedExamId] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -68,7 +69,7 @@ export default function UploadPage() {
       key: "actions",
       render: (_, exam) => (
         <Space>
-          <a onClick={() => navigate(`/exams/${exam.id}`)}>打开</a>
+          <a onClick={() => setOpenedExamId(exam.id)}>打开</a>
           <PopconfirmDelete onConfirm={() => void handleDelete(exam)} />
         </Space>
       ),
@@ -77,9 +78,9 @@ export default function UploadPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <Card title="上传试卷">
+      <Card>
         <UploadPanel
-          onUploaded={(exam) => navigate(`/exams/${exam.id}`)}
+          onUploaded={(exam) => setOpenedExamId(exam.id)}
         />
       </Card>
       <Card title="历史试卷">
@@ -91,6 +92,23 @@ export default function UploadPage() {
           pagination={{ pageSize: 10 }}
         />
       </Card>
+      <Modal
+        title={
+          exams.find((exam) => exam.id === openedExamId)?.name ??
+          (openedExamId !== null ? `试卷 #${openedExamId}` : "")
+        }
+        open={openedExamId !== null}
+        onCancel={() => {
+          setOpenedExamId(null);
+          void reload();
+        }}
+        footer={null}
+        width="85%"
+        style={{ top: 40 }}
+        destroyOnClose
+      >
+        {openedExamId !== null && <RecognitionPage examId={openedExamId} />}
+      </Modal>
     </div>
   );
 }

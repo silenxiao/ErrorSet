@@ -2,6 +2,7 @@ import katex from "katex";
 import { Fragment, type ReactNode } from "react";
 import { marked, type Token, type Tokens } from "marked";
 
+import { autoWrapLatex } from "./math";
 import "./markdown.css";
 
 /** 区分块级 token 与行内 token：tight 列表的 item.tokens 直接是行内 token。 */
@@ -128,7 +129,7 @@ function safeHref(href: string): string {
 }
 
 function renderMath(text: string): ReactNode {
-  const chunks = text.split(
+  const chunks = autoWrapLatex(text).split(
     /(\$\$[\s\S]+?\$\$|\$[^$\n]+\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g,
   );
   return chunks.map((chunk, index) => {

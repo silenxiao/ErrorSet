@@ -28,10 +28,15 @@ const STATUS_LABEL: Record<ExamStatus, { text: string; color: string }> = {
   failed: { text: "失败", color: "error" },
 };
 
-/** 识别结果页面（§27.2）：左侧原图 + bbox，右侧题目列表。 */
-export default function RecognitionPage() {
+/** 识别结果页面（§27.2）：左侧原图 + bbox，右侧题目列表。
+ * 路由中使用时 examId 来自 URL；被嵌入浮窗时由 props 传入。 */
+export default function RecognitionPage({
+  examId: examIdProp,
+}: {
+  examId?: number;
+} = {}) {
   const { examId } = useParams();
-  const id = examId ? Number(examId) : undefined;
+  const id = examIdProp ?? (examId ? Number(examId) : undefined);
   const { exam, error, refresh } = useRecognition(id);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [acting, setActing] = useState(false);
