@@ -105,6 +105,8 @@ export default function UploadPage() {
         footer={null}
         width="85%"
         style={{ top: 40 }}
+        // 弹窗体固定高度且不滚动，由内部左右两栏各自滚动（左侧图片/右侧题目列表）
+        styles={{ body: { height: "calc(100vh - 160px)", overflow: "hidden" } }}
         destroyOnClose
       >
         {openedExamId !== null && <RecognitionPage examId={openedExamId} />}

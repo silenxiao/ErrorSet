@@ -393,15 +393,28 @@ function EditQuestionModal({
       okText="保存"
       confirmLoading={saving}
       width={640}
+      style={{ top: 40 }}
     >
-      <Input.TextArea
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        autoSize={{ minRows: 6, maxRows: 14 }}
-        placeholder="题目文本（数学公式用 $...$ 包裹）"
-      />
-      <div style={{ marginTop: 12 }}>
-        <div style={{ color: "#8c8c8c", marginBottom: 4 }}>预览：</div>
+      {/* 弹窗内容固定高度，整体滚动（与小程序编辑弹窗一致）：
+          编辑框/预览框高度随内容展开，不做各自内部滚动 */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          height: "calc(100vh - 240px)",
+          overflowY: "auto",
+        }}
+      >
+        <Input.TextArea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          autoSize={{ minRows: 3 }}
+          // 防止被 flex 压缩回固定行数，保持随内容自动增高（超高由外层整体滚动）
+          style={{ resize: "none", flexShrink: 0 }}
+          placeholder="题目文本（数学公式用 $...$ 包裹）"
+        />
+        <div style={{ color: "#8c8c8c", flexShrink: 0 }}>预览：</div>
         <div
           style={{
             whiteSpace: "pre-wrap",
@@ -413,24 +426,24 @@ function EditQuestionModal({
         >
           {renderMathText(text)}
         </div>
+        {(question?.illustrations ?? []).length > 0 && (
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ color: "#8c8c8c", marginBottom: 4 }}>
+              插图（{question?.illustrations.length} 张，按当前 bbox 裁剪）：
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {question?.illustrations.map((ill) => (
+                <Image
+                  key={ill.id}
+                  src={`/api/v1/illustrations/${ill.id}/image`}
+                  alt={`插图（${ill.type}）`}
+                  style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      {(question?.illustrations ?? []).length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ color: "#8c8c8c", marginBottom: 4 }}>
-            插图（{question?.illustrations.length} 张，按当前 bbox 裁剪）：
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {question?.illustrations.map((ill) => (
-              <Image
-                key={ill.id}
-                src={`/api/v1/illustrations/${ill.id}/image`}
-                alt={`插图（${ill.type}）`}
-                style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </Modal>
   );
 }

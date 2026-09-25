@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useParams } from "react-router-dom";
 import {
   Alert,
@@ -90,12 +90,32 @@ export default function RecognitionPage({
     }
   };
 
+  // 父级（如"打开试卷"浮窗）有固定高度时，两栏等高填满、各自内部滚动；
+  // 作为路由页面时父级高度自动，退化为原有的整页滚动。
+  const cardStyle: CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+  };
+  const cardBodyStyle = { flex: 1, minHeight: 0, overflowY: "auto" } as const;
+
   return (
-    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 16,
+        alignItems: "stretch",
+        height: "100%",
+        minHeight: 0,
+      }}
+    >
       <Card
         title={exam.name || `试卷 #${exam.id}`}
         extra={<Tag color={label.color}>{label.text}</Tag>}
-        style={{ flex: 1, minWidth: 0 }}
+        style={cardStyle}
+        styles={{ header: { flexShrink: 0 }, body: cardBodyStyle }}
       >
         <ImageViewer
           imageUrl={exam.imageUrl}
@@ -107,7 +127,8 @@ export default function RecognitionPage({
       </Card>
       <Card
         title="题目列表"
-        style={{ flex: 1, minWidth: 0 }}
+        style={cardStyle}
+        styles={{ header: { flexShrink: 0 }, body: cardBodyStyle }}
         extra={
           <Space>
             {canConfirm && (

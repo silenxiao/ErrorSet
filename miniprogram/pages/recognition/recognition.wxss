@@ -172,8 +172,9 @@
   min-height: 0;
 }
 
+/* auto-height 随内容增高，底部预留约一行空白 */
 .edit-textarea {
-  height: 320rpx;
+  padding-bottom: 52rpx;
 }
 
 .edit-label {

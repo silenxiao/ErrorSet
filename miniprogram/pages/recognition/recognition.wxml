@@ -1,3 +1,6 @@
+<!-- 弹窗打开期间锁定页面滚动，防止底层界面跟着滚动（滚动穿透） -->
+<page-meta page-style="{{(editQuestion || rerecogVisible) ? 'overflow: hidden;' : ''}}" />
+
 <view wx:if="{{error}}" class="card">
   <view class="danger" style="padding:20rpx 0;">{{error}}</view>
 </view>
@@ -61,14 +64,15 @@
   <view class="dialog edit-dialog" catchtap="noop">
     <view class="dialog-title">编辑题目：第 {{editQuestion.questionNo}} 题</view>
 
-    <scroll-view scroll-y class="edit-scroll">
-      <textarea
-        class="textarea edit-textarea"
-        value="{{editText}}"
-        maxlength="{{-1}}"
-        placeholder="题目文本（数学公式用 $...$ 包裹）"
-        bindinput="onEditInput"
-      />
+    <scroll-view scroll-y class="edit-scroll" enhanced="{{true}}" bounces="{{false}}">
+    <textarea
+      class="textarea edit-textarea"
+      value="{{editText}}"
+      maxlength="{{-1}}"
+      placeholder="题目文本（数学公式用 $...$ 包裹）"
+      bindinput="onEditInput"
+      auto-height
+    />
 
       <view class="edit-label muted">预览：</view>
       <view class="edit-preview">
