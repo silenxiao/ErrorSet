@@ -42,6 +42,9 @@ const api = {
 
   getQuestion: (id) => request(`/api/v1/questions/${id}`),
 
+  updateQuestion: (qid, fields) =>
+    request(`/api/v1/questions/${qid}`, { method: 'PATCH', data: fields }),
+
   updateBbox: (qid, bbox) =>
     request(`/api/v1/questions/${qid}/bbox`, { method: 'PATCH', data: { bbox } }),
 

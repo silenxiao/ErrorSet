@@ -17,7 +17,6 @@
         <text wx:if="{{item.suspicious}}" class="tag" style="background:#faad141a;color:#fa8c16;">可疑</text>
         <text wx:if="{{item.manual}}" class="tag" style="background:#8c8c8c1a;color:#666;">已手动调整</text>
         <text wx:if="{{item.illCount > 0}}" class="tag" style="background:#722ed11a;color:#722ed1;">含插图 ×{{item.illCount}}</text>
-        <text wx:if="{{item.subject}}" class="tag" style="background:#1677ff1a;color:#1677ff;">{{item.subject}}</text>
       </view>
 
       <view class="qtext">
@@ -25,8 +24,11 @@
       </view>
 
       <view class="qactions" catchtap="noop">
-        <view class="act-btn primary" data-id="{{item.id}}" catchtap="onAddWrong">加入错题库</view>
-        <view class="act-btn" data-id="{{item.id}}" catchtap="onReset">恢复 AI bbox</view>
+        <view class="qacts-l">
+          <view class="act-btn primary" data-id="{{item.id}}" catchtap="onAddWrong">加入错题库</view>
+          <view wx:if="{{item.illCount > 0}}" class="act-btn" data-id="{{item.id}}" catchtap="onReset">重置插图位置</view>
+        </view>
+        <text class="edit-hint">{{item.canEdit ? '单击可编辑试题' : '二次识别后可编辑试题'}}</text>
       </view>
     </view>
   </view>

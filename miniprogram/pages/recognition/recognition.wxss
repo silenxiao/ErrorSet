@@ -157,3 +157,38 @@
   height: 72rpx;
   font-size: 28rpx;
 }
+
+/* 编辑题目弹窗 */
+.edit-dialog {
+  width: 680rpx;
+  max-height: 80vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.edit-textarea {
+  height: 220rpx;
+}
+
+.edit-label {
+  font-size: 24rpx;
+  margin: 20rpx 0 8rpx;
+}
+
+.edit-preview {
+  border: 1rpx solid #f0f0f0;
+  border-radius: 10rpx;
+  background: #fafafa;
+  padding: 12rpx 16rpx;
+  font-size: 26rpx;
+  color: #333;
+  word-break: break-word;
+}
+
+.edit-ill {
+  display: block;
+  width: 100%;
+  border-radius: 10rpx;
+  margin-bottom: 12rpx;
+  border: 1rpx solid #f0f0f0;
+}

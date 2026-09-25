@@ -14,6 +14,9 @@ Page({
     rerecogVisible: false,
     rerecogInclude: true,
     rerecogExtra: '',
+    editQuestion: null,
+    editText: '',
+    editIlls: [],
   },
 
   onLoad(options) {
@@ -70,7 +73,53 @@ Page({
   },
 
   onSelect(e) {
-    this.setData({ selectedId: e.detail.id });
+    const id = e.detail.id;
+    this.setData({ selectedId: id });
+    // 二次识别完成后，在题目列表单击题目打开编辑弹窗（图片框选点选不触发）
+    if (e.detail.source === 'list') {
+      const qs = (this.data.exam && this.data.exam.questions) || [];
+      const q = qs.find((item) => item.id === id);
+      if (q && q.status === 'completed') this.openEdit(q);
+    }
+  },
+
+  openEdit(q) {
+    this.setData({
+      editQuestion: q,
+      editText: q.text || '',
+      editIlls: (q.illustrations || []).map((ill) => ({
+        id: ill.id,
+        url: api.illustrationImageUrl(ill.id),
+      })),
+    });
+  },
+
+  closeEdit() {
+    this.setData({ editQuestion: null });
+  },
+
+  onEditInput(e) {
+    this.setData({ editText: e.detail.value });
+  },
+
+  saveEdit() {
+    if (this.data.saving || !this.data.editQuestion) return;
+    const id = this.data.editQuestion.id;
+    const text = (this.data.editText || '').trim();
+    if (!text) {
+      wx.showToast({ title: '题目文本不能为空', icon: 'none' });
+      return;
+    }
+    this.setData({ saving: true });
+    api
+      .updateQuestion(id, { text })
+      .then((q) => {
+        this._updateQuestion(id, { text: q.text });
+        this.setData({ editQuestion: null });
+        wx.showToast({ title: '题目已更新', icon: 'success' });
+      })
+      .catch((err) => wx.showToast({ title: err.message || '保存失败', icon: 'none' }))
+      .then(() => this.setData({ saving: false }));
   },
 
   onUpdateBbox(e) {
@@ -92,7 +141,7 @@ Page({
       .resetBbox(id)
       .then((q) => {
         this._updateQuestion(id, { bbox: q.bbox, bboxSource: q.bboxSource });
-        wx.showToast({ title: '已恢复 AI bbox', icon: 'success' });
+        wx.showToast({ title: '插图位置已重置', icon: 'success' });
       })
       .catch((err) => wx.showToast({ title: err.message || '操作失败', icon: 'none' }));
   },

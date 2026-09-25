@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { SUBJECT_OPTIONS } = require('../../utils/format');
+const { extractAnswerFromAnalysis } = require('../../utils/analysis');
 
 Page({
   data: {
@@ -72,7 +73,9 @@ Page({
         if (anaMarker) {
           analysis = stripSubject(res.slice(anaMarker.index + anaMarker[0].length));
         }
-        const patch = { correctAnswer: correct, analysis };
+        // "正确答案"以 AI 分析推导出的最终结论为准（两者不一致时用分析结论）
+        const extracted = extractAnswerFromAnalysis(analysis);
+        const patch = { correctAnswer: extracted || correct, analysis };
         if (subjectMatch) {
           const i = SUBJECT_OPTIONS.indexOf(subjectMatch[1]);
           if (i >= 0) patch.subjectIndex = i;
@@ -80,7 +83,11 @@ Page({
         // 分析完成后回到 Markdown 预览态
         patch.editCorrect = false;
         this.setData(patch);
-        wx.showToast({ title: 'AI 分析完成', icon: 'success' });
+        if (extracted && extracted !== correct.trim()) {
+          wx.showToast({ title: '已按 AI 分析的结论显示正确答案', icon: 'none' });
+        } else {
+          wx.showToast({ title: 'AI 分析完成', icon: 'success' });
+        }
       })
       .catch((err) => wx.showToast({ title: err.message || 'AI 分析失败', icon: 'none' }))
       .then(() => this.setData({ analyzing: false }));

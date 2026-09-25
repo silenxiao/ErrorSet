@@ -25,8 +25,7 @@ Component({
       const roots = list.filter((q) => q.parentId == null || !byId.has(q.parentId));
 
       const out = [];
-      const walk = (q, depth, parentSubject) => {
-        const subject = q.subject || parentSubject || '';
+      const walk = (q, depth) => {
         out.push({
           id: q.id,
           depth,
@@ -37,17 +36,17 @@ Component({
           suspicious: q.confidence != null && q.confidence < 0.7,
           manual: q.bboxSource === 'manual',
           illCount: (q.illustrations || []).length,
-          subject,
+          canEdit: q.status === 'completed',
           selected: q.id === selectedId,
         });
-        childrenOf(q.id).forEach((c) => walk(c, depth + 1, subject));
+        childrenOf(q.id).forEach((c) => walk(c, depth + 1));
       };
-      roots.forEach((r) => walk(r, 0, null));
+      roots.forEach((r) => walk(r, 0));
       this.setData({ items: out });
     },
 
     onSelect(e) {
-      this.triggerEvent('select', { id: Number(e.currentTarget.dataset.id) });
+      this.triggerEvent('select', { id: Number(e.currentTarget.dataset.id), source: 'list' });
     },
 
     onAddWrong(e) {

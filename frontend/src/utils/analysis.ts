@@ -20,5 +20,8 @@ export function extractAnswerFromAnalysis(analysis: string): string {
       }
     }
   }
-  return (matches[matches.length - 1] ?? "").replace(/[。，,、\s]+$/, "").trim();
+  return (matches[matches.length - 1] ?? "")
+    .replace(/^[：:]/, "")
+    .replace(/[。，,、\s]+$/, "")
+    .trim();
 }

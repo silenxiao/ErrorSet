@@ -56,6 +56,42 @@
   </view>
 </block>
 
+<!-- 编辑题目弹窗：二次识别完成后单击题目打开 -->
+<view wx:if="{{editQuestion}}" class="mask" bindtap="closeEdit">
+  <view class="dialog edit-dialog" catchtap="noop">
+    <view class="dialog-title">编辑题目：第 {{editQuestion.questionNo}} 题</view>
+
+    <textarea
+      class="textarea edit-textarea"
+      value="{{editText}}"
+      maxlength="{{-1}}"
+      placeholder="题目文本（数学公式用 $...$ 包裹）"
+      bindinput="onEditInput"
+    />
+
+    <view class="edit-label muted">预览：</view>
+    <view class="edit-preview">
+      <md-render content="{{editText}}" />
+    </view>
+
+    <block wx:if="{{editIlls.length > 0}}">
+      <view class="edit-label muted">插图（{{editIlls.length}} 张，按当前 bbox 裁剪）：</view>
+      <image
+        wx:for="{{editIlls}}"
+        wx:key="id"
+        class="edit-ill"
+        src="{{item.url}}"
+        mode="widthFix"
+      />
+    </block>
+
+    <view class="dialog-btns">
+      <button class="btn-ghost dlg-btn" hover-class="none" bindtap="closeEdit">取消</button>
+      <button class="btn-primary dlg-btn" hover-class="none" loading="{{saving}}" bindtap="saveEdit">保存</button>
+    </view>
+  </view>
+</view>
+
 <!-- 重新识别弹窗 -->
 <view wx:if="{{rerecogVisible}}" class="mask" bindtap="closeRerecog">
   <view class="dialog" catchtap="noop">

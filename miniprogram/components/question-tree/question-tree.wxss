@@ -69,9 +69,23 @@
 
 .qactions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 12rpx;
   margin-top: 16rpx;
-  justify-content: flex-end;
+}
+
+.qacts-l {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+/* 右下角编辑提示 */
+.edit-hint {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #8c8c8c;
 }
 
 /* 操作按钮：圆角胶囊，按压反馈 */
