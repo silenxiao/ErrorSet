@@ -10,6 +10,28 @@ function getBase() {
   return (app && app.globalData && app.globalData.backendBase) || 'http://127.0.0.1:8000';
 }
 
+function login(username, password) {
+  return request('/api/v1/auth/login', { method: 'POST', data: { username, password } });
+}
+
+function register(username, password) {
+  return request('/api/v1/auth/register', { method: 'POST', data: { username, password } });
+}
+
+// 登录/注册成功后统一保存登录态
+function saveSession(data) {
+  if (data && data.token) {
+    wx.setStorageSync('errorset_token', data.token);
+    wx.setStorageSync('errorset_username', data.user ? data.user.username : '');
+  }
+}
+
+function logout() {
+  wx.removeStorageSync('errorset_token');
+  wx.removeStorageSync('errorset_username');
+  wx.reLaunch({ url: '/pages/login/login' });
+}
+
 function absUrl(p) {
   if (!p) return p;
   if (p.startsWith('http')) return p;
@@ -18,6 +40,12 @@ function absUrl(p) {
 
 const api = {
   uploadExam,
+
+  // 账号登录
+  login: login,
+  register: register,
+  saveSession: saveSession,
+  logout: logout,
 
   // 暴露当前后端 base，便于页面展示连接信息 / 排查
   getBase: getBase,

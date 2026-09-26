@@ -6,6 +6,9 @@ App({
     backendBase: BACKEND_BASE,
   },
   onLaunch() {
-    // 小程序启动逻辑（如需登录态可在此初始化）
+    // 未登录则直接进入登录页（登录后回到首页）
+    if (!wx.getStorageSync('errorset_token')) {
+      wx.reLaunch({ url: '/pages/login/login' });
+    }
   },
 });

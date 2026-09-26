@@ -43,6 +43,9 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE wrong_question ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE illustration ADD COLUMN ai_bbox JSON",
         "ALTER TABLE illustration ADD COLUMN bbox_source VARCHAR(16) DEFAULT 'ai'",
+        "ALTER TABLE exam ADD COLUMN user_id INTEGER",
+        "ALTER TABLE wrong_question ADD COLUMN user_id INTEGER",
+        "ALTER TABLE model_profile ADD COLUMN user_id INTEGER",
     ]
     with engine.begin() as conn:
         for sql in statements:
@@ -52,6 +55,32 @@ def _sqlite_lightweight_migrations() -> None:
                 pass  # 列已存在
 
     _migrate_provider_setting_to_model_profile()
+    _seed_default_user()
+
+
+def _seed_default_user() -> None:
+    """存量数据划归默认用户 xiaohui（密码 123456）：无归属的行全部更新给它。"""
+    from sqlalchemy import select
+
+    from app.core.security import hash_password
+    from app.database.models import Exam, ModelProfile, User, WrongQuestion
+
+    with SessionLocal() as db:
+        owner = db.scalars(select(User).where(User.username == "xiaohui")).first()
+        if owner is None:
+            owner = User(username="xiaohui", password_hash=hash_password("123456"))
+            db.add(owner)
+            db.commit()
+            db.refresh(owner)
+
+        changed = False
+        for model in (Exam, WrongQuestion, ModelProfile):
+            rows = list(db.scalars(select(model).where(model.user_id.is_(None))))
+            for row in rows:
+                row.user_id = owner.id
+            changed = changed or bool(rows)
+        if changed:
+            db.commit()
 
 
 def _migrate_provider_setting_to_model_profile() -> None:

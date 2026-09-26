@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     amd_api_key: str = ""
 
     # 应用
+    # JWT 登录鉴权（生产环境务必在 .env 覆盖 jwt_secret）
+    jwt_secret: str = "errorset-dev-secret-change-me"
+    jwt_expire_days: int = 30
+
     database_url: str = "sqlite:///./data/app.db"
     data_dir: str = "./data"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

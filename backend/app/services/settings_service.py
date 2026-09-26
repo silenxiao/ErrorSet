@@ -11,20 +11,20 @@ from app.providers.base import VisionProvider
 from app.providers.factory import ProviderFactory
 
 
-def list_model_profiles(db: Session) -> list[ModelProfile]:
-    """启用的排最前，其余按创建时间倒序。"""
+def list_model_profiles(db: Session, user_id: int) -> list[ModelProfile]:
+    """该用户的模型列表，按创建时间倒序；启用切换不改变列表顺序。"""
     return list(
         db.scalars(
-            select(ModelProfile).order_by(
-                ModelProfile.enabled.desc(), ModelProfile.id.desc()
-            )
+            select(ModelProfile)
+            .where(ModelProfile.user_id == user_id)
+            .order_by(ModelProfile.id.desc())
         )
     )
 
 
-def get_model_profile(db: Session, profile_id: int) -> ModelProfile:
+def get_model_profile(db: Session, profile_id: int, user_id: int) -> ModelProfile:
     row = db.get(ModelProfile, profile_id)
-    if row is None:
+    if row is None or row.user_id != user_id:
         raise NotFoundError("模型不存在")
     return row
 
@@ -36,19 +36,20 @@ def _validate(provider: str, base_url: str) -> None:
         raise ValidationError("自定义服务商必须填写 API 地址（Base URL）")
 
 
-def create_model_profile(db: Session, **kwargs) -> ModelProfile:
-    """新增模型。enabled=True 时独占启用；列表为空时自动启用。"""
+def create_model_profile(db: Session, user_id: int, **kwargs) -> ModelProfile:
+    """新增模型。enabled=True 时独占启用；该用户列表为空时自动启用。"""
     provider = (kwargs.get("provider") or "").strip()
     base_url = (kwargs.get("base_url") or "").strip()
     _validate(provider, base_url)
 
     enabled = bool(kwargs.get("enabled"))
-    if not enabled and len(list_model_profiles(db)) == 0:
+    if not enabled and len(list_model_profiles(db, user_id)) == 0:
         enabled = True
     if enabled:
-        _disable_all(db)
+        _disable_all(db, user_id)
 
     row = ModelProfile(
+        user_id=user_id,
         name=(kwargs.get("name") or "").strip(),
         provider=provider,
         base_url=base_url,
@@ -62,9 +63,11 @@ def create_model_profile(db: Session, **kwargs) -> ModelProfile:
     return row
 
 
-def update_model_profile(db: Session, profile_id: int, **kwargs) -> ModelProfile:
+def update_model_profile(
+    db: Session, profile_id: int, user_id: int, **kwargs
+) -> ModelProfile:
     """更新模型。api_key 留空表示保持不变。"""
-    row = get_model_profile(db, profile_id)
+    row = get_model_profile(db, profile_id, user_id)
     provider = (kwargs.get("provider") or "").strip()
     base_url = (kwargs.get("base_url") or "").strip()
     _validate(provider, base_url)
@@ -81,43 +84,49 @@ def update_model_profile(db: Session, profile_id: int, **kwargs) -> ModelProfile
     return row
 
 
-def delete_model_profile(db: Session, profile_id: int) -> None:
-    row = get_model_profile(db, profile_id)
+def delete_model_profile(db: Session, profile_id: int, user_id: int) -> None:
+    row = get_model_profile(db, profile_id, user_id)
     db.delete(row)
     db.commit()
 
 
-def enable_model_profile(db: Session, profile_id: int) -> ModelProfile:
-    """启用指定模型（独占：其余全部停用）。"""
-    row = get_model_profile(db, profile_id)
-    _disable_all(db)
+def enable_model_profile(db: Session, profile_id: int, user_id: int) -> ModelProfile:
+    """启用指定模型（该用户内独占：其余全部停用）。"""
+    row = get_model_profile(db, profile_id, user_id)
+    _disable_all(db, user_id)
     row.enabled = True
     db.commit()
     db.refresh(row)
     return row
 
 
-def _disable_all(db: Session) -> None:
-    for row in db.scalars(select(ModelProfile).where(ModelProfile.enabled.is_(True))):
+def _disable_all(db: Session, user_id: int) -> None:
+    for row in db.scalars(
+        select(ModelProfile).where(
+            ModelProfile.enabled.is_(True), ModelProfile.user_id == user_id
+        )
+    ):
         row.enabled = False
 
 
-def get_enabled_model_profile(db: Session) -> ModelProfile | None:
+def get_enabled_model_profile(db: Session, user_id: int) -> ModelProfile | None:
     return db.scalars(
-        select(ModelProfile).where(ModelProfile.enabled.is_(True))
+        select(ModelProfile).where(
+            ModelProfile.enabled.is_(True), ModelProfile.user_id == user_id
+        )
     ).first()
 
 
-def get_recognition_provider() -> VisionProvider:
-    """构建当前生效的识别 Provider（Global 与 Local 共用）。
+def get_recognition_provider(user_id: int) -> VisionProvider:
+    """构建该用户当前生效的识别 Provider（Global 与 Local 共用）。
 
-    优先用模型列表中启用的模型；否则回落到旧的单行设置 / .env。
+    优先用该用户模型列表中启用的模型；否则回落到旧的单行设置 / .env。
     每次识别任务开始时调用，模型切换后立即生效。
     """
     settings = get_settings()
     db = SessionLocal()
     try:
-        cfg = get_enabled_model_profile(db)
+        cfg = get_enabled_model_profile(db, user_id)
         if cfg is not None:
             return _build_provider(
                 cfg.provider, cfg.model, cfg.api_key, cfg.base_url, settings.global_model

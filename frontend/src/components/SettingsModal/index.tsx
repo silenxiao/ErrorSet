@@ -283,12 +283,21 @@ export default function SettingsModal({ open, onClose }: Props) {
             <div
               key={item.id}
               style={{
-                border: "1px solid #f0f0f0",
-                borderRadius: 8,
+                border: `1px solid ${item.enabled ? "#91caff" : "#f0f0f0"}`,
+                borderRadius: 10,
                 padding: "10px 12px",
                 display: "flex",
                 alignItems: "center",
                 gap: 12,
+                background: item.enabled ? "#f0f7ff" : "#fff",
+                transition: "box-shadow 0.2s, border-color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow =
+                  "0 2px 8px rgba(15, 23, 42, 0.08)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "none";
               }}
             >
               <Switch

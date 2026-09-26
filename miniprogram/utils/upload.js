@@ -1,7 +1,7 @@
 // 文件上传封装：使用 wx.uploadFile 提交 multipart/form-data 到后端。
 // 后端期望字段：file（文件）、name、include_illustrations、grade。
 
-const { ApiError } = require('./request');
+const { ApiError, getToken } = require('./request');
 
 function getBase() {
   const app = getApp();
@@ -10,10 +10,14 @@ function getBase() {
 
 function uploadExam(filePath, opts = {}) {
   return new Promise((resolve, reject) => {
+    const header = {};
+    const token = getToken();
+    if (token) header.Authorization = `Bearer ${token}`;
     wx.uploadFile({
       url: getBase() + '/api/v1/exams',
       filePath,
       name: 'file',
+      header,
       formData: {
         name: opts.name || '',
         include_illustrations: opts.includeIllustrations ? 'true' : 'false',

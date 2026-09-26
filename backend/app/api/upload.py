@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
+from app.api.deps import CurrentUser
 from app.database.database import get_db
 from app.schemas.exam import ExamCreated
 from app.services import recognition_service
@@ -16,6 +17,7 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.post("/api/v1/exams", status_code=202, response_model=ExamCreated)
 async def create_exam(
     db: DbSession,
+    user: CurrentUser,
     file: UploadFile = File(...),
     name: str = Form(""),
     include_illustrations: bool = Form(True),
@@ -28,6 +30,7 @@ async def create_exam(
     file_bytes = await file.read()
     exam = recognition_service.create_exam_from_upload(
         db,
+        user_id=user.id,
         file_bytes=file_bytes,
         filename=file.filename or "",
         name=name,

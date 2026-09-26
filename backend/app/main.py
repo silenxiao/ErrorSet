@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import questions, recognition, upload
 from app.api import settings as settings_api
+from app.api import auth
 from app.core.config import get_settings
 from app.core.exceptions import AppError
 from app.core.logging import get_logger, setup_logging
@@ -28,7 +29,7 @@ async def lifespan(_app: FastAPI):
         if stale:
             logger.warning("启动恢复：%s 张试卷因进程中断置为 failed", stale)
         # 排队中（uploaded）的任务随进程丢失，重新入队
-        for exam in repo.list_exams(db):
+        for exam in repo.list_exams_by_status(db, "uploaded"):
             if exam.status == "uploaded":
                 worker.enqueue(RecognitionJob(exam_id=exam.id, stage="global"))
                 logger.info("启动恢复：试卷 %s 重新入队整页识别", exam.id)
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.include_router(auth.router)
     app.include_router(upload.router)
     app.include_router(recognition.router)
     app.include_router(questions.router)

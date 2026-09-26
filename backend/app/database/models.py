@@ -10,10 +10,20 @@ def _now() -> datetime:
     return datetime.now()
 
 
+class User(Base):
+    __tablename__ = "user"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class Exam(Base):
     __tablename__ = "exam"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     name: Mapped[str] = mapped_column(String(255), default="")
     original_image: Mapped[str] = mapped_column(String(512))
     include_illustrations: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -106,11 +116,12 @@ class ProviderSetting(Base):
 
 
 class ModelProfile(Base):
-    """模型管理：用户配置的模型列表。enabled 表示当前启用的模型（最多一条）。"""
+    """模型管理：用户配置的模型列表。enabled 表示当前启用的模型（每用户最多一条）。"""
 
     __tablename__ = "model_profile"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     name: Mapped[str] = mapped_column(String(64), default="")
     provider: Mapped[str] = mapped_column(String(64))
     base_url: Mapped[str] = mapped_column(String(512), default="")
@@ -125,6 +136,7 @@ class WrongQuestion(Base):
     __tablename__ = "wrong_question"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     question_id: Mapped[int] = mapped_column(ForeignKey("question.id"), index=True)
     exam_id: Mapped[int] = mapped_column(ForeignKey("exam.id"), index=True)
     answer: Mapped[str] = mapped_column(Text, default="")

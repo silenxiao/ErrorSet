@@ -7,9 +7,11 @@ from app.database import repository as repo
 from app.database.models import Question, WrongQuestion
 
 
-def get_question_or_404(db: Session, question_id: int) -> Question:
+def get_question_or_404(db: Session, question_id: int, user_id: int) -> Question:
+    """取题目并校验归属：题目不属于当前用户（或不存在）一律 404。"""
     question = repo.get_question(db, question_id)
-    if question is None:
+    exam = repo.get_exam(db, question.exam_id) if question is not None else None
+    if exam is None or exam.user_id != user_id:
         raise NotFoundError(f"题目 {question_id} 不存在")
     return question
 
@@ -31,50 +33,56 @@ def validate_bbox(bbox: object) -> list[int]:
     return [x1, y1, x2, y2]
 
 
-def update_bbox(db: Session, question_id: int, bbox: object) -> Question:
-    question = get_question_or_404(db, question_id)
+def update_bbox(db: Session, question_id: int, user_id: int, bbox: object) -> Question:
+    question = get_question_or_404(db, question_id, user_id)
     return repo.update_question_bbox(db, question, validate_bbox(bbox))
 
 
-def reset_bbox(db: Session, question_id: int) -> Question:
-    question = get_question_or_404(db, question_id)
+def reset_bbox(db: Session, question_id: int, user_id: int) -> Question:
+    question = get_question_or_404(db, question_id, user_id)
     return repo.reset_question_bbox(db, question)
 
 
-def update_question_fields(db: Session, question_id: int, **fields) -> Question:
+def update_question_fields(
+    db: Session, question_id: int, user_id: int, **fields
+) -> Question:
     """编辑题目字段（目前支持 text），仅传入的字段会被修改。"""
-    question = get_question_or_404(db, question_id)
+    question = get_question_or_404(db, question_id, user_id)
     return repo.update_question(db, question, **fields)
 
 
-def get_illustration_or_404(db: Session, illustration_id: int):
-    from app.core.exceptions import NotFoundError
-    from app.database.models import Illustration
-
+def get_illustration_or_404(
+    db: Session, illustration_id: int, user_id: int
+):
+    """取插图并校验归属（插图 → 题目 → 试卷 → 用户）。"""
     illustration = repo.get_illustration(db, illustration_id)
     if illustration is None:
+        raise NotFoundError(f"插图 {illustration_id} 不存在")
+    question = repo.get_question(db, illustration.question_id)
+    exam = repo.get_exam(db, question.exam_id) if question is not None else None
+    if exam is None or exam.user_id != user_id:
         raise NotFoundError(f"插图 {illustration_id} 不存在")
     return illustration
 
 
-def update_illustration_bbox(db: Session, illustration_id: int, bbox: object):
-    illustration = get_illustration_or_404(db, illustration_id)
+def update_illustration_bbox(
+    db: Session, illustration_id: int, user_id: int, bbox: object
+):
+    illustration = get_illustration_or_404(db, illustration_id, user_id)
     return repo.update_illustration_bbox(db, illustration, validate_bbox(bbox))
 
 
-def reset_illustration_bbox(db: Session, illustration_id: int):
-    illustration = get_illustration_or_404(db, illustration_id)
+def reset_illustration_bbox(db: Session, illustration_id: int, user_id: int):
+    illustration = get_illustration_or_404(db, illustration_id, user_id)
     return repo.reset_illustration_bbox(db, illustration)
 
 
-def delete_wrong_question(db: Session, wrong_id: int) -> None:
+def delete_wrong_question(db: Session, wrong_id: int, user_id: int) -> None:
     """删除错题记录，并清理题图快照文件（插图本身按 bbox 动态裁剪、无独立文件）。"""
 
     from app.services.recognition_service import resolve_data_file
 
-    row = repo.get_wrong_question(db, wrong_id)
-    if row is None:
-        raise NotFoundError(f"错题 {wrong_id} 不存在")
+    row = _wrong_question_or_404(db, wrong_id, user_id)
 
     image = resolve_data_file(row.image) if row.image else None
     repo.delete_wrong_question(db, row)
@@ -82,35 +90,40 @@ def delete_wrong_question(db: Session, wrong_id: int) -> None:
         image.unlink(missing_ok=True)
 
 
-def sort_wrong_question(db: Session, wrong_id: int, position: str) -> WrongQuestion:
-    """置顶/置底：置顶取当前最大排序号+1，置底取最小排序号-1。"""
+def _wrong_question_or_404(db: Session, wrong_id: int, user_id: int) -> WrongQuestion:
     row = repo.get_wrong_question(db, wrong_id)
-    if row is None:
+    if row is None or row.user_id != user_id:
         raise NotFoundError(f"错题 {wrong_id} 不存在")
-    max_order, min_order = repo.wrong_question_sort_bounds(db)
+    return row
+
+
+def sort_wrong_question(
+    db: Session, wrong_id: int, user_id: int, position: str
+) -> WrongQuestion:
+    """置顶/置底：置顶取当前最大排序号+1，置底取最小排序号-1（仅在本人错题内）。"""
+    row = _wrong_question_or_404(db, wrong_id, user_id)
+    max_order, min_order = repo.wrong_question_sort_bounds(db, user_id)
     order = max_order + 1 if position == "top" else min_order - 1
     return repo.set_wrong_question_sort_order(db, row, order)
 
 
 def record_wrong_question_result(
-    db: Session, wrong_id: int, result: str
+    db: Session, wrong_id: int, user_id: int, result: str
 ) -> WrongQuestion:
     """做对/做错打卡：result 为 correct 时做对次数 +1，否则做错次数 +1。"""
-    row = repo.get_wrong_question(db, wrong_id)
-    if row is None:
-        raise NotFoundError(f"错题 {wrong_id} 不存在")
+    row = _wrong_question_or_404(db, wrong_id, user_id)
     return repo.increment_wrong_question_count(db, row, correct=result == "correct")
 
 
-def update_wrong_question(db: Session, wrong_id: int, **fields) -> WrongQuestion:
+def update_wrong_question(
+    db: Session, wrong_id: int, user_id: int, **fields
+) -> WrongQuestion:
     """编辑错题字段（目前支持 subject），空字符串表示清除（显示为未设置）。"""
-    row = repo.get_wrong_question(db, wrong_id)
-    if row is None:
-        raise NotFoundError(f"错题 {wrong_id} 不存在")
+    row = _wrong_question_or_404(db, wrong_id, user_id)
     return repo.update_wrong_question(db, row, **fields)
 
 
-def analyze_question(db: Session, question_id: int) -> str:
+def analyze_question(db: Session, question_id: int, user_id: int) -> str:
     """Analyze recognized text and only illustrations associated with this question."""
     import asyncio
     import io
@@ -124,7 +137,7 @@ def analyze_question(db: Session, question_id: int) -> str:
     from app.providers.base import VisionRequest
     from app.services.settings_service import get_recognition_provider
 
-    question = get_question_or_404(db, question_id)
+    question = get_question_or_404(db, question_id, user_id)
     exam = repo.get_exam(db, question.exam_id)
     if exam is None:
         raise NotFoundError("题目所属试卷不存在")
@@ -135,7 +148,7 @@ def analyze_question(db: Session, question_id: int) -> str:
         f"【当前题号】{question.question_no}\n"
         f"【当前题目文字；只解答这一题】\n{question.text.strip()}"
     )
-    provider = get_recognition_provider()
+    provider = get_recognition_provider(exam.user_id)
     illustrations = list(question.illustrations)
 
     async def _call(image_path: str) -> str:
@@ -157,7 +170,7 @@ def analyze_question(db: Session, question_id: int) -> str:
     # Render the linked diagrams and combine them into one canvas. Never send the
     # full exam or the question crop: only the selected question's own figures.
     figures = [
-        Image.open(io.BytesIO(render_illustration_image(db, ill.id))).convert("RGB")
+        Image.open(io.BytesIO(render_illustration_image(db, ill.id, user_id))).convert("RGB")
         for ill in illustrations
     ]
     try:
@@ -190,15 +203,16 @@ def analyze_question(db: Session, question_id: int) -> str:
             image.close()
 
 
-def create_wrong_question(db: Session, **kwargs) -> WrongQuestion:
+def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
     """加入错题库：记录文本与关联，插图由前端按需动态裁剪展示。"""
-    question = get_question_or_404(db, kwargs["question_id"])
+    question = get_question_or_404(db, kwargs["question_id"], user_id)
     exam = repo.get_exam(db, question.exam_id)
     if exam is None:
         raise NotFoundError("题目所属试卷不存在")
 
     return repo.create_wrong_question(
         db,
+        user_id=exam.user_id,
         question_id=question.id,
         exam_id=exam.id,
         answer=kwargs.get("answer", ""),
@@ -212,14 +226,16 @@ def create_wrong_question(db: Session, **kwargs) -> WrongQuestion:
     )
 
 
-def render_illustration_image(db: Session, illustration_id: int) -> bytes:
+def render_illustration_image(
+    db: Session, illustration_id: int, user_id: int
+) -> bytes:
     """按插图当前 bbox（含 padding）从原图裁剪 PNG 字节，供前端展示。"""
     import io
 
     from PIL import Image
 
-    illustration = get_illustration_or_404(db, illustration_id)
-    question = get_question_or_404(db, illustration.question_id)
+    illustration = get_illustration_or_404(db, illustration_id, user_id)
+    question = get_question_or_404(db, illustration.question_id, user_id)
     exam = repo.get_exam(db, question.exam_id)
     if exam is None:
         raise NotFoundError("插图所属试卷不存在")

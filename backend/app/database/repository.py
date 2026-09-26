@@ -8,8 +8,30 @@ from app.database.models import (
     Illustration,
     Question,
     RecognitionTask,
+    User,
     WrongQuestion,
 )
+
+# ---------------------------------------------------------------------------
+# User
+# ---------------------------------------------------------------------------
+
+
+def create_user(db: Session, *, username: str, password_hash: str) -> User:
+    user = User(username=username, password_hash=password_hash)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def get_user(db: Session, user_id: int) -> User | None:
+    return db.get(User, user_id)
+
+
+def get_user_by_username(db: Session, username: str) -> User | None:
+    return db.scalars(select(User).where(User.username == username)).first()
+
 
 # ---------------------------------------------------------------------------
 # Exam
@@ -19,12 +41,14 @@ from app.database.models import (
 def create_exam(
     db: Session,
     *,
+    user_id: int,
     name: str,
     original_image: str,
     include_illustrations: bool = True,
     grade: str = "一年级",
 ) -> Exam:
     exam = Exam(
+        user_id=user_id,
         name=name,
         original_image=original_image,
         include_illustrations=include_illustrations,
@@ -41,8 +65,18 @@ def get_exam(db: Session, exam_id: int) -> Exam | None:
     return db.get(Exam, exam_id)
 
 
-def list_exams(db: Session) -> list[Exam]:
-    stmt = select(Exam).order_by(Exam.created_at.desc())
+def list_exams(db: Session, user_id: int) -> list[Exam]:
+    stmt = (
+        select(Exam)
+        .where(Exam.user_id == user_id)
+        .order_by(Exam.created_at.desc())
+    )
+    return list(db.scalars(stmt))
+
+
+def list_exams_by_status(db: Session, status: str) -> list[Exam]:
+    """跨用户的按状态查询，仅供进程重启后的任务恢复使用。"""
+    stmt = select(Exam).where(Exam.status == status)
     return list(db.scalars(stmt))
 
 
@@ -315,18 +349,34 @@ def delete_wrong_question(db: Session, row: WrongQuestion) -> None:
     db.commit()
 
 
-def list_wrong_questions(db: Session) -> list[WrongQuestion]:
+def list_wrong_questions(db: Session, user_id: int) -> list[WrongQuestion]:
     """错题列表：按手动排序号降序（置顶在前），同序号按创建时间降序。"""
-    stmt = select(WrongQuestion).order_by(
-        WrongQuestion.sort_order.desc(), WrongQuestion.created_at.desc()
+    stmt = (
+        select(WrongQuestion)
+        .where(WrongQuestion.user_id == user_id)
+        .order_by(WrongQuestion.sort_order.desc(), WrongQuestion.created_at.desc())
     )
     return list(db.scalars(stmt))
 
 
-def wrong_question_sort_bounds(db: Session) -> tuple[int, int]:
+def wrong_question_sort_bounds(db: Session, user_id: int) -> tuple[int, int]:
     """当前错题排序号的最大/最小值，供置顶（max+1）与置底（min-1）使用。"""
-    max_order = db.scalar(select(func.max(WrongQuestion.sort_order))) or 0
-    min_order = db.scalar(select(func.min(WrongQuestion.sort_order))) or 0
+    max_order = (
+        db.scalar(
+            select(func.max(WrongQuestion.sort_order)).where(
+                WrongQuestion.user_id == user_id
+            )
+        )
+        or 0
+    )
+    min_order = (
+        db.scalar(
+            select(func.min(WrongQuestion.sort_order)).where(
+                WrongQuestion.user_id == user_id
+            )
+        )
+        or 0
+    )
     return max_order, min_order
 
 

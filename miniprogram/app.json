@@ -4,7 +4,8 @@
     "pages/recognition/recognition",
     "pages/bank/bank",
     "pages/bank-detail/bank-detail",
-    "pages/add-wrong/add-wrong"
+    "pages/add-wrong/add-wrong",
+    "pages/login/login"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1677ff",

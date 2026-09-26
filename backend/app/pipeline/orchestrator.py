@@ -58,7 +58,7 @@ class RecognitionPipeline:
                     db, exam, width=processed.width, height=processed.height
                 )
 
-                provider = get_recognition_provider()
+                provider = get_recognition_provider(exam.user_id)
 
                 def on_call(response: VisionResponse) -> None:
                     self._record_task(
@@ -128,7 +128,7 @@ class RecognitionPipeline:
                 return
             repo.set_exam_status(db, exam, "local_processing")
 
-            provider = get_recognition_provider()
+            provider = get_recognition_provider(exam.user_id)
             questions = repo.list_questions(db, exam.id)
             normalized = [question_to_normalized(q) for q in questions]
             marks = {

@@ -30,6 +30,13 @@ class UploadError(AppError):
     detail = "上传文件不符合要求"
 
 
+class AuthError(AppError):
+    """未登录 / token 无效 / 账号密码错误。"""
+
+    status_code = 401
+    detail = "未登录或登录已过期"
+
+
 class ProviderError(AppError):
     """Vision API 调用失败。"""
 

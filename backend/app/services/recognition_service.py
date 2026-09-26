@@ -21,9 +21,9 @@ def resolve_data_file(path_str: str) -> Path:
     return path if path.is_absolute() else Path.cwd() / path
 
 
-def get_exam_or_404(db: Session, exam_id: int) -> Exam:
+def get_exam_or_404(db: Session, exam_id: int, user_id: int) -> Exam:
     exam = repo.get_exam(db, exam_id)
-    if exam is None:
+    if exam is None or exam.user_id != user_id:
         raise NotFoundError(f"试卷 {exam_id} 不存在")
     return exam
 
@@ -31,6 +31,7 @@ def get_exam_or_404(db: Session, exam_id: int) -> Exam:
 def create_exam_from_upload(
     db: Session,
     *,
+    user_id: int,
     file_bytes: bytes,
     filename: str,
     name: str,
@@ -54,6 +55,7 @@ def create_exam_from_upload(
 
     exam = repo.create_exam(
         db,
+        user_id=user_id,
         name=name.strip() or Path(filename).stem,
         original_image=str(saved_path),
         include_illustrations=include_illustrations,
@@ -73,9 +75,9 @@ def exam_image_url(exam: Exam) -> str:
     return f"/files/{relative.as_posix()}"
 
 
-def confirm_exam(db: Session, exam_id: int) -> Exam:
+def confirm_exam(db: Session, exam_id: int, user_id: int) -> Exam:
     """确认触发二次识别，仅 awaiting_review 状态有效（§6.2）。"""
-    exam = get_exam_or_404(db, exam_id)
+    exam = get_exam_or_404(db, exam_id, user_id)
     if exam.status != "awaiting_review":
         raise InvalidStateError(
             f"当前状态为 {exam.status}，只有 awaiting_review 可以确认"
@@ -86,6 +88,7 @@ def confirm_exam(db: Session, exam_id: int) -> Exam:
 def rerecognize_exam(
     db: Session,
     exam_id: int,
+    user_id: int,
     include_illustrations: bool | None = None,
     extra_prompt: str | None = None,
 ) -> Exam:
@@ -95,7 +98,7 @@ def rerecognize_exam(
     extra_prompt 不为 None 时更新用户补充提示词（空白视为清除），
     供本次及后续识别的 Global/Local 两段共同使用。
     """
-    exam = get_exam_or_404(db, exam_id)
+    exam = get_exam_or_404(db, exam_id, user_id)
     if exam.status in ("global_processing", "local_processing"):
         raise InvalidStateError("识别进行中，无法重新识别")
     dirty = False
@@ -117,10 +120,10 @@ def rerecognize_exam(
     return repo.set_exam_status(db, exam, "uploaded")
 
 
-def delete_exam_and_files(db: Session, exam_id: int) -> None:
+def delete_exam_and_files(db: Session, exam_id: int, user_id: int) -> None:
     """删除试卷及其全部图片文件（原图、预处理图、题目裁剪图、错题快照）。"""
     settings = get_settings()
-    exam = get_exam_or_404(db, exam_id)
+    exam = get_exam_or_404(db, exam_id, user_id)
     paths = [
         resolve_data_file(exam.original_image),
         processed_path_for(exam.original_image, settings.data_dir),

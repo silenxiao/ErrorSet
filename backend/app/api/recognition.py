@@ -1,8 +1,10 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response
+from fastapi.responses import Response as ImageResponse
 from sqlalchemy.orm import Session
 
+from app.api.deps import CurrentUser
 from app.database import repository as repo
 from app.database.database import get_db
 from app.schemas.exam import ExamCreated, ExamDetail, ExamListItem, ReRecognizeRequest
@@ -16,10 +18,10 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/api/v1/exams", response_model=list[ExamListItem])
-def list_exams(db: DbSession) -> list[ExamListItem]:
-    """试卷列表（§26），按创建时间倒序。"""
+def list_exams(db: DbSession, user: CurrentUser) -> list[ExamListItem]:
+    """当前用户的试卷列表（§26），按创建时间倒序。"""
     items = []
-    for exam in repo.list_exams(db):
+    for exam in repo.list_exams(db, user.id):
         items.append(
             ExamListItem(
                 id=exam.id,
@@ -33,9 +35,9 @@ def list_exams(db: DbSession) -> list[ExamListItem]:
 
 
 @router.get("/api/v1/exams/{exam_id}", response_model=ExamDetail)
-def get_exam(exam_id: int, db: DbSession) -> ExamDetail:
+def get_exam(exam_id: int, db: DbSession, user: CurrentUser) -> ExamDetail:
     """查询试卷与题目（§26）。"""
-    exam = recognition_service.get_exam_or_404(db, exam_id)
+    exam = recognition_service.get_exam_or_404(db, exam_id, user.id)
     questions = [
         QuestionOut.model_validate(q)
         for q in repo.list_questions(db, exam.id)
@@ -54,9 +56,9 @@ def get_exam(exam_id: int, db: DbSession) -> ExamDetail:
 
 
 @router.post("/api/v1/exams/{exam_id}/confirm", response_model=ExamCreated)
-def confirm_exam(exam_id: int, db: DbSession) -> ExamCreated:
+def confirm_exam(exam_id: int, db: DbSession, user: CurrentUser) -> ExamCreated:
     """人工确认，触发第二段识别（§11.5/§6.2）。"""
-    exam = recognition_service.confirm_exam(db, exam_id)
+    exam = recognition_service.confirm_exam(db, exam_id, user.id)
     worker.enqueue(RecognitionJob(exam_id=exam.id, stage="local"))
     return ExamCreated(id=exam.id, status="local_processing")
 
@@ -65,6 +67,7 @@ def confirm_exam(exam_id: int, db: DbSession) -> ExamCreated:
 def rerecognize_exam(
     exam_id: int,
     db: DbSession,
+    user: CurrentUser,
     body: ReRecognizeRequest | None = None,
     include_illustrations: bool | None = None,
 ) -> ExamCreated:
@@ -79,14 +82,14 @@ def rerecognize_exam(
         include_illustrations = body.include_illustrations
     extra_prompt = body.extra_prompt if body is not None else None
     exam = recognition_service.rerecognize_exam(
-        db, exam_id, include_illustrations, extra_prompt
+        db, exam_id, user.id, include_illustrations, extra_prompt
     )
     worker.enqueue(RecognitionJob(exam_id=exam.id, stage="global"))
     return ExamCreated(id=exam.id, status=exam.status)
 
 
 @router.delete("/api/v1/exams/{exam_id}", status_code=204)
-def delete_exam(exam_id: int, db: DbSession) -> Response:
+def delete_exam(exam_id: int, db: DbSession, user: CurrentUser) -> Response:
     """删除试卷及关联数据与图片文件（§26）。"""
-    recognition_service.delete_exam_and_files(db, exam_id)
+    recognition_service.delete_exam_and_files(db, exam_id, user.id)
     return Response(status_code=204)
