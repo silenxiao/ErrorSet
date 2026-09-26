@@ -1,0 +1,22 @@
+<view class="user-card">
+  <view class="avatar">{{avatarChar}}</view>
+  <view class="user-info">
+    <view class="username">{{username}}</view>
+    <view class="muted">AI 错题本</view>
+  </view>
+</view>
+
+<view class="card menu">
+  <view class="menu-item" hover-class="menu-item-hover" bindtap="openModels">
+    <text class="menu-icon">⚙️</text>
+    <view class="menu-main">
+      <view class="menu-title">模型管理</view>
+      <view class="muted">配置识别使用的 AI 模型</view>
+    </view>
+    <text class="menu-arrow">›</text>
+  </view>
+</view>
+
+<view class="card">
+  <button class="btn-danger btn-block" hover-class="none" bindtap="logout">退出登录</button>
+</view>

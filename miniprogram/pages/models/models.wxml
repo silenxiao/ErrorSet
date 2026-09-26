@@ -1,0 +1,74 @@
+<view class="page">
+  <view class="toolbar">
+    <button class="btn-primary btn-sm" hover-class="none" bindtap="openAddForm" disabled="{{formOpen}}">＋ 添加模型</button>
+    <text class="muted">开关表示当前启用的模型，切换后下一次识别生效</text>
+  </view>
+
+  <view wx:if="{{error}}" class="err-box">
+    <view class="err-msg">加载失败：{{error}}</view>
+    <view class="text-btn danger" bindtap="refresh">点击重试</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="muted" style="padding:20rpx 0;">加载中…</view>
+
+  <view wx:if="{{!loading && !error && models.length === 0}}" class="empty">
+    <view class="empty-icon">🤖</view>
+    <view class="muted">暂无模型，点击「添加模型」开始配置</view>
+  </view>
+
+  <view wx:for="{{models}}" wx:key="id" class="model-card {{item.enabled ? 'model-enabled' : ''}}">
+    <switch checked="{{item.enabled}}" color="#1677ff" data-id="{{item.id}}" bindchange="onEnableChange" />
+    <view class="model-main">
+      <view class="model-title-row">
+        <text class="model-name">{{item.name || item.model}}</text>
+        <text class="tag">{{item.providerText}}</text>
+        <text wx:if="{{item.enabled}}" class="tag tag-active">当前使用</text>
+      </view>
+      <view class="muted model-sub">{{item.model}}{{item.baseUrl ? ' · ' + item.baseUrl : ''}}{{item.hasApiKey ? ' · API Key 已保存' : ''}}</view>
+    </view>
+    <view class="model-actions">
+      <view class="text-btn" data-id="{{item.id}}" bindtap="openEditForm">编辑</view>
+      <view class="text-btn danger" data-id="{{item.id}}" bindtap="deleteModel">删除</view>
+    </view>
+  </view>
+
+  <view wx:if="{{formOpen}}" class="form-card">
+    <view class="form-title">{{editingId === null ? '添加模型' : '编辑模型'}}</view>
+
+    <view class="field">
+      <text class="label">名称（可选，便于区分多个模型）</text>
+      <input class="input" value="{{form.name}}" placeholder="例如：我的 DeepSeek" data-field="name" bindinput="onFormInput" />
+    </view>
+
+    <view class="field">
+      <text class="label">服务商</text>
+      <picker mode="selector" range="{{providerOptions}}" value="{{form.providerIndex}}" bindchange="onProviderChange">
+        <view class="select-box">
+          <text class="{{form.provider ? 'select-value' : 'select-placeholder'}}">{{form.providerText || '点击选择预设'}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+      <view class="muted" style="margin-top:8rpx;">自定义服务商需填写 API 地址</view>
+    </view>
+
+    <view class="field">
+      <text class="label">API 地址（Base URL，可选，默认用服务商官方地址）</text>
+      <input class="input" value="{{form.baseUrl}}" placeholder="https://api.example.com/v1" data-field="baseUrl" bindinput="onFormInput" />
+    </view>
+
+    <view class="field">
+      <text class="label">模型名</text>
+      <input class="input" value="{{form.model}}" placeholder="例如：deepseek-chat" data-field="model" bindinput="onFormInput" />
+    </view>
+
+    <view class="field">
+      <text class="label">API Key</text>
+      <input class="input" password value="{{form.apiKey}}" placeholder="{{editingHasKey ? '已保存（留空不修改）' : '请输入 API Key'}}" data-field="apiKey" bindinput="onFormInput" />
+    </view>
+
+    <view class="form-btns">
+      <button class="btn-ghost" hover-class="none" bindtap="closeForm">取消</button>
+      <button class="btn-primary" hover-class="none" loading="{{saving}}" bindtap="save">保存</button>
+    </view>
+  </view>
+</view>

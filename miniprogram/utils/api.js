@@ -110,6 +110,21 @@ const api = {
 
   analyzeQuestion: (qid) => request(`/api/v1/questions/${qid}/analyze`),
 
+  // 模型管理（API Key 不回传，仅告知是否已保存 hasApiKey）
+  listModels: () => request('/api/v1/settings/models'),
+
+  createModel: (payload) =>
+    request('/api/v1/settings/models', { method: 'POST', data: payload }),
+
+  updateModel: (id, payload) =>
+    request(`/api/v1/settings/models/${id}`, { method: 'PUT', data: payload }),
+
+  enableModel: (id) =>
+    request(`/api/v1/settings/models/${id}/enable`, { method: 'PUT', data: {} }),
+
+  deleteModel: (id) =>
+    request(`/api/v1/settings/models/${id}`, { method: 'DELETE' }),
+
   illustrationImageUrl: (id) => absUrl(`/api/v1/illustrations/${id}/image`),
 };
 

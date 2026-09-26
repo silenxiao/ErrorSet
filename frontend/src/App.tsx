@@ -1,11 +1,10 @@
-import { LogoutOutlined, SettingOutlined } from "@ant-design/icons";
-import { Button, Layout, Menu, Tooltip } from "antd";
-import { useEffect, useState } from "react";
+import { Layout, Menu, ConfigProvider } from "antd";
+import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
-import { clearSession, getToken, getUsername } from "./api/auth";
-import SettingsModal from "./components/SettingsModal";
+import { getToken } from "./api/auth";
 import LoginPage from "./pages/Login";
+import MinePage from "./pages/Mine";
 import QuestionBankPage from "./pages/QuestionBank";
 import RecognitionPage from "./pages/Recognition";
 import UploadPage from "./pages/Upload";
@@ -33,15 +32,11 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const selectedKey = location.pathname.startsWith("/wrong-questions")
     ? "wrong-questions"
-    : "upload";
-
-  const handleLogout = () => {
-    clearSession();
-    navigate("/login", { replace: true });
-  };
+    : location.pathname.startsWith("/mine")
+      ? "mine"
+      : "upload";
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -85,48 +80,46 @@ function MainLayout() {
           </span>
           AI 试卷识别与错题库
         </div>
-        <Menu
-          theme="dark"
-          mode="horizontal"
-          style={{ flex: 1, minWidth: 0 }}
-          selectedKeys={[selectedKey]}
-          items={[
-            { key: "upload", label: "上传试卷" },
-            { key: "wrong-questions", label: "错题库" },
-          ]}
-          onClick={({ key }) =>
-            navigate(key === "upload" ? "/" : `/${key}`)
-          }
-        />
-        <span style={{ color: "rgba(255, 255, 255, 0.85)", whiteSpace: "nowrap" }}>
-          {getUsername() ?? ""}
-        </span>
-        <Button
-          type="text"
-          icon={<SettingOutlined />}
-          style={{ color: "#fff", fontSize: 15 }}
-          onClick={() => setSettingsOpen(true)}
+        <ConfigProvider
+          theme={{
+            components: {
+              Menu: {
+                // 顶栏是蓝渐变背景，菜单必须透明，否则会盖出一块深色
+                darkItemBg: "transparent",
+                darkPopupBg: "transparent",
+                darkItemHoverBg: "rgba(255, 255, 255, 0.12)",
+                darkItemSelectedBg: "rgba(255, 255, 255, 0.18)",
+                itemBorderRadius: 8,
+                itemMarginInline: 8,
+              },
+            },
+          }}
         >
-          模型管理
-        </Button>
-        <Tooltip title="退出登录">
-          <Button
-            type="text"
-            icon={<LogoutOutlined />}
-            style={{ color: "#fff" }}
-            onClick={handleLogout}
+          <Menu
+            theme="dark"
+            mode="horizontal"
+            style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none" }}
+            selectedKeys={[selectedKey]}
+            items={[
+              { key: "upload", label: "上传试卷" },
+              { key: "wrong-questions", label: "错题库" },
+              { key: "mine", label: "我的" },
+            ]}
+            onClick={({ key }) =>
+              navigate(key === "upload" ? "/" : `/${key}`)
+            }
           />
-        </Tooltip>
+        </ConfigProvider>
       </Header>
       <Content style={{ padding: 24 }}>
         <Routes>
           <Route path="/" element={<UploadPage />} />
           <Route path="/exams/:examId" element={<RecognitionPage />} />
           <Route path="/wrong-questions" element={<QuestionBankPage />} />
+          <Route path="/mine" element={<MinePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Content>
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </Layout>
   );
 }
