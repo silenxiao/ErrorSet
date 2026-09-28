@@ -57,6 +57,8 @@ export interface WrongQuestion {
   wrongReason: string;
   knowledgePoints: string[];
   image: string;
+  /** 入库时按当前 bbox 裁剪的插图快照（/files 静态 URL，无需鉴权） */
+  illustrationImages: string[];
   note: string;
   createdAt: string;
   /** 来源题目的识别内容（§28：保留文本与插图，而非上传图片） */

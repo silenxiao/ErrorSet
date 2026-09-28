@@ -85,7 +85,7 @@ def update_user(
 
 @router.delete("/users/{user_id}", status_code=204)
 def delete_user(user_id: int, db: DbSession, admin: AdminUser) -> Response:
-    """删除用户及其全部数据：逐卷清理图片与关联记录，再删模型配置与账号。"""
+    """删除用户及其全部数据：逐卷清理图片与关联记录、清空错题，再删模型配置与账号。"""
     if user_id == admin.id:
         raise ValidationError("不能删除当前登录的账号")
     user = repo.get_user(db, user_id)
@@ -93,6 +93,8 @@ def delete_user(user_id: int, db: DbSession, admin: AdminUser) -> Response:
         raise NotFoundError("用户不存在")
     for exam in repo.list_exams(db, user_id):
         recognition_service.delete_exam_and_files(db, exam.id, user_id)
+    # 删卷不再连带错题，这里显式清空该用户的错题库
+    question_service.delete_user_wrong_questions(db, user_id)
     repo.delete_user(db, user)
     return Response(status_code=204)
 

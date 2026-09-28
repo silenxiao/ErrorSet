@@ -19,7 +19,7 @@ from app.schemas.question import (
     WrongQuestionSort,
     WrongQuestionUpdate,
 )
-from app.services import question_service
+from app.services import question_service, recognition_service
 
 router = APIRouter(tags=["questions"])
 
@@ -87,10 +87,15 @@ def reset_illustration_bbox(
 def _wrong_question_out(db: Session, row) -> WrongQuestionOut:
     """组装错题响应，附带来源题目的编号与文本（§28：保留文本与插图）。"""
     out = WrongQuestionOut.model_validate(row)
+    out.illustration_images = [
+        recognition_service.data_file_url(path)
+        for path in (row.illustration_images or [])
+    ]
     question = repo.get_question(db, row.question_id)
     if question is not None:
-        out.question_no = question.question_no
-        out.question_text = question.text
+        # 文本快照优先；旧记录（快照为空）回退到实时读取
+        out.question_no = row.question_no or question.question_no
+        out.question_text = row.question_text or question.text
         out.illustrations = [
             IllustrationOut.model_validate(item) for item in question.illustrations
         ]

@@ -65,14 +65,19 @@ def create_exam_from_upload(
     return exam
 
 
-def exam_image_url(exam: Exam) -> str:
-    """试卷原图的静态访问 URL（main.py 把 data_dir 挂载在 /files）。"""
+def data_file_url(path: str) -> str:
+    """data_dir 内相对路径 → /files 静态访问 URL（main.py 把 data_dir 挂载在 /files）。"""
     settings = get_settings()
     try:
-        relative = Path(exam.original_image).relative_to(Path(settings.data_dir))
+        relative = Path(path).relative_to(Path(settings.data_dir))
     except ValueError:
-        relative = Path(exam.original_image).name
+        relative = Path(path).name
     return f"/files/{relative.as_posix()}"
+
+
+def exam_image_url(exam: Exam) -> str:
+    """试卷原图的静态访问 URL。"""
+    return data_file_url(exam.original_image)
 
 
 def confirm_exam(db: Session, exam_id: int, user_id: int) -> Exam:
@@ -121,7 +126,7 @@ def rerecognize_exam(
 
 
 def delete_exam_and_files(db: Session, exam_id: int, user_id: int) -> None:
-    """删除试卷及其全部图片文件（原图、预处理图、题目裁剪图、错题快照）。"""
+    """删除试卷及其识别图片文件（原图、预处理图、题目裁剪图）；错题库记录保留。"""
     settings = get_settings()
     exam = get_exam_or_404(db, exam_id, user_id)
     paths = [

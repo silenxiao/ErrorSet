@@ -18,6 +18,7 @@ import {
 import {
   deleteWrongQuestion,
   getQuestion,
+  illustrationSrc,
   listWrongQuestions,
   recordWrongResult,
   sortWrongQuestion,
@@ -287,18 +288,28 @@ function WrongQuestionItem({
         <SubjectTag subject={row.subject} onSave={(v) => onSubject(row, v)} />
       </Space>
       <div style={{ whiteSpace: "pre-wrap" }}>{renderMathText(row.questionText)}</div>
-      {(row.illustrations ?? []).length > 0 && (
+      {(row.illustrationImages?.length ?? 0) > 0 || (row.illustrations ?? []).length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-          {(row.illustrations ?? []).map((ill) => (
+          {/* 优先用入库时裁剪的快照（静态 /files，无需鉴权）；旧记录回退到动态裁剪接口 */}
+          {(row.illustrationImages ?? []).map((url) => (
             <Image
-              key={ill.id}
-              src={`/api/v1/illustrations/${ill.id}/image`}
-              alt={`插图（${ill.type}）`}
+              key={url}
+              src={url}
+              alt="插图"
               style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
             />
           ))}
+          {(row.illustrationImages?.length ?? 0) === 0 &&
+            (row.illustrations ?? []).map((ill) => (
+              <Image
+                key={ill.id}
+                src={illustrationSrc(ill.id)}
+                alt={`插图（${ill.type}）`}
+                style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+              />
+            ))}
         </div>
-      )}
+      ) : null}
       <div
         style={{
           display: "flex",
@@ -415,16 +426,27 @@ function DetailBody({
             <div style={{ whiteSpace: "pre-wrap" }}>
               {renderMathText(question.text)}
             </div>
-            {question.illustrations.map((ill) => (
-              <Image
-                key={ill.id}
-                src={`/api/v1/illustrations/${ill.id}/image`}
-                alt={`插图（${ill.type}）`}
-                // width:auto 覆盖 antd 默认的 width:100% 拉伸，
-                // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
-                style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
-              />
-            ))}
+            {(detail.illustrationImages?.length ?? 0) > 0
+              ? detail.illustrationImages.map((url) => (
+                  <Image
+                    key={url}
+                    src={url}
+                    alt="插图"
+                    // width:auto 覆盖 antd 默认的 width:100% 拉伸，
+                    // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
+                    style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+                  />
+                ))
+              : question.illustrations.map((ill) => (
+                  <Image
+                    key={ill.id}
+                    src={illustrationSrc(ill.id)}
+                    alt={`插图（${ill.type}）`}
+                    // width:auto 覆盖 antd 默认的 width:100% 拉伸，
+                    // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
+                    style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+                  />
+                ))}
           </div>
         ) : (
           <span style={{ color: "#bbb" }}>加载中…</span>

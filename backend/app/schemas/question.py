@@ -70,7 +70,14 @@ class WrongQuestionOut(CamelModel):
     wrong_reason: str
     knowledge_points: list[str]
     image: str
+    # 入库时裁剪的插图快照（/files 静态 URL，无需鉴权）；迁移前的旧行可能为 NULL
+    illustration_images: list[str] = []
     note: str
+
+    @field_validator("illustration_images", mode="before")
+    @classmethod
+    def _none_to_empty_list(cls, v: object) -> object:
+        return [] if v is None else v
     created_at: datetime
     # 关联题目的识别内容（§28：保留文本与插图，而非上传图片）
     question_no: str = ""

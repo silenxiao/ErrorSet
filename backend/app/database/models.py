@@ -160,6 +160,11 @@ class WrongQuestion(Base):
     wrong_reason: Mapped[str] = mapped_column(Text, default="")
     knowledge_points: Mapped[list] = mapped_column(JSON, default=list)
     image: Mapped[str] = mapped_column(String(512), default="")
+    # 入库时按当前 bbox（含人工校正）裁剪的插图快照，相对 data_dir 的路径列表
+    illustration_images: Mapped[list] = mapped_column(JSON, default=list)
+    # 入库时题目文本快照：试卷删除后错题仍可独立展示（§28）
+    question_no: Mapped[str] = mapped_column(String(64), default="")
+    question_text: Mapped[str] = mapped_column(Text, default="")
     note: Mapped[str] = mapped_column(Text, default="")
     # 手动排序：0 为默认；置顶取最大+1，置底取最小-1；同序号按 created_at 降序
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

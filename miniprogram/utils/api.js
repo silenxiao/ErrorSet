@@ -131,7 +131,18 @@ const api = {
 
   listMyFeedback: () => request('/api/v1/feedback/mine'),
 
-  illustrationImageUrl: (id) => absUrl(`/api/v1/illustrations/${id}/image`),
+  // <image> 标签带不上 Authorization 头，用 ?token= 回退
+  illustrationImageUrl: (id) => {
+    const token = wx.getStorageSync('errorset_token');
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return absUrl(`/api/v1/illustrations/${id}/image${query}`);
+  },
+
+  // 入库时裁剪的插图快照（/files 静态地址，无需鉴权），优先于动态裁剪
+  wrongIllustrationUrls: (w) => {
+    const urls = (w && w.illustrationImages) || [];
+    return urls.map(absUrl);
+  },
 };
 
 module.exports = api;

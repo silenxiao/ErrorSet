@@ -17,6 +17,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { createExam, deleteExam, listExams } from '@/api/exam';
+import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { ExamListItem } from '@/types/exam';
 import { GRADE_OPTIONS, examStatusOf, formatDate } from '@/utils/format';
 import {
@@ -51,6 +52,19 @@ export default function ExamScreen() {
   const [includeIllustrations, setIncludeIllustrations] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // 识别模型（与 Web 端上传页一致：切换即独占启用）
+  const [models, setModels] = useState<ModelProfile[]>([]);
+  const enabledModel = models.find((m) => m.enabled);
+  const modelName = enabledModel ? enabledModel.name || enabledModel.model : '';
+
+  const loadModels = useCallback(async () => {
+    try {
+      setModels((await listModels()) || []);
+    } catch {
+      // 模型列表加载失败不阻塞上传主流程
+    }
+  }, []);
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -74,11 +88,12 @@ export default function ExamScreen() {
   useFocusEffect(
     useCallback(() => {
       loadExams();
+      loadModels();
       return () => {
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = null;
       };
-    }, [loadExams]),
+    }, [loadExams, loadModels]),
   );
 
   // 有试卷在识别流程中时轮询，全部到终态后停止
@@ -175,6 +190,18 @@ export default function ExamScreen() {
     router.push({ pathname: '/recognition/[id]', params: { id: String(item.id) } });
   };
 
+  const switchModel = async (displayName: string) => {
+    const picked = models.find((m) => (m.name || m.model) === displayName);
+    if (!picked || picked.enabled) return;
+    try {
+      await enableModel(picked.id);
+      showToast('已切换识别模型');
+      loadModels();
+    } catch (e) {
+      Alert.alert('切换失败', e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <Screen>
       <FlatList
@@ -220,9 +247,25 @@ export default function ExamScreen() {
                 <Muted style={{ flex: 1, marginLeft: 8 }}>包含插图：开=识别题目和插图（更慢更贵）</Muted>
               </View>
 
-              <Btn block loading={uploading} onPress={upload}>
-                上传并开始识别
-              </Btn>
+              <View style={styles.submitRow}>
+                <Btn loading={uploading} style={styles.submitGrow} onPress={upload}>
+                  上传并开始识别
+                </Btn>
+                {models.length > 0 ? (
+                  <View style={styles.modelBox}>
+                    <OptionPicker
+                      options={models.map((m) => m.name || m.model)}
+                      value={modelName}
+                      onChange={(v) => void switchModel(v)}
+                      placeholder="选择模型"
+                    />
+                  </View>
+                ) : (
+                  <Btn kind="ghost" style={styles.modelBox} onPress={() => router.push('/models')}>
+                    选择模型
+                  </Btn>
+                )}
+              </View>
             </Card>
 
             <Card>
@@ -292,6 +335,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  submitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  submitGrow: {
+    flex: 1,
+  },
+  modelBox: {
+    width: 130,
   },
   examRow: {
     flexDirection: 'row',

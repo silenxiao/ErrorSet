@@ -45,6 +45,12 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE illustration ADD COLUMN bbox_source VARCHAR(16) DEFAULT 'ai'",
         "ALTER TABLE exam ADD COLUMN user_id INTEGER",
         "ALTER TABLE wrong_question ADD COLUMN user_id INTEGER",
+        "ALTER TABLE wrong_question ADD COLUMN illustration_images JSON",
+        "ALTER TABLE wrong_question ADD COLUMN question_no VARCHAR(64) NOT NULL DEFAULT ''",
+        "ALTER TABLE wrong_question ADD COLUMN question_text TEXT NOT NULL DEFAULT ''",
+        # 补列后存量行的值是 NULL，回填为空列表，避免序列化报错
+        "UPDATE wrong_question SET illustration_images = '[]' "
+        "WHERE illustration_images IS NULL",
         "ALTER TABLE model_profile ADD COLUMN user_id INTEGER",
         "ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0",
     ]
@@ -57,6 +63,27 @@ def _sqlite_lightweight_migrations() -> None:
 
     _migrate_provider_setting_to_model_profile()
     _seed_default_user()
+    _backfill_wrong_question_text()
+
+
+def _backfill_wrong_question_text() -> None:
+    """存量错题回填题目文本快照（题目仍存在时），保证删卷后列表仍可展示。"""
+    from sqlalchemy import select
+
+    from app.database.models import Question, WrongQuestion
+
+    with SessionLocal() as db:
+        rows = list(
+            db.scalars(select(WrongQuestion).where(WrongQuestion.question_no == ""))
+        )
+        if not rows:
+            return
+        for row in rows:
+            question = db.get(Question, row.question_id)
+            if question is not None:
+                row.question_no = question.question_no
+                row.question_text = question.text
+        db.commit()
 
 
 def _seed_default_user() -> None:

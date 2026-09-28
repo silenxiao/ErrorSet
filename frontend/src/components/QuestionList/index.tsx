@@ -13,7 +13,7 @@ import {
 } from "antd";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { addWrongQuestion, resetBbox, analyzeQuestion, updateQuestion } from "../../api/question";
+import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQuestion } from "../../api/question";
 import type { Question, QuestionStatus } from "../../types/question";
 import { extractAnswerFromAnalysis } from "../../utils/analysis";
 import { renderMathText } from "../../utils/math";
@@ -435,7 +435,7 @@ function EditQuestionModal({
               {question?.illustrations.map((ill) => (
                 <Image
                   key={ill.id}
-                  src={`/api/v1/illustrations/${ill.id}/image`}
+                  src={illustrationSrc(ill.id)}
                   alt={`插图（${ill.type}）`}
                   style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
                 />

@@ -70,6 +70,30 @@
   border-radius: 12rpx;
 }
 
+.submit-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 32rpx;
+}
+
+.submit-row .submit-grow {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.model-btn {
+  flex-shrink: 0;
+  max-width: 280rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 88rpx;
+  font-size: 28rpx;
+}
+
 .exam-row {
   display: flex;
   align-items: center;
@@ -150,6 +174,17 @@
   .submit {
     margin-top: 16px;
     border-radius: 8px;
+  }
+
+  .submit-row {
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .model-btn {
+    max-width: 140px;
+    line-height: 44px;
+    font-size: 14px;
   }
 
   .exam-row {

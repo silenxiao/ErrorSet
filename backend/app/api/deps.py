@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Query
 from sqlalchemy.orm import Session
 
 from app.core import security
@@ -15,10 +15,17 @@ from app.database.models import User
 def get_current_user(
     db: Annotated[Session, Depends(get_db)],
     authorization: Annotated[str | None, Header()] = None,
+    token: Annotated[str, Query()] = "",
 ) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
+    # 浏览器 <img> / 小程序 <image> 标签发不出 Authorization 头，允许 ?token= 回退
+    raw = ""
+    if authorization and authorization.startswith("Bearer "):
+        raw = authorization[len("Bearer "):]
+    elif token:
+        raw = token
+    if not raw:
         raise AuthError()
-    user_id = security.decode_token(authorization[len("Bearer "):])
+    user_id = security.decode_token(raw)
     if user_id is None:
         raise AuthError()
     user = repo.get_user(db, user_id)

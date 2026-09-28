@@ -41,10 +41,13 @@ Page({
           .map((w) => ({
             ...w,
             subjectColor: w.subject ? '#1677ff' : '#999',
-            illustrations: (w.illustrations || []).map((ill) => ({
-              ...ill,
-              imgUrl: api.illustrationImageUrl(ill.id),
-            })),
+            // 优先用入库时裁剪的快照（静态 /files），旧记录回退到动态裁剪接口
+            illustrations: api.wrongIllustrationUrls(w).length
+              ? api.wrongIllustrationUrls(w).map((imgUrl, idx) => ({ id: `s${idx}`, imgUrl }))
+              : (w.illustrations || []).map((ill) => ({
+                  ...ill,
+                  imgUrl: api.illustrationImageUrl(ill.id),
+                })),
           }));
         const rows = this.data.rows.concat(pageRows);
         this.setData({

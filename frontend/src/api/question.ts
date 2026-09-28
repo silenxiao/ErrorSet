@@ -5,6 +5,13 @@ export function getQuestion(questionId: number): Promise<Question> {
   return request(`/api/v1/questions/${questionId}`);
 }
 
+/** 动态插图裁剪图 URL：<img> 标签带不上 Authorization 头，用 ?token= 回退。 */
+export function illustrationSrc(illustrationId: number): string {
+  const token = localStorage.getItem("errorset_token");
+  const query = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `/api/v1/illustrations/${illustrationId}/image${query}`;
+}
+
 export function updateQuestion(
   questionId: number,
   fields: { text?: string },

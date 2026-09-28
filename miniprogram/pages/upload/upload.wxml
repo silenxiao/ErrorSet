@@ -29,7 +29,10 @@
     <text class="muted" style="margin-left:8rpx;">开=识别题目和插图（更慢更贵）</text>
   </view>
 
-  <button class="btn-primary submit btn-block" hover-class="none" loading="{{uploading}}" bindtap="upload">上传并开始识别</button>
+  <view class="submit-row">
+    <button class="btn-primary submit submit-grow" hover-class="none" loading="{{uploading}}" bindtap="upload">上传并开始识别</button>
+    <button class="btn-ghost model-btn" hover-class="none" bindtap="chooseModel">{{modelName || '选择模型'}} ▾</button>
+  </view>
 </view>
 
 <view class="card">

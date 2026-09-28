@@ -16,10 +16,14 @@ Page({
     api
       .getWrongQuestion(this.id)
       .then((w) => {
-        w.illustrations = (w.illustrations || []).map((ill) => ({
-          ...ill,
-          imgUrl: api.illustrationImageUrl(ill.id),
-        }));
+        // 优先用入库时裁剪的快照（静态 /files），旧记录回退到动态裁剪接口
+        const snapshots = api.wrongIllustrationUrls(w);
+        w.illustrations = snapshots.length
+          ? snapshots.map((imgUrl, idx) => ({ id: `s${idx}`, imgUrl }))
+          : (w.illustrations || []).map((ill) => ({
+              ...ill,
+              imgUrl: api.illustrationImageUrl(ill.id),
+            }));
         this.setData({ detail: w, loadError: false });
         this.loadQuestion();
       })

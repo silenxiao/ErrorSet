@@ -77,17 +77,29 @@ def reset_illustration_bbox(db: Session, illustration_id: int, user_id: int):
     return repo.reset_illustration_bbox(db, illustration)
 
 
-def delete_wrong_question(db: Session, wrong_id: int, user_id: int) -> None:
-    """删除错题记录，并清理题图快照文件（插图本身按 bbox 动态裁剪、无独立文件）。"""
+def _delete_wrong_question_files(row: WrongQuestion) -> None:
+    """清理错题记录引用的图片文件：题图快照 + 插图快照。"""
 
     from app.services.recognition_service import resolve_data_file
 
-    row = _wrong_question_or_404(db, wrong_id, user_id)
+    paths = [row.image] if row.image else []
+    paths.extend(row.illustration_images or [])
+    for path_str in paths:
+        resolve_data_file(path_str).unlink(missing_ok=True)
 
-    image = resolve_data_file(row.image) if row.image else None
+
+def delete_wrong_question(db: Session, wrong_id: int, user_id: int) -> None:
+    """删除错题记录，并清理题图快照与插图快照文件。"""
+    row = _wrong_question_or_404(db, wrong_id, user_id)
+    _delete_wrong_question_files(row)
     repo.delete_wrong_question(db, row)
-    if image is not None:
-        image.unlink(missing_ok=True)
+
+
+def delete_user_wrong_questions(db: Session, user_id: int) -> None:
+    """删除某用户的全部错题记录并清理快照文件（管理后台删除用户时级联调用）。"""
+    for row in repo.list_wrong_questions(db, user_id):
+        _delete_wrong_question_files(row)
+        repo.delete_wrong_question(db, row)
 
 
 def _wrong_question_or_404(db: Session, wrong_id: int, user_id: int) -> WrongQuestion:
@@ -203,26 +215,75 @@ def analyze_question(db: Session, question_id: int, user_id: int) -> str:
             image.close()
 
 
+def _snapshot_illustrations(
+    db: Session, question: Question, user_id: int
+) -> list[str]:
+    """把题目的插图按当前 bbox（含人工校正与 padding）裁剪成 PNG 快照。
+
+    存入 data/wrong-illustrations/，返回相对 data_dir 的路径列表（存 DB）。
+    """
+    import uuid
+    from pathlib import Path
+
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    target = Path(settings.data_dir) / "wrong-illustrations"
+    target.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for ill in question.illustrations:
+        data = render_illustration_image(db, ill.id, user_id)
+        name = f"{uuid.uuid4().hex}.png"
+        (target / name).write_bytes(data)
+        paths.append(
+            f"{Path(settings.data_dir).as_posix()}/wrong-illustrations/{name}"
+        )
+    return paths
+
+
 def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
-    """加入错题库：记录文本与关联，插图由前端按需动态裁剪展示。"""
+    """加入错题库：插图按当前 bbox 裁剪为快照保留（§28）。
+
+    同一题目重复加入时，先删除上次的插图快照文件，再就地更新记录
+    （保留打卡计数与手动排序），不产生重复行。
+    """
     question = get_question_or_404(db, kwargs["question_id"], user_id)
     exam = repo.get_exam(db, question.exam_id)
     if exam is None:
         raise NotFoundError("题目所属试卷不存在")
 
-    return repo.create_wrong_question(
-        db,
-        user_id=exam.user_id,
-        question_id=question.id,
-        exam_id=exam.id,
+    fields = dict(
         answer=kwargs.get("answer", ""),
         correct_answer=kwargs.get("correct_answer", ""),
         subject=kwargs.get("subject", ""),
         analysis=kwargs.get("analysis", ""),
         wrong_reason=kwargs.get("wrong_reason", ""),
         knowledge_points=kwargs.get("knowledge_points") or [],
-        image="",
         note=kwargs.get("note", ""),
+        # 题目文本快照：试卷/题目删除后错题列表仍可展示（§28）
+        question_no=question.question_no,
+        question_text=question.text,
+    )
+    illustration_images = _snapshot_illustrations(db, question, user_id)
+
+    existing = repo.get_wrong_question_by_question(db, question.id)
+    if existing is not None:
+        _delete_wrong_question_files(existing)
+        return repo.update_wrong_question(
+            db,
+            existing,
+            illustration_images=illustration_images,
+            image="",
+            **fields,
+        )
+    return repo.create_wrong_question(
+        db,
+        user_id=exam.user_id,
+        question_id=question.id,
+        exam_id=exam.id,
+        illustration_images=illustration_images,
+        image="",
+        **fields,
     )
 
 

@@ -1,15 +1,32 @@
-import { InboxOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Radio, Select, Upload, message } from "antd";
-import { useState } from "react";
+import { InboxOutlined, CheckOutlined, DownOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Dropdown,
+  Form,
+  Input,
+  Radio,
+  Select,
+  Space,
+  Upload,
+  message,
+  type MenuProps,
+} from "antd";
+import { useCallback, useEffect, useState } from "react";
 
 import { createExam } from "../../api/exam";
+import {
+  enableModel,
+  listModels,
+  type ModelProfile,
+} from "../../api/settings";
 import type { ExamCreated } from "../../types/exam";
+import SettingsModal from "../SettingsModal";
 
 interface Props {
   onUploaded: (exam: ExamCreated) => void;
 }
 
-/** 上传面板（§27.1）：拖拽/点击上传 + 预览 + 命名 + 插图选项。 */
+/** 上传面板（§27.1）：拖拽/点击上传 + 预览 + 命名 + 插图选项 + 识别模型选择。 */
 export default function UploadPanel({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
@@ -24,6 +41,54 @@ export default function UploadPanel({ onUploaded }: Props) {
   });
   const [uploading, setUploading] = useState(false);
   const [form] = Form.useForm();
+
+  const [models, setModels] = useState<ModelProfile[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const reloadModels = useCallback(async () => {
+    try {
+      setModels(await listModels());
+    } catch {
+      // 模型列表加载失败不阻塞上传主流程
+    }
+  }, []);
+
+  useEffect(() => {
+    void reloadModels();
+  }, [reloadModels]);
+
+  const enabledModel = models.find((m) => m.enabled);
+
+  const handleModelMenu: MenuProps["onClick"] = async ({ key }) => {
+    if (key === "manage") {
+      setSettingsOpen(true);
+      return;
+    }
+    try {
+      await enableModel(Number(key));
+      message.success("已切换识别模型");
+      void reloadModels();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "切换模型失败");
+    }
+  };
+
+  const modelMenu: MenuProps = {
+    items: [
+      ...models.map((m) => ({
+        key: String(m.id),
+        label: (
+          <Space>
+            <span>{m.name || m.model}</span>
+            {m.enabled && <CheckOutlined />}
+          </Space>
+        ),
+      })),
+      ...(models.length > 0 ? [{ type: "divider" as const }] : []),
+      { key: "manage", label: "管理模型" },
+    ],
+    onClick: handleModelMenu,
+  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -87,14 +152,31 @@ export default function UploadPanel({ onUploaded }: Props) {
           <Radio value={true}>包含插图（识别题目和插图）</Radio>
         </Radio.Group>
       </Form.Item>
-      <Button
-        type="primary"
-        loading={uploading}
-        disabled={!file}
-        onClick={handleUpload}
-      >
-        上传并开始识别
-      </Button>
+      <Space wrap>
+        <Button
+          type="primary"
+          loading={uploading}
+          disabled={!file}
+          onClick={handleUpload}
+        >
+          上传并开始识别
+        </Button>
+        <Dropdown menu={modelMenu} trigger={["click"]} placement="topLeft">
+          <Button>
+            {enabledModel
+              ? enabledModel.name || enabledModel.model
+              : "选择模型"}
+            <DownOutlined style={{ fontSize: 11, marginLeft: 4 }} />
+          </Button>
+        </Dropdown>
+      </Space>
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => {
+          setSettingsOpen(false);
+          void reloadModels();
+        }}
+      />
     </Form>
   );
 }
