@@ -137,3 +137,90 @@
   height: 72rpx;
   font-size: 28rpx;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .filter-row {
+    gap: 7px;
+    margin-bottom: 4px;
+  }
+
+  .filter-tag {
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+
+  .wrow {
+    padding: 10px 0;
+  }
+
+  .whead {
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .wtext {
+    font-size: 13px;
+  }
+
+  .ills {
+    margin-top: 6px;
+    gap: 6px;
+  }
+
+  .ill-img {
+    border-radius: 5px;
+  }
+
+  .wactions {
+    gap: 8px;
+    margin-top: 7px;
+  }
+
+  .more {
+    padding: 12px 0;
+    font-size: 13px;
+  }
+
+  .field {
+    margin-bottom: 8px;
+  }
+
+  .label {
+    width: 75px;
+    font-size: 14px;
+  }
+
+  .picker,
+  .input {
+    padding: 6px 8px;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+
+  .dialog {
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .dialog-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .dialog-btns {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .dlg-btn {
+    border-radius: 6px;
+    line-height: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+}
+

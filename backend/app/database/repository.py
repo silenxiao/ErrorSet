@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.database.models import (
     Exam,
+    Feedback,
     Illustration,
+    ModelProfile,
     Question,
     RecognitionTask,
     User,
@@ -387,3 +389,157 @@ def set_wrong_question_sort_order(
     db.commit()
     db.refresh(row)
     return row
+
+
+# ---------------------------------------------------------------------------
+# Feedback（留言板）
+# ---------------------------------------------------------------------------
+
+
+def create_feedback(db: Session, *, user_id: int, content: str) -> Feedback:
+    row = Feedback(user_id=user_id, content=content)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def list_feedbacks(db: Session, user_id: int) -> list[Feedback]:
+    stmt = (
+        select(Feedback)
+        .where(Feedback.user_id == user_id)
+        .order_by(Feedback.created_at.desc())
+    )
+    return list(db.scalars(stmt))
+
+
+# ---------------------------------------------------------------------------
+# Admin（管理后台，跨用户查询）
+# ---------------------------------------------------------------------------
+
+
+def count_stats(db: Session) -> dict[str, int]:
+    return {
+        "users": db.scalar(select(func.count(User.id))) or 0,
+        "exams": db.scalar(select(func.count(Exam.id))) or 0,
+        "questions": db.scalar(select(func.count(Question.id))) or 0,
+        "wrong_questions": db.scalar(select(func.count(WrongQuestion.id))) or 0,
+    }
+
+
+def user_data_counts(db: Session, user_id: int) -> tuple[int, int]:
+    """单个用户的试卷数与错题数。"""
+    exam_count = (
+        db.scalar(select(func.count(Exam.id)).where(Exam.user_id == user_id)) or 0
+    )
+    wrong_count = (
+        db.scalar(
+            select(func.count(WrongQuestion.id)).where(
+                WrongQuestion.user_id == user_id
+            )
+        )
+        or 0
+    )
+    return exam_count, wrong_count
+
+
+def list_users_with_counts(db: Session) -> list[dict]:
+    """全部用户及各自试卷/错题数量，按注册先后排序。"""
+    exam_counts = dict(
+        db.execute(
+            select(Exam.user_id, func.count(Exam.id)).group_by(Exam.user_id)
+        ).all()
+    )
+    wrong_counts = dict(
+        db.execute(
+            select(WrongQuestion.user_id, func.count(WrongQuestion.id)).group_by(
+                WrongQuestion.user_id
+            )
+        ).all()
+    )
+    return [
+        {
+            "user": user,
+            "exam_count": exam_counts.get(user.id, 0),
+            "wrong_question_count": wrong_counts.get(user.id, 0),
+        }
+        for user in db.scalars(select(User).order_by(User.id.asc()))
+    ]
+
+
+def update_user_password(db: Session, user: User, password_hash: str) -> User:
+    user.password_hash = password_hash
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def set_user_admin(db: Session, user: User, is_admin: bool) -> User:
+    user.is_admin = is_admin
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def delete_user(db: Session, user: User) -> None:
+    """删除用户及其模型配置；试卷/错题由服务层先逐卷清理文件后删除。"""
+    db.execute(delete(ModelProfile).where(ModelProfile.user_id == user.id))
+    db.delete(user)
+    db.commit()
+
+
+def list_all_exams(db: Session) -> list[dict]:
+    """跨用户试卷列表，附所属用户名与题目数。"""
+    question_count = (
+        select(func.count(Question.id))
+        .where(Question.exam_id == Exam.id)
+        .scalar_subquery()
+    )
+    rows = db.execute(
+        select(Exam, User.username, question_count)
+        .join(User, Exam.user_id == User.id)
+        .order_by(Exam.created_at.desc())
+    ).all()
+    return [
+        {"exam": row[0], "username": row[1], "question_count": row[2] or 0}
+        for row in rows
+    ]
+
+
+def list_all_wrong_questions(db: Session) -> list[dict]:
+    """跨用户错题列表，附所属用户名、来源试卷名与题干。"""
+    rows = db.execute(
+        select(WrongQuestion, User.username, Exam.name, Question.text)
+        .join(User, WrongQuestion.user_id == User.id)
+        .join(Exam, WrongQuestion.exam_id == Exam.id)
+        .join(Question, WrongQuestion.question_id == Question.id)
+        .order_by(WrongQuestion.created_at.desc())
+    ).all()
+    return [
+        {
+            "wrong_question": row[0],
+            "username": row[1],
+            "exam_name": row[2],
+            "question_text": row[3],
+        }
+        for row in rows
+    ]
+
+
+def list_all_feedbacks(db: Session) -> list[dict]:
+    """跨用户留言列表，附所属用户名。"""
+    rows = db.execute(
+        select(Feedback, User.username)
+        .join(User, Feedback.user_id == User.id)
+        .order_by(Feedback.created_at.desc())
+    ).all()
+    return [{"feedback": row[0], "username": row[1]} for row in rows]
+
+
+def get_feedback(db: Session, feedback_id: int) -> Feedback | None:
+    return db.get(Feedback, feedback_id)
+
+
+def delete_feedback(db: Session, row: Feedback) -> None:
+    db.delete(row)
+    db.commit()

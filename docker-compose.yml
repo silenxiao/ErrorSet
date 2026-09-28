@@ -1,0 +1,43 @@
+services:
+  backend:
+    build: ./backend
+    container_name: errorset-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # 数据统一落在挂载目录 /data（宿主机 ./data），覆盖 .env 中的相对路径
+      DATABASE_URL: sqlite:////data/app.db
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/docs', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # 调试时如需从宿主机直连后端，取消下面注释
+    # ports:
+    #   - "127.0.0.1:8000:8000"
+
+  web:
+    build: ./frontend
+    container_name: errorset-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  admin:
+    build: ./admin
+    container_name: errorset-admin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      backend:
+        condition: service_healthy

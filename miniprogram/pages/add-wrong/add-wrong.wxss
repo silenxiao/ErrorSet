@@ -140,3 +140,97 @@
   width: 220rpx;
   margin: 0;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .page {
+    max-width: 740px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 16px 16px 24px;
+  }
+
+  .section {
+    margin-bottom: 18px;
+  }
+
+  .label-row {
+    margin-bottom: 8px;
+  }
+
+  .req {
+    font-size: 15px;
+    margin-right: 3px;
+  }
+
+  .label {
+    font-size: 15px;
+  }
+
+  .select-box {
+    border-radius: 8px;
+    padding: 11px 13px;
+  }
+
+  .select-value {
+    font-size: 15px;
+  }
+
+  .arrow {
+    font-size: 15px;
+  }
+
+  .ans-box {
+    border-radius: 8px;
+    padding: 12px 34px 12px 12px;
+    min-height: 80px;
+  }
+
+  .edit-icon {
+    top: 10px;
+    right: 11px;
+    font-size: 16px;
+    padding: 4px;
+  }
+
+  .preview-area {
+    min-height: 60px;
+  }
+
+  .ph {
+    font-size: 14px;
+  }
+
+  .box-textarea {
+    min-height: 60px;
+    font-size: 14px;
+  }
+
+  .box-textarea.tall {
+    min-height: 160px;
+  }
+
+  .box-textarea.note {
+    border-radius: 8px;
+    padding: 12px;
+    height: 80px;
+  }
+
+  .ai-btn {
+    width: 110px;
+    margin: 0 0 18px;
+    padding: 9px 0;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .footer {
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .btn-sm {
+    width: 110px;
+  }
+}
+

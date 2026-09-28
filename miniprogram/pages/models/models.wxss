@@ -162,3 +162,114 @@
 .form-btns button {
   flex: 1;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .page {
+    max-width: 740px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 12px 10px 24px;
+  }
+
+  .toolbar {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .btn-sm {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .err-box {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  .err-msg {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .empty {
+    padding: 40px 0;
+  }
+
+  .empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+  }
+
+  .model-card {
+    gap: 10px;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+
+  .model-title-row {
+    gap: 4px;
+  }
+
+  .model-name {
+    font-size: 15px;
+  }
+
+  .model-sub {
+    margin-top: 3px;
+  }
+
+  .model-actions {
+    gap: 4px;
+  }
+
+  .form-card {
+    border-radius: 10px;
+    padding: 16px 12px;
+    margin-top: 16px;
+  }
+
+  .form-title {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .label {
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .input {
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .select-box {
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .select-value,
+  .select-placeholder {
+    font-size: 15px;
+  }
+
+  .arrow {
+    font-size: 18px;
+  }
+
+  .form-btns {
+    gap: 10px;
+    margin-top: 4px;
+  }
+}
+

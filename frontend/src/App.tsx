@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { getToken } from "./api/auth";
+import FeedbackPage from "./pages/Feedback";
 import LoginPage from "./pages/Login";
 import MinePage from "./pages/Mine";
 import QuestionBankPage from "./pages/QuestionBank";
@@ -117,6 +118,7 @@ function MainLayout() {
           <Route path="/exams/:examId" element={<RecognitionPage />} />
           <Route path="/wrong-questions" element={<QuestionBankPage />} />
           <Route path="/mine" element={<MinePage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Content>

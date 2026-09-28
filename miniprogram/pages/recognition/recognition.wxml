@@ -10,6 +10,7 @@
 </view>
 
 <block wx:if="{{exam}}">
+  <view class="recog-body">
   <view class="card exam-card">
     <view class="exam-accent" style="background:{{statusColor}};"></view>
     <view class="exam-main">
@@ -56,6 +57,7 @@
       bind:addwrong="onAddWrong"
       bind:reset="onReset"
     />
+  </view>
   </view>
 </block>
 

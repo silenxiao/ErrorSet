@@ -1,0 +1,31 @@
+<view class="page">
+
+  <!-- 提交留言 -->
+  <view class="card">
+    <view class="section">
+      <view class="label-row">
+        <text class="label">留言内容</text>
+        <text class="count">{{content.length}}/{{maxLen}}</text>
+      </view>
+      <textarea
+        class="box-textarea"
+        value="{{content}}"
+        placeholder="有问题或建议请留言，我们会认真查看每一条反馈"
+        placeholder-class="ph"
+        bindinput="onContent"
+        maxlength="{{maxLen}}"
+      ></textarea>
+    </view>
+    <button class="btn-primary btn-block" hover-class="none" loading="{{saving}}" bindtap="save">提交留言</button>
+  </view>
+
+  <!-- 我的留言历史 -->
+  <view class="card" wx:if="{{list.length}}">
+    <view class="card-title">我的留言</view>
+    <view class="fb-item" wx:for="{{list}}" wx:key="id">
+      <view class="fb-content">{{item.content}}</view>
+      <view class="fb-time muted">{{item.createdAtText}}</view>
+    </view>
+  </view>
+
+</view>

@@ -125,6 +125,12 @@ const api = {
   deleteModel: (id) =>
     request(`/api/v1/settings/models/${id}`, { method: 'DELETE' }),
 
+  // 留言板
+  createFeedback: (content) =>
+    request('/api/v1/feedback', { method: 'POST', data: { content } }),
+
+  listMyFeedback: () => request('/api/v1/feedback/mine'),
+
   illustrationImageUrl: (id) => absUrl(`/api/v1/illustrations/${id}/image`),
 };
 

@@ -68,3 +68,51 @@
   font-size: 40rpx;
   line-height: 1;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .user-card {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 24px 16px 16px;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+    margin-right: 12px;
+  }
+
+  .user-info .username {
+    font-size: 17px;
+  }
+
+  .user-info .muted {
+    margin-top: 2px;
+  }
+
+  .menu {
+    padding: 0 12px;
+  }
+
+  .menu-item {
+    padding: 14px 0;
+  }
+
+  .menu-icon {
+    font-size: 18px;
+    margin-right: 10px;
+  }
+
+  .menu-title {
+    font-size: 15px;
+  }
+
+  .menu-arrow {
+    font-size: 20px;
+  }
+}
+

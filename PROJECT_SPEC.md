@@ -2303,6 +2303,7 @@ Local
 | AI | Third-party Vision API |
 | Testing | pytest / Vitest |
 | Task | FastAPI BackgroundTasks |
+| Mobile（Android/iOS） | React Native + Expo（TypeScript + expo-router），见 mobile/README.md |
 
 ---
 
@@ -2444,3 +2445,37 @@ AI 识别
 ```
 
 这套架构在 MVP 阶段保持简单，同时为后续扩展保留足够的接口和数据结构。
+
+---
+
+# 46. 管理后台
+
+独立管理前端应用（`admin/` 目录，React 18 + TypeScript + Vite + Ant Design，dev 端口 5174，代理 `/api`、`/files` 到后端 8000），仅管理员账号可登录。
+
+## 46.1 管理员身份
+
+- `user` 表增加 `is_admin`（布尔，默认 False），存量库由 `_sqlite_lightweight_migrations()` 自动补列。
+- 种子用户 `xiaohui` 在启动时被幂等地设为管理员（`_seed_default_user`）。
+- 鉴权依赖 `get_admin_user`（`app/api/deps.py`）：复用 `get_current_user` 后校验 `is_admin`，非管理员返回 403（`ForbiddenError`）。
+- `UserOut` 含 `isAdmin`，登录与 `/auth/me` 响应均返回，供前端判断。
+
+## 46.2 管理接口（/api/v1/admin，全部要求管理员）
+
+```http
+GET    /api/v1/admin/stats                     # 用户/试卷/题目/错题总数
+GET    /api/v1/admin/users                     # 用户列表（含试卷数、错题数）
+PATCH  /api/v1/admin/users/{user_id}           # 重置密码 / 设·撤管理员（禁止撤销自己的管理员）
+DELETE /api/v1/admin/users/{user_id}           # 级联删除用户（逐卷清理图片与关联数据；禁止删除自己）
+GET    /api/v1/admin/exams                     # 跨用户试卷列表（所属用户、题目数）
+DELETE /api/v1/admin/exams/{exam_id}           # 删除任意试卷（复用 delete_exam_and_files）
+GET    /api/v1/admin/wrong-questions           # 跨用户错题列表（所属用户、来源试卷、题干）
+DELETE /api/v1/admin/wrong-questions/{id}      # 删除任意错题
+```
+
+## 46.3 管理页面
+
+- 登录页：登录后校验 `isAdmin`，非管理员提示无权限；路由守卫 `RequireAdmin` 每次加载实时校验。
+- 概览：用户/试卷/题目/错题总数卡片 + 最近注册用户表。
+- 用户：表格展示试卷/错题数量；管理员 Switch（自己禁用）、重置密码弹窗、删除二次确认（自己禁用）。
+- 试卷：跨用户列表，状态标签、查看原图（/files）、删除二次确认。
+- 错题：跨用户列表，科目、题干摘要、错因、来源试卷、查看快照、删除二次确认。

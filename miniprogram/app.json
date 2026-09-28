@@ -7,7 +7,8 @@
     "pages/add-wrong/add-wrong",
     "pages/login/login",
     "pages/mine/mine",
-    "pages/models/models"
+    "pages/models/models",
+    "pages/feedback/feedback"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1677ff",
@@ -42,5 +43,6 @@
     ]
   },
   "style": "v2",
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "resizable": true
 }

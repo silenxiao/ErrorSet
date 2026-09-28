@@ -87,6 +87,60 @@
   font-size: 26rpx;
 }
 
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .card {
+    padding-bottom: 40px;
+  }
+
+  .sec {
+    gap: 5px;
+    font-size: 14px;
+    margin: 12px 0 5px;
+  }
+
+  .sec::before {
+    width: 3px;
+    height: 13px;
+    border-radius: 2px;
+  }
+
+  .answer {
+    font-size: 14px;
+    border-radius: 6px;
+    padding: 8px;
+  }
+
+  .ills {
+    margin-top: 6px;
+    gap: 6px;
+  }
+
+  .ill-img {
+    border-radius: 5px;
+  }
+
+  .mark-row {
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .mark-btn {
+    font-size: 14px;
+  }
+
+  .del-link {
+    border-radius: 6px;
+    padding: 4px 14px;
+    font-size: 13px;
+  }
+
+  .mark-count {
+    font-size: 13px;
+  }
+}
+
+
 .field {
   display: flex;
   align-items: center;

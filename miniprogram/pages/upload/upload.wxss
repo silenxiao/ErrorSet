@@ -104,3 +104,69 @@
   display: flex;
   gap: 16rpx;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .uploader {
+    padding: 24px 10px;
+    border-radius: 8px;
+  }
+
+  .plus {
+    font-size: 32px;
+  }
+
+  .uploader .muted {
+    margin-top: 6px;
+  }
+
+  .preview-img {
+    border-radius: 8px;
+  }
+
+  .preview .text-btn {
+    top: 6px;
+    right: 6px;
+    padding: 2px 8px;
+    border-radius: 5px;
+  }
+
+  .field {
+    margin-top: 12px;
+  }
+
+  .label {
+    width: 75px;
+    font-size: 14px;
+  }
+
+  .input,
+  .picker {
+    padding: 6px 8px;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+
+  .submit {
+    margin-top: 16px;
+    border-radius: 8px;
+  }
+
+  .exam-row {
+    padding: 10px 0;
+  }
+
+  .exam-name {
+    font-size: 14px;
+    margin-bottom: 3px;
+  }
+
+  .exam-side {
+    gap: 5px;
+  }
+
+  .exam-btns {
+    gap: 8px;
+  }
+}
+

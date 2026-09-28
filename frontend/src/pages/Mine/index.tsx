@@ -1,4 +1,9 @@
-import { LogoutOutlined, RightOutlined, SettingOutlined } from "@ant-design/icons";
+import {
+  LogoutOutlined,
+  MessageOutlined,
+  RightOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import { Button, Card, Modal, message } from "antd";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -84,6 +89,28 @@ export default function MinePage() {
             <div style={{ fontSize: 15, color: "#1f2329" }}>模型管理</div>
             <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
               配置识别使用的 AI 模型
+            </div>
+          </div>
+          <RightOutlined style={{ color: "#a9aeb8", fontSize: 12 }} />
+        </div>
+        <div
+          onClick={() => navigate("/feedback")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "16px 16px",
+            cursor: "pointer",
+            borderBottom: "1px solid #f0f0f0",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9f9")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+        >
+          <MessageOutlined style={{ fontSize: 18, color: "#1677ff" }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, color: "#1f2329" }}>留言板</div>
+            <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
+              有问题或建议向我们留言
             </div>
           </div>
           <RightOutlined style={{ color: "#a9aeb8", fontSize: 12 }} />

@@ -1,10 +1,11 @@
 .login-page {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  /* 卡片靠上放置：输入用户名时键盘不会盖住密码框和登录按钮 */
+  align-items: flex-start;
   justify-content: center;
   background: linear-gradient(135deg, #10265c 0%, #1677ff 100%);
-  padding: 40rpx;
+  padding: 120rpx 40rpx 60rpx;
 }
 
 .login-card {
@@ -53,3 +54,45 @@
   color: #1677ff;
   font-size: 26rpx;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .login-page {
+    padding: 48px 20px 24px;
+  }
+
+  .login-card {
+    max-width: 320px;
+    border-radius: 12px;
+    padding: 30px 24px;
+  }
+
+  .login-title {
+    font-size: 20px;
+  }
+
+  .login-subtitle {
+    font-size: 13px;
+    margin: 8px 0 24px;
+  }
+
+  .login-input {
+    height: 44px;
+    border-radius: 8px;
+    padding: 0 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  .login-btn {
+    margin-top: 8px;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  .login-switch {
+    margin-top: 16px;
+    font-size: 13px;
+  }
+}
+

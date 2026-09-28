@@ -14,6 +14,10 @@ Page({
     wx.navigateTo({ url: '/pages/models/models' });
   },
 
+  openFeedback() {
+    wx.navigateTo({ url: '/pages/feedback/feedback' });
+  },
+
   logout() {
     wx.showModal({
       title: '退出登录',

@@ -199,3 +199,155 @@
   margin-bottom: 12rpx;
   border: 1rpx solid #f0f0f0;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .exam-accent {
+    width: 4px;
+    border-radius: 10px 0 0 10px;
+  }
+
+  .exam-main {
+    padding: 12px;
+  }
+
+  .exam-head {
+    gap: 8px;
+  }
+
+  .exam-title {
+    font-size: 16px;
+  }
+
+  .status-pill {
+    padding: 2px 9px;
+    font-size: 12px;
+  }
+
+  .exam-meta {
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .bar {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .bar-btn {
+    font-size: 13px;
+    border-radius: 6px;
+    padding: 0 14px;
+    line-height: 32px;
+    height: 32px;
+  }
+
+  .title-row .count {
+    font-size: 12px;
+  }
+
+  .tip {
+    margin: 4px 0 8px;
+  }
+
+  .field {
+    margin-top: 10px;
+  }
+
+  .label {
+    width: 80px;
+    font-size: 14px;
+  }
+
+  .field-col {
+    margin-top: 10px;
+  }
+
+  .textarea {
+    margin-top: 5px;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    height: 70px;
+  }
+
+  .dialog {
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    padding: 16px;
+    border-radius: 10px;
+  }
+
+  .dialog-title {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+
+  .dialog-btns {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .dlg-btn {
+    border-radius: 6px;
+    line-height: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .edit-dialog {
+    width: 480px;
+    max-width: calc(100vw - 32px);
+  }
+
+  .edit-textarea {
+    padding-bottom: 26px;
+  }
+
+  .edit-label {
+    font-size: 12px;
+    margin: 10px 0 4px;
+  }
+
+  .edit-preview {
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .edit-ill {
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+}
+
+/* 横屏 / 宽窗口（≥900px）：试卷框图与题目列表左右分栏 */
+@media (min-width: 900px) {
+  .recog-body {
+    display: grid;
+    grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+    gap: 10px;
+    align-items: start;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .recog-body .card {
+    margin: 0;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .recog-body .exam-card {
+    grid-column: 1 / -1;
+  }
+
+  .edit-dialog {
+    width: 760px;
+    max-width: calc(100vw - 48px);
+  }
+}
+

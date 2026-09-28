@@ -15,6 +15,14 @@
     </view>
     <text class="menu-arrow">›</text>
   </view>
+  <view class="menu-item" hover-class="menu-item-hover" bindtap="openFeedback">
+    <text class="menu-icon">📝</text>
+    <view class="menu-main">
+      <view class="menu-title">留言板</view>
+      <view class="muted">有问题或建议向我们留言</view>
+    </view>
+    <text class="menu-arrow">›</text>
+  </view>
 </view>
 
 <view class="card">

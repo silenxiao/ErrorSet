@@ -14,12 +14,16 @@
 ## 目录结构
 
 ```text
-frontend/   Web 前端
-backend/    FastAPI 后端
-tests/      测试（backend / frontend）
+frontend/     Web 前端
+backend/      FastAPI 后端
+admin/        管理后台前端
+miniprogram/  微信小程序
+mobile/       App（React Native + Expo）
+deploy/       部署脚本（setup_server.sh / backup.sh）
+tests/        测试（backend / frontend）
 ```
 
-## 快速开始
+## 快速开始（本地开发）
 
 ### 后端
 
@@ -44,6 +48,18 @@ npm run dev
 ```
 
 前端默认运行在 http://localhost:5173 ，`/api` 请求代理到后端 8000 端口。
+
+## 部署
+
+生产环境使用 Docker Compose 一键部署（后端 + Web 前端 + 管理后台三个容器，
+nginx 同源反代），并附微信小程序 / App 的发布流程：
+
+```bash
+# 服务器上，仓库根目录执行
+bash deploy/setup_server.sh
+```
+
+详见 [DEPLOY.md](./DEPLOY.md)。
 
 ## 测试
 

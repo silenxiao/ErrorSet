@@ -140,3 +140,75 @@ button::after {
   line-height: 1.5;
   margin-bottom: 12rpx;
 }
+
+/* ===== Pad / 大屏适配 =====
+   手机端锁竖屏不会命中以下查询；窗口宽度 ≥ 500px（iPad/安卓平板/PC/分屏）生效。
+   rpx 以窗口宽度为 750 等分，大屏上会等比放大 2~3 倍，因此统一改用 px
+   （数值 ≈ rpx/2，即还原手机设计稿尺寸），并将卡片限宽居中。 */
+@media (min-width: 500px) {
+  page {
+    font-size: 14px;
+  }
+
+  .card {
+    max-width: 720px;
+    margin: 10px auto;
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-title {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+
+  .muted {
+    font-size: 12px;
+  }
+
+  .tag {
+    padding: 1px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+
+  button {
+    font-size: 15px;
+  }
+
+  .btn-primary,
+  .btn-ghost,
+  .btn-danger {
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  .btn-ghost {
+    border: 1px solid #e2e5ea;
+  }
+
+  .text-btn {
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 5px;
+  }
+
+  .err-box {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .err-msg {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .err-hint {
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+}

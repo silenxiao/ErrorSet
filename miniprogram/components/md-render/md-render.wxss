@@ -6,3 +6,11 @@
   color: #1f2329;
   word-break: break-word;
 }
+
+/* Pad / 大屏：字号改用固定 px（内部 rich-text 本就是 px 内联样式，仅兜底字号需覆盖） */
+@media (min-width: 500px) {
+  .md {
+    font-size: 14px;
+  }
+}
+

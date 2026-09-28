@@ -37,6 +37,13 @@ class AuthError(AppError):
     detail = "未登录或登录已过期"
 
 
+class ForbiddenError(AppError):
+    """已登录但无权执行该操作（如非管理员访问管理接口）。"""
+
+    status_code = 403
+    detail = "没有权限执行该操作"
+
+
 class ProviderError(AppError):
     """Vision API 调用失败。"""
 

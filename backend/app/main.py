@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import questions, recognition, upload
+from app.api import admin as admin_api
+from app.api import feedback as feedback_api
 from app.api import settings as settings_api
 from app.api import auth
 from app.core.config import get_settings
@@ -60,7 +62,9 @@ def create_app() -> FastAPI:
     app.include_router(upload.router)
     app.include_router(recognition.router)
     app.include_router(questions.router)
+    app.include_router(feedback_api.router)
     app.include_router(settings_api.router)
+    app.include_router(admin_api.router)
     # 试卷/裁剪/错题图片静态服务（§33：数据库只存路径）
     app.mount(
         "/files",

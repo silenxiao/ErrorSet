@@ -46,6 +46,7 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE exam ADD COLUMN user_id INTEGER",
         "ALTER TABLE wrong_question ADD COLUMN user_id INTEGER",
         "ALTER TABLE model_profile ADD COLUMN user_id INTEGER",
+        "ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0",
     ]
     with engine.begin() as conn:
         for sql in statements:
@@ -68,10 +69,15 @@ def _seed_default_user() -> None:
     with SessionLocal() as db:
         owner = db.scalars(select(User).where(User.username == "xiaohui")).first()
         if owner is None:
-            owner = User(username="xiaohui", password_hash=hash_password("123456"))
+            owner = User(
+                username="xiaohui", password_hash=hash_password("123456"), is_admin=True
+            )
             db.add(owner)
             db.commit()
             db.refresh(owner)
+        elif not owner.is_admin:
+            owner.is_admin = True
+            db.commit()
 
         changed = False
         for model in (Exam, WrongQuestion, ModelProfile):

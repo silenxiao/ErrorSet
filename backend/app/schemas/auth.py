@@ -18,6 +18,7 @@ class CredentialsIn(CamelModel):
 class UserOut(CamelModel):
     id: int
     username: str
+    is_admin: bool = False
     created_at: datetime
 
 

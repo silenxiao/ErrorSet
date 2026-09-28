@@ -112,3 +112,55 @@
 .act-btn.primary:active {
   background: #e0ecff;
 }
+
+/* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
+@media (min-width: 500px) {
+  .tree {
+    gap: 8px;
+  }
+
+  .empty {
+    padding: 20px 0;
+    font-size: 13px;
+  }
+
+  .qitem {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .qbadge {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .qhead {
+    gap: 4px;
+    margin-bottom: 5px;
+  }
+
+  .qtext {
+    font-size: 14px;
+  }
+
+  .qactions {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .qacts-l {
+    gap: 6px;
+  }
+
+  .edit-hint {
+    font-size: 11px;
+  }
+
+  .act-btn {
+    font-size: 12px;
+    padding: 5px 11px;
+  }
+}
+
