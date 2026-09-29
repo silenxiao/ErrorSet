@@ -15,6 +15,7 @@ import {
 
 import { confirmExam, reRecognizeExam } from "../../api/exam";
 import ImageViewer from "../../components/ImageViewer";
+import ModelSelector from "../../components/ModelSelector";
 import QuestionList from "../../components/QuestionList";
 import { useRecognition } from "../../hooks/useRecognition";
 import type { ExamStatus } from "../../types/exam";
@@ -124,6 +125,18 @@ export default function RecognitionPage({
           onSelect={setSelectedId}
           onUpdated={() => void refresh()}
         />
+        {exam.status === "failed" && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginTop: 12 }}
+            message="识别失败"
+            description={
+              exam.errorMessage ||
+              "模型调用失败（可能为超时、网络错误或 API 异常），可点击右上角「重新识别」重试。"
+            }
+          />
+        )}
       </Card>
       <Card
         title="题目列表"
@@ -156,10 +169,17 @@ export default function RecognitionPage({
       <Modal
         title="重新识别"
         open={rerecogOpen}
-        onOk={() => void handleRerecognize()}
         onCancel={() => setRerecogOpen(false)}
-        okText="开始识别"
-        okButtonProps={{ danger: true }}
+        // 自定义底部：开始识别后放模型选择，与上传页"上传并开始识别 + 模型"布局一致
+        footer={
+          <Space>
+            <Button onClick={() => setRerecogOpen(false)}>取消</Button>
+            <Button danger type="primary" loading={acting} onClick={() => void handleRerecognize()}>
+              开始识别
+            </Button>
+            <ModelSelector />
+          </Space>
+        }
       >
         <p>将清除当前识别结果并重新识别整张试卷。</p>
         <Radio.Group

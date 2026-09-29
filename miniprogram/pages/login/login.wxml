@@ -24,6 +24,18 @@
       value="{{confirmPassword}}"
       bindinput="onConfirmInput"
     />
+    <picker
+      wx:if="{{mode === 'register'}}"
+      mode="selector"
+      range="{{gradeOptions}}"
+      value="{{gradeIndex}}"
+      bindchange="onGrade"
+    >
+      <view class="login-input grade-picker">
+        <text>孩子所在年级：{{gradeOptions[gradeIndex]}}</text>
+        <text class="grade-arrow">⌄</text>
+      </view>
+    </picker>
 
     <button class="login-btn" loading="{{loading}}" bindtap="submit">
       {{mode === 'login' ? '登录' : '注册'}}

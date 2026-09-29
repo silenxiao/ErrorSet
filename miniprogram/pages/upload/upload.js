@@ -12,7 +12,13 @@ Page({
     error: '',
     backendBase: '',
     gradeOptions: GRADE_OPTIONS,
-    gradeIndex: 0,
+    // 默认年级：上次手动选择 > 注册时选择的年级 > 一年级
+    gradeIndex: Math.max(
+      0,
+      GRADE_OPTIONS.indexOf(
+        wx.getStorageSync('lastExamGrade') || wx.getStorageSync('errorset_grade') || GRADE_OPTIONS[0]
+      )
+    ),
     previewImage: '',
     name: '',
     includeIllustrations: false,
@@ -149,7 +155,9 @@ Page({
   },
 
   onGrade(e) {
-    this.setData({ gradeIndex: e.detail.value });
+    const gradeIndex = Number(e.detail.value);
+    this.setData({ gradeIndex });
+    wx.setStorageSync('lastExamGrade', GRADE_OPTIONS[gradeIndex]);
   },
 
   onInclude(e) {

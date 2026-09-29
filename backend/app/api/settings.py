@@ -17,7 +17,9 @@ router = APIRouter(tags=["settings"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-def _to_out(row) -> ModelProfileOut:
+def _to_out(db: Session, row, user_id: int) -> ModelProfileOut:
+    # active_model_id 需实时读库：create/enable 刚更新过它，依赖注入的 user
+    # 对象是请求开始时取的，持有的是旧值
     return ModelProfileOut(
         id=row.id,
         name=row.name,
@@ -25,14 +27,15 @@ def _to_out(row) -> ModelProfileOut:
         base_url=row.base_url,
         model=row.model,
         has_api_key=bool(row.api_key),
-        enabled=row.enabled,
+        enabled=settings_service.get_active_model_id(db, user_id) == row.id,
+        scope="system" if row.is_system else "private",
     )
 
 
 @router.get("/api/v1/settings/models", response_model=list[ModelProfileOut])
 def list_models(db: DbSession, user: CurrentUser) -> list[ModelProfileOut]:
     """当前用户的模型列表（启用的排最前）。API Key 不回传。"""
-    return [_to_out(row) for row in settings_service.list_model_profiles(db, user.id)]
+    return [_to_out(db, row, user.id) for row in settings_service.list_model_profiles(db, user.id)]
 
 
 @router.post("/api/v1/settings/models", response_model=ModelProfileOut)
@@ -48,7 +51,7 @@ def create_model(payload: ModelProfileCreate, db: DbSession, user: CurrentUser) 
         api_key=payload.api_key,
         enabled=payload.enabled,
     )
-    return _to_out(row)
+    return _to_out(db, row, user.id)
 
 
 @router.put("/api/v1/settings/models/{profile_id}", response_model=ModelProfileOut)
@@ -66,13 +69,20 @@ def update_model(
         model=payload.model,
         api_key=payload.api_key,
     )
-    return _to_out(row)
+    return _to_out(db, row, user.id)
 
 
 @router.put("/api/v1/settings/models/{profile_id}/enable", response_model=ModelProfileOut)
 def enable_model(profile_id: int, db: DbSession, user: CurrentUser) -> ModelProfileOut:
     """启用指定模型（独占，其余停用），下一次识别立即生效。"""
-    return _to_out(settings_service.enable_model_profile(db, profile_id, user.id))
+    return _to_out(db, settings_service.enable_model_profile(db, profile_id, user.id), user.id)
+
+
+@router.post("/api/v1/settings/models/{profile_id}/test", response_model=dict)
+async def test_model(profile_id: int, db: DbSession, user: CurrentUser) -> dict:
+    """向该模型发一次最小识别请求，检验配置是否可用。自有模型或已开放的系统模型可测。"""
+    row = settings_service._get_enableable_profile(db, profile_id, user.id)
+    return await settings_service.test_model_profile(row)
 
 
 @router.delete("/api/v1/settings/models/{profile_id}", response_model=dict)

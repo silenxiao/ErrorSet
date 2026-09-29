@@ -14,8 +14,8 @@ function login(username, password) {
   return request('/api/v1/auth/login', { method: 'POST', data: { username, password } });
 }
 
-function register(username, password) {
-  return request('/api/v1/auth/register', { method: 'POST', data: { username, password } });
+function register(username, password, grade) {
+  return request('/api/v1/auth/register', { method: 'POST', data: { username, password, grade } });
 }
 
 // 登录/注册成功后统一保存登录态
@@ -23,12 +23,14 @@ function saveSession(data) {
   if (data && data.token) {
     wx.setStorageSync('errorset_token', data.token);
     wx.setStorageSync('errorset_username', data.user ? data.user.username : '');
+    wx.setStorageSync('errorset_grade', data.user ? data.user.grade || '一年级' : '一年级');
   }
 }
 
 function logout() {
   wx.removeStorageSync('errorset_token');
   wx.removeStorageSync('errorset_username');
+  wx.removeStorageSync('errorset_grade');
   wx.reLaunch({ url: '/pages/login/login' });
 }
 
@@ -44,6 +46,11 @@ const api = {
   // 账号登录
   login: login,
   register: register,
+
+  // 当前用户信息与年级修改（「我的」页）
+  getMe: () => request('/api/v1/auth/me'),
+  updateGrade: (grade) =>
+    request('/api/v1/auth/me', { method: 'PUT', data: { grade } }),
   saveSession: saveSession,
   logout: logout,
 

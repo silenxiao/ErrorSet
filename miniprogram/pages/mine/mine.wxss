@@ -116,3 +116,8 @@
   }
 }
 
+
+.grade-value {
+  font-size: 28rpx;
+  color: #1677ff;
+}

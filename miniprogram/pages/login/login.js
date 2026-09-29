@@ -1,9 +1,12 @@
 const api = require('../../utils/api');
+const { GRADE_OPTIONS } = require('../../utils/format');
 
 Page({
   data: {
     mode: 'login', // login | register
     loading: false,
+    gradeOptions: GRADE_OPTIONS,
+    gradeIndex: 0,
   },
 
   switchMode() {
@@ -11,6 +14,10 @@ Page({
       mode: this.data.mode === 'login' ? 'register' : 'login',
       confirmPassword: '',
     });
+  },
+
+  onGrade(e) {
+    this.setData({ gradeIndex: Number(e.detail.value) });
   },
 
   onUsernameInput(e) {
@@ -26,7 +33,7 @@ Page({
   },
 
   async submit() {
-    const { mode, username, password, confirmPassword } = this.data;
+    const { mode, username, password, confirmPassword, gradeOptions, gradeIndex } = this.data;
     if (!username || !username.trim()) {
       wx.showToast({ title: '请输入用户名', icon: 'none' });
       return;
@@ -44,7 +51,7 @@ Page({
       const data =
         mode === 'login'
           ? await api.login(username.trim(), password)
-          : await api.register(username.trim(), password);
+          : await api.register(username.trim(), password, gradeOptions[gradeIndex]);
       api.saveSession(data);
       wx.showToast({ title: '登录成功', icon: 'success' });
       wx.switchTab({ url: '/pages/upload/upload' });

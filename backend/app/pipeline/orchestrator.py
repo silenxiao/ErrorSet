@@ -111,7 +111,7 @@ class RecognitionPipeline:
                 logger.exception("Exam %s Global 失败: %s", exam_id, exc)
                 db.rollback()  # 清理坏状态的 Session，否则后续写入全部失败
                 self._record_failed_task(db, exam_id, "global", str(exc))
-                repo.set_exam_status(db, exam, "failed")
+                repo.set_exam_failed(db, exam, str(exc))
         finally:
             db.close()
 

@@ -5,6 +5,7 @@ import {
   LogoutOutlined,
   MessageOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { Button, Layout, Menu, Space, Typography } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -16,6 +17,7 @@ const { Header, Sider, Content } = Layout;
 const MENU_ITEMS = [
   { key: "/", icon: <DashboardOutlined />, label: "概览" },
   { key: "/users", icon: <TeamOutlined />, label: "用户" },
+  { key: "/models", icon: <ThunderboltOutlined />, label: "模型设置" },
   { key: "/exams", icon: <FileImageOutlined />, label: "试卷" },
   { key: "/wrong-questions", icon: <BookOutlined />, label: "错题" },
   { key: "/feedbacks", icon: <MessageOutlined />, label: "留言" },

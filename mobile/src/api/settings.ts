@@ -11,6 +11,8 @@ export interface ModelProfile {
   model: string;
   hasApiKey: boolean;
   enabled: boolean;
+  // system=系统模型（后台下发，只读），private=独享模型
+  scope: 'system' | 'private';
 }
 
 export interface ModelProfilePayload {

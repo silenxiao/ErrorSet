@@ -15,6 +15,8 @@ export interface AdminUserRow {
   isAdmin: boolean;
   examCount: number;
   wrongQuestionCount: number;
+  /** 累计调用系统模型的识别次数 */
+  systemModelCalls: number;
   createdAt: string;
 }
 
@@ -92,4 +94,65 @@ export function listFeedbacks(): Promise<AdminFeedbackRow[]> {
 
 export function deleteFeedback(id: number): Promise<void> {
   return request<void>(`/api/v1/admin/feedbacks/${id}`, { method: "DELETE" });
+}
+
+export interface AdminModelRow {
+  id: number;
+  name: string;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  hasApiKey: boolean;
+  enabled: boolean;
+  isSystem: boolean;
+  userId: number | null;
+  username: string | null;
+}
+
+export interface AdminModelPayload {
+  scope: "system" | "user";
+  userId?: number;
+  name: string;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+  enabled: boolean;
+}
+
+export function listSystemModels(): Promise<AdminModelRow[]> {
+  return request<AdminModelRow[]>("/api/v1/admin/models/system");
+}
+
+export function listUserModels(userId: number): Promise<AdminModelRow[]> {
+  return request<AdminModelRow[]>(`/api/v1/admin/models/user/${userId}`);
+}
+
+export function createModel(payload: AdminModelPayload): Promise<AdminModelRow> {
+  return request<AdminModelRow>("/api/v1/admin/models", jsonInit("POST", payload));
+}
+
+export function updateModel(
+  id: number,
+  payload: Omit<AdminModelPayload, "scope" | "userId" | "enabled"> & {
+    enabled?: boolean;
+  },
+): Promise<AdminModelRow> {
+  return request<AdminModelRow>(
+    `/api/v1/admin/models/${id}`,
+    jsonInit("PUT", payload),
+  );
+}
+
+export function deleteModel(id: number): Promise<void> {
+  return request<void>(`/api/v1/admin/models/${id}`, { method: "DELETE" });
+}
+
+export function testModel(
+  id: number,
+): Promise<{ ok: boolean; latencyMs?: number; error?: string }> {
+  return request<{ ok: boolean; latencyMs?: number; error?: string }>(
+    `/api/v1/admin/models/${id}/test`,
+    { method: "POST" },
+  );
 }

@@ -7,6 +7,16 @@
 </view>
 
 <view class="card menu">
+  <view class="menu-item">
+    <text class="menu-icon">📚</text>
+    <view class="menu-main">
+      <view class="menu-title">年级</view>
+      <view class="muted">首次上传试卷时默认使用该年级</view>
+    </view>
+    <picker mode="selector" range="{{gradeOptions}}" value="{{gradeIndex}}" bindchange="onGradeChange">
+      <view class="grade-value">{{grade || '选择年级'}} ⌄</view>
+    </picker>
+  </view>
   <view class="menu-item" hover-class="menu-item-hover" bindtap="openModels">
     <text class="menu-icon">⚙️</text>
     <view class="menu-main">

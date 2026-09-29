@@ -216,6 +216,8 @@ export default function ModelsPage() {
                     {m.name || m.model}
                   </Text>
                   <Tag color={C.primary}>{providerLabel(m.provider)}</Tag>
+                  {/* scope: system=系统模型（后台下发，只读），private=独享模型 */}
+                  <Tag color={m.scope === 'system' ? C.primary : C.gray}>{m.scope === 'system' ? '系统' : '独享'}</Tag>
                   {m.enabled ? <Tag color={C.green}>当前使用</Tag> : null}
                 </View>
                 <Muted style={{ marginTop: 2 }} numberOfLines={1}>
@@ -224,12 +226,14 @@ export default function ModelsPage() {
                   {m.hasApiKey ? ' · API Key 已保存' : ''}
                 </Muted>
               </View>
-              <View>
-                <TextBtn onPress={() => openEditForm(m)}>编辑</TextBtn>
-                <TextBtn danger onPress={() => del(m)}>
-                  删除
-                </TextBtn>
-              </View>
+              {m.scope !== 'system' ? (
+                <View>
+                  <TextBtn onPress={() => openEditForm(m)}>编辑</TextBtn>
+                  <TextBtn danger onPress={() => del(m)}>
+                    删除
+                  </TextBtn>
+                </View>
+              ) : null}
             </Card>
           ))}
 

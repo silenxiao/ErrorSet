@@ -37,8 +37,11 @@
     </view>
   </view>
 
-  <!-- AI 分析按钮 -->
-  <button class="ai-btn" hover-class="none" loading="{{analyzing}}" bindtap="aiAnalyze">AI 分析</button>
+  <!-- AI 分析按钮 + 识别模型选择（AI 分析用当前启用模型） -->
+  <view class="ai-row">
+    <button class="ai-btn" hover-class="none" loading="{{analyzing}}" bindtap="aiAnalyze">AI 分析</button>
+    <button class="ai-btn model-btn" hover-class="none" bindtap="chooseModel">{{modelName || '选择模型'}} ▾</button>
+  </view>
 
   <!-- AI 分析结果：仅展示（Markdown 渲染），不可编辑 -->
   <view class="section">

@@ -53,15 +53,15 @@ class RecognitionWorker:
                     await self._pipeline.run_local(job.exam_id)
                 else:
                     logger.error("未知任务阶段: %s", job.stage)
-            except Exception:
+            except Exception as exc:
                 logger.exception(
                     "任务执行异常 exam=%s stage=%s", job.exam_id, job.stage
                 )
-                self._mark_failed(job.exam_id)
+                self._mark_failed(job.exam_id, str(exc))
             finally:
                 self.queue.task_done()
 
-    def _mark_failed(self, exam_id: int) -> None:
+    def _mark_failed(self, exam_id: int, error_message: str = "") -> None:
         """兜底：pipeline 内部未能置为 failed 时（如 Session 已损坏），用新 Session 补救。"""
         from app.database import repository as repo
         from app.database.database import SessionLocal
@@ -74,7 +74,11 @@ class RecognitionWorker:
                 "global_processing",
                 "local_processing",
             ):
-                repo.set_exam_status(db, exam, "failed")
+                repo.set_exam_failed(
+                    db,
+                    exam,
+                    error_message or "识别任务异常中断，请重新识别",
+                )
         except Exception:
             logger.exception("兜底置失败也失败 exam=%s", exam_id)
         finally:

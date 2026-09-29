@@ -15,9 +15,9 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { analyzeQuestion, addWrongQuestion, getQuestion } from '@/api/question';
+import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { Question } from '@/types/question';
 import { SUBJECT_OPTIONS } from '@/utils/format';
-import { extractAnswerFromAnalysis } from '@/utils/analysis';
 import { MdRender } from '@/components/MdRender';
 import { Btn, Field, Muted, OptionPicker, Screen, SubHeader, showToast, C } from '@/components/ui';
 
@@ -36,6 +36,11 @@ export default function AddWrongPage() {
   const [note, setNote] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // 识别模型（AI 分析与识别共用启用中的模型）
+  const [models, setModels] = useState<ModelProfile[]>([]);
+  const enabledModel = models.find((m) => m.enabled);
+  const modelName = enabledModel ? enabledModel.name || enabledModel.model : '';
   // 正确答案默认以 Markdown 渲染预览，点铅笔切换为编辑
   const [editCorrect, setEditCorrect] = useState(false);
 
@@ -47,8 +52,23 @@ export default function AddWrongPage() {
         else if (subject && SUBJECT_OPTIONS.includes(subject)) setSubjectValue(subject);
       })
       .catch(() => {});
+    listModels()
+      .then(setModels)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qid]);
+
+  const switchModel = async (displayName: string) => {
+    const picked = models.find((m) => (m.name || m.model) === displayName);
+    if (!picked || picked.enabled) return;
+    try {
+      await enableModel(picked.id);
+      showToast('已切换识别模型');
+      listModels().then(setModels).catch(() => {});
+    } catch (e) {
+      Alert.alert('切换失败', e instanceof Error ? e.message : String(e));
+    }
+  };
 
   const aiAnalyze = async () => {
     if (analyzing) return;
@@ -71,10 +91,8 @@ export default function AddWrongPage() {
       if (anaMarker) {
         analysisText = stripSubject(res.slice(anaMarker.index + anaMarker[0].length));
       }
-      // "正确答案"以 AI 分析推导出的最终结论为准
-      const extracted = extractAnswerFromAnalysis(analysisText);
       const patch: { correct: string; analysis: string; subject?: string } = {
-        correct: extracted || correct,
+        correct,
         analysis: analysisText,
       };
       if (subjectMatch) {
@@ -85,7 +103,7 @@ export default function AddWrongPage() {
       setAnalysis(patch.analysis);
       if (patch.subject) setSubjectValue(patch.subject);
       setEditCorrect(false);
-      showToast(extracted && extracted !== correct.trim() ? '已按 AI 分析的结论显示正确答案' : 'AI 分析完成');
+      showToast('AI 分析完成');
     } catch (e) {
       Alert.alert('AI 分析失败', e instanceof Error ? e.message : String(e));
     } finally {
@@ -154,9 +172,25 @@ export default function AddWrongPage() {
             )}
           </View>
 
-          <Btn block loading={analyzing} onPress={aiAnalyze} style={{ marginBottom: 12 }}>
-            AI 分析
-          </Btn>
+          <View style={styles.aiRow}>
+            <Btn loading={analyzing} onPress={aiAnalyze} style={styles.aiBtnGrow}>
+              AI 分析
+            </Btn>
+            {models.length > 0 ? (
+              <View style={styles.modelBox}>
+                <OptionPicker
+                  options={models.map((m) => m.name || m.model)}
+                  value={modelName}
+                  onChange={(v) => void switchModel(v)}
+                  placeholder="选择模型"
+                />
+              </View>
+            ) : (
+              <Btn kind="ghost" style={styles.modelBox} onPress={() => router.push('/models')}>
+                选择模型
+              </Btn>
+            )}
+          </View>
 
           <View style={styles.section}>
             <Text style={styles.label}>AI 分析结果</Text>
@@ -192,6 +226,18 @@ export default function AddWrongPage() {
 }
 
 const styles = StyleSheet.create({
+  aiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  aiBtnGrow: {
+    flex: 1,
+  },
+  modelBox: {
+    width: 130,
+  },
   section: {
     marginBottom: 12,
   },

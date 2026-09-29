@@ -19,9 +19,18 @@ from app.database.models import (
 # ---------------------------------------------------------------------------
 
 
-def create_user(db: Session, *, username: str, password_hash: str) -> User:
-    user = User(username=username, password_hash=password_hash)
+def create_user(
+    db: Session, *, username: str, password_hash: str, grade: str = "一年级"
+) -> User:
+    user = User(username=username, password_hash=password_hash, grade=grade)
     db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_user_grade(db: Session, user: User, grade: str) -> User:
+    user.grade = grade
     db.commit()
     db.refresh(user)
     return user
@@ -84,6 +93,18 @@ def list_exams_by_status(db: Session, status: str) -> list[Exam]:
 
 def set_exam_status(db: Session, exam: Exam, status: str) -> Exam:
     exam.status = status
+    # 离开 failed 状态（重新识别/再次上传等）时清除上次的失败原因
+    if status != "failed":
+        exam.error_message = None
+    db.commit()
+    db.refresh(exam)
+    return exam
+
+
+def set_exam_failed(db: Session, exam: Exam, error_message: str) -> Exam:
+    """置为 failed 并记录失败原因（模型超时/网络错误/API 错误等），供前端展示。"""
+    exam.status = "failed"
+    exam.error_message = error_message[:2000]
     db.commit()
     db.refresh(exam)
     return exam

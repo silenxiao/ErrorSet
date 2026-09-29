@@ -14,8 +14,8 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQuestion } from "../../api/question";
+import ModelSelector from "../ModelSelector";
 import type { Question, QuestionStatus } from "../../types/question";
-import { extractAnswerFromAnalysis } from "../../utils/analysis";
 import { renderMathText } from "../../utils/math";
 import { renderMarkdown } from "../../utils/markdown";
 
@@ -216,6 +216,16 @@ function WrongQuestionModal({
   const [saving, setSaving] = useState(false);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
 
+  // 每次换题打开时重置表单：destroyOnClose 只销毁 DOM，
+  // form store 里上一次的 AI 分析结果会串到下一题
+  const questionId = question?.id;
+  useEffect(() => {
+    if (questionId === undefined) return;
+    form.resetFields();
+    form.setFieldsValue({ subject: defaultSubject || "语文" });
+    setEditingAnswer(false);
+  }, [questionId, form, defaultSubject]);
+
   const handleAiAnalyze = async (questionId: number) => {
     setAiAnalyzing(true);
     try {
@@ -233,14 +243,9 @@ function WrongQuestionModal({
         ? result.slice(analysisMarker.index + analysisMarker[0].length)
             .replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim()
         : "";
-      // "正确答案"以 AI 分析推导出的最终结论为准（两者不一致时用分析结论）
-      const extractedAnswer = extractAnswerFromAnalysis(analysisContent);
-      if (extractedAnswer && extractedAnswer !== answerContent.trim()) {
-        message.info("已按 AI 分析的结论显示正确答案");
-      }
       form.setFieldsValue({
         ...(subjectMatch ? { subject: subjectMatch[1] } : {}),
-        correctAnswer: extractedAnswer || answerContent,
+        correctAnswer: answerContent,
         analysis: analysisContent,
       });
     } catch (err) {
@@ -327,13 +332,12 @@ function WrongQuestionModal({
               />
             </div>
           )}
-          <Button
-            style={{ marginTop: 8 }}
-            loading={aiAnalyzing}
-            onClick={() => question && handleAiAnalyze(question.id)}
-          >
-            AI 分析
-          </Button>
+          <Space style={{ marginTop: 8 }}>
+            <Button loading={aiAnalyzing} onClick={() => question && handleAiAnalyze(question.id)}>
+              AI 分析
+            </Button>
+            <ModelSelector />
+          </Space>
           <Form.Item name="correctAnswer" hidden><Input /></Form.Item>
         </Form.Item>
         <Form.Item label="AI 分析结果">

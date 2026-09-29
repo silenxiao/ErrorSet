@@ -46,6 +46,9 @@ Page({
         models: (models || []).map((m) => ({
           ...m,
           providerText: providerLabel(m.provider),
+          // scope: system=系统模型（后台下发，只读），private=独享模型
+          scopeText: m.scope === 'system' ? '系统' : '独享',
+          isSystem: m.scope === 'system',
         })),
       });
     } catch (err) {

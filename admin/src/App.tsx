@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Exams from "./pages/Exams";
 import Feedbacks from "./pages/Feedbacks";
 import Login from "./pages/Login";
+import Models from "./pages/Models";
 import Users from "./pages/Users";
 import WrongQuestions from "./pages/WrongQuestions";
 
@@ -84,6 +85,7 @@ export default function App() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/models" element={<Models />} />
         <Route path="/exams" element={<Exams />} />
         <Route path="/wrong-questions" element={<WrongQuestions />} />
         <Route path="/feedbacks" element={<Feedbacks />} />

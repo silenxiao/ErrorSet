@@ -14,13 +14,15 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { login, register } from '@/api/auth';
-import { Btn, Input, C } from '@/components/ui';
+import { GRADE_OPTIONS } from '@/utils/format';
+import { Btn, Input, OptionPicker, C } from '@/components/ui';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
+  const [grade, setGrade] = useState(GRADE_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -47,7 +49,7 @@ export default function LoginPage() {
       if (mode === 'login') {
         await login(name, password);
       } else {
-        await register(name, password);
+        await register(name, password, grade);
       }
       router.replace('/exam');
     } catch (e) {
@@ -82,13 +84,23 @@ export default function LoginPage() {
               style={styles.gap}
             />
             {mode === 'register' ? (
-              <Input
-                placeholder="确认密码（再次输入）"
-                value={confirmPwd}
-                secureTextEntry
-                onChangeText={setConfirmPwd}
-                style={styles.gap}
-              />
+              <>
+                <View style={styles.gap}>
+                  <OptionPicker
+                    options={GRADE_OPTIONS}
+                    value={grade}
+                    onChange={setGrade}
+                    placeholder="孩子所在年级"
+                  />
+                </View>
+                <Input
+                  placeholder="确认密码（再次输入）"
+                  value={confirmPwd}
+                  secureTextEntry
+                  onChangeText={setConfirmPwd}
+                  style={styles.gap}
+                />
+              </>
             ) : null}
 
             <Btn block loading={loading} onPress={submit} style={styles.gap}>

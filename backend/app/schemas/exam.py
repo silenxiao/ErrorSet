@@ -41,4 +41,6 @@ class ExamDetail(CamelModel):
     include_illustrations: bool = True
     grade: str = "一年级"
     extra_prompt: str | None = None
+    # 识别失败原因（status=failed 时非空，如模型超时/网络错误）
+    error_message: str = ""
     questions: list[QuestionOut] = []

@@ -14,6 +14,8 @@ Page({
     rerecogVisible: false,
     rerecogInclude: true,
     rerecogExtra: '',
+    models: [],
+    modelName: '',
     editQuestion: null,
     editText: '',
     editIlls: [],
@@ -23,6 +25,7 @@ Page({
     const id = Number(options.id);
     this.setData({ id });
     this.refresh();
+    this.loadModels();
   },
 
   onUnload() {
@@ -166,6 +169,53 @@ Page({
       .then(() => this.setData({ saving: false }));
   },
 
+  loadModels() {
+    api
+      .listModels()
+      .then((list) => {
+        const models = list || [];
+        const enabled = models.find((m) => m.enabled);
+        this.setData({
+          models,
+          modelName: enabled ? enabled.name || enabled.model : '',
+        });
+      })
+      .catch(() => {
+        // 模型列表加载失败不阻塞主流程
+      });
+  },
+
+  chooseModel() {
+    const models = this.data.models;
+    if (!models.length) {
+      wx.showModal({
+        title: '还没有模型配置',
+        content: '先去「模型管理」添加一个识别模型？',
+        confirmText: '去添加',
+        success: (r) => {
+          if (r.confirm) wx.navigateTo({ url: '/pages/models/models' });
+        },
+      });
+      return;
+    }
+    wx.showActionSheet({
+      itemList: models.map((m) => (m.enabled ? '✓ ' : '') + (m.name || m.model)),
+      success: (r) => {
+        const picked = models[r.tapIndex];
+        if (!picked || picked.enabled) return;
+        api
+          .enableModel(picked.id)
+          .then(() => {
+            wx.showToast({ title: '已切换识别模型', icon: 'success' });
+            this.loadModels();
+          })
+          .catch((err) =>
+            wx.showToast({ title: err.message || '切换失败', icon: 'none' })
+          );
+      },
+    });
+  },
+
   openRerecog() {
     const ex = this.data.exam;
     this.setData({
@@ -173,6 +223,7 @@ Page({
       rerecogInclude: ex.includeIllustrations,
       rerecogExtra: ex.extraPrompt || '',
     });
+    this.loadModels();
   },
 
   closeRerecog() {

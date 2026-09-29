@@ -96,3 +96,13 @@
   }
 }
 
+
+.grade-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #333;
+}
+.grade-arrow {
+  color: #bbb;
+}

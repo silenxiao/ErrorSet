@@ -14,12 +14,15 @@ from app.database.models import User
 from app.schemas.admin import (
     AdminExamOut,
     AdminFeedbackOut,
+    AdminModelProfileCreate,
+    AdminModelProfileOut,
+    AdminModelProfileUpdate,
     AdminStatsOut,
     AdminUserOut,
     AdminUserUpdate,
     AdminWrongQuestionOut,
 )
-from app.services import question_service, recognition_service
+from app.services import question_service, recognition_service, settings_service
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -34,6 +37,7 @@ def _user_out(db: Session, user: User) -> AdminUserOut:
         is_admin=user.is_admin,
         exam_count=exam_count,
         wrong_question_count=wrong_count,
+        system_model_calls=user.system_model_calls,
         created_at=user.created_at,
     )
 
@@ -58,6 +62,7 @@ def list_users(db: DbSession, _admin: AdminUser) -> list[AdminUserOut]:
             is_admin=row["user"].is_admin,
             exam_count=row["exam_count"],
             wrong_question_count=row["wrong_question_count"],
+            system_model_calls=row["user"].system_model_calls,
             created_at=row["user"].created_at,
         )
         for row in repo.list_users_with_counts(db)
@@ -172,3 +177,103 @@ def delete_feedback(feedback_id: int, db: DbSession, _admin: AdminUser) -> Respo
         raise NotFoundError("留言不存在")
     repo.delete_feedback(db, row)
     return Response(status_code=204)
+
+
+# ---------- 模型设置 ----------
+
+
+def _model_out(row, username: str | None = None) -> AdminModelProfileOut:
+    return AdminModelProfileOut(
+        id=row.id,
+        name=row.name,
+        provider=row.provider,
+        base_url=row.base_url,
+        model=row.model,
+        has_api_key=bool(row.api_key),
+        enabled=row.enabled,
+        is_system=row.is_system,
+        user_id=row.user_id,
+        username=username,
+    )
+
+
+@router.get("/models/system", response_model=list[AdminModelProfileOut])
+def list_system_models(db: DbSession, _admin: AdminUser) -> list[AdminModelProfileOut]:
+    """系统模型列表，enabled 即"对所有用户开放"的公共开关。"""
+    return [_model_out(row) for row in settings_service.list_system_model_profiles(db)]
+
+
+@router.get("/models/user/{user_id}", response_model=list[AdminModelProfileOut])
+def list_user_models(
+    user_id: int, db: DbSession, _admin: AdminUser
+) -> list[AdminModelProfileOut]:
+    """指定用户名下由后台分配的独享模型（用户自建的 origin=user 不展示）。"""
+    user = repo.get_user(db, user_id)
+    if user is None:
+        raise NotFoundError("用户不存在")
+    return [
+        _model_out(row, user.username)
+        for row in settings_service.list_admin_user_model_profiles(db, user_id)
+    ]
+
+
+@router.post("/models", response_model=AdminModelProfileOut)
+def create_model(payload: AdminModelProfileCreate, db: DbSession, _admin: AdminUser) -> AdminModelProfileOut:
+    """新增模型：scope=system 系统模型（user_id 置空），scope=user 分配给指定用户。"""
+    if payload.scope not in ("system", "user"):
+        raise ValidationError("scope 必须是 system 或 user")
+    if payload.scope == "user" and payload.user_id is None:
+        raise ValidationError("分配给用户时必须指定 userId")
+    row = settings_service.admin_create_model_profile(
+        db,
+        payload.scope,
+        user_id=payload.user_id,
+        name=payload.name,
+        provider=payload.provider,
+        base_url=payload.base_url,
+        model=payload.model,
+        api_key=payload.api_key,
+        enabled=payload.enabled,
+    )
+    username = None
+    if row.user_id is not None:
+        username = repo.get_user(db, row.user_id).username
+    return _model_out(row, username)
+
+
+@router.put("/models/{model_id}", response_model=AdminModelProfileOut)
+def update_model(
+    model_id: int, payload: AdminModelProfileUpdate, db: DbSession, _admin: AdminUser
+) -> AdminModelProfileOut:
+    """编辑模型。api_key 留空表示保持不变；系统模型的 enabled 为公共开关。"""
+    row = settings_service.admin_update_model_profile(
+        db,
+        model_id,
+        name=payload.name,
+        provider=payload.provider,
+        base_url=payload.base_url,
+        model=payload.model,
+        api_key=payload.api_key,
+        enabled=payload.enabled,
+    )
+    username = None
+    if row.user_id is not None:
+        user = repo.get_user(db, row.user_id)
+        username = user.username if user else None
+    return _model_out(row, username)
+
+
+@router.delete("/models/{model_id}", status_code=204)
+def delete_model(model_id: int, db: DbSession, _admin: AdminUser) -> Response:
+    """删除模型；选中它的用户回落到各自的自有启用模型。"""
+    settings_service.admin_delete_model_profile(db, model_id)
+    return Response(status_code=204)
+
+
+@router.post("/models/{model_id}/test", response_model=dict)
+async def test_model(model_id: int, db: DbSession, _admin: AdminUser) -> dict:
+    """向该模型发一次最小识别请求（1x1 测试图），检验配置是否可用。"""
+    row = db.get(settings_service.ModelProfile, model_id)
+    if row is None:
+        raise NotFoundError("模型不存在")
+    return await settings_service.test_model_profile(row)

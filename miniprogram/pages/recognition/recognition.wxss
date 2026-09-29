@@ -158,6 +158,16 @@
   font-size: 28rpx;
 }
 
+.model-dlg-btn {
+  flex: 0 0 auto;
+  max-width: 240rpx;
+  padding: 0 20rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}
+
 /* 编辑题目弹窗：固定高度，内容区用 scroll-view 独立滚动，底部按钮固定 */
 .edit-dialog {
   width: 680rpx;
@@ -294,6 +304,11 @@
     line-height: 36px;
     height: 36px;
     font-size: 14px;
+  }
+
+  .model-dlg-btn {
+    max-width: 120px;
+    padding: 0 10px;
   }
 
   .edit-dialog {

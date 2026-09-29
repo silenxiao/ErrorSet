@@ -14,6 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { confirmExam, getExam, reRecognizeExam } from '@/api/exam';
+import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import { resetBbox, updateBbox, updateQuestion, illustrationImageUrl } from '@/api/question';
 import type { BBox, Question } from '@/types/question';
 import type { ExamDetail } from '@/types/exam';
@@ -29,6 +30,7 @@ import {
   Field,
   Mask,
   Muted,
+  OptionPicker,
   Screen,
   SubHeader,
   Tag,
@@ -55,6 +57,19 @@ export default function RecognitionPage() {
   const [rerecogVisible, setRerecogVisible] = useState(false);
   const [rerecogInclude, setRerecogInclude] = useState(true);
   const [rerecogExtra, setRerecogExtra] = useState('');
+
+  // 识别模型（与 Web 端重新识别弹窗一致：切换即独占启用）
+  const [models, setModels] = useState<ModelProfile[]>([]);
+  const enabledModel = models.find((m) => m.enabled);
+  const modelName = enabledModel ? enabledModel.name || enabledModel.model : '';
+
+  const loadModels = useCallback(async () => {
+    try {
+      setModels((await listModels()) || []);
+    } catch {
+      // 模型列表加载失败不阻塞主流程
+    }
+  }, []);
 
   // 编辑题目弹窗
   const [editQ, setEditQ] = useState<Question | null>(null);
@@ -180,6 +195,19 @@ export default function RecognitionPage() {
     setRerecogInclude(exam.includeIllustrations);
     setRerecogExtra(exam.extraPrompt || '');
     setRerecogVisible(true);
+    loadModels();
+  };
+
+  const switchModel = async (displayName: string) => {
+    const picked = models.find((m) => (m.name || m.model) === displayName);
+    if (!picked || picked.enabled) return;
+    try {
+      await enableModel(picked.id);
+      showToast('已切换识别模型');
+      loadModels();
+    } catch (e) {
+      Alert.alert('切换失败', e instanceof Error ? e.message : String(e));
+    }
   };
 
   const doRerecog = async () => {
@@ -352,6 +380,20 @@ export default function RecognitionPage() {
           <Btn small onPress={doRerecog}>
             开始识别
           </Btn>
+          {models.length > 0 ? (
+            <View style={styles.modelBoxSmall}>
+              <OptionPicker
+                options={models.map((m) => m.name || m.model)}
+                value={modelName}
+                onChange={(v) => void switchModel(v)}
+                placeholder="选择模型"
+              />
+            </View>
+          ) : (
+            <Btn kind="ghost" small style={styles.modelBoxSmall} onPress={() => router.push('/models')}>
+              选择模型
+            </Btn>
+          )}
         </View>
       </Mask>
     </Screen>
@@ -418,8 +460,12 @@ const styles = StyleSheet.create({
   dialogBtns: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: 10,
     marginTop: 12,
+  },
+  modelBoxSmall: {
+    width: 110,
   },
   switchRow: {
     flexDirection: 'row',

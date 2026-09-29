@@ -1,6 +1,5 @@
 const api = require('../../utils/api');
 const { SUBJECT_OPTIONS } = require('../../utils/format');
-const { extractAnswerFromAnalysis } = require('../../utils/analysis');
 
 Page({
   data: {
@@ -13,6 +12,8 @@ Page({
     note: '',
     analyzing: false,
     saving: false,
+    models: [],
+    modelName: '',
     // 正确答案默认以 Markdown 渲染预览，点框内铅笔图标切换为编辑
     editCorrect: false,
   },
@@ -22,6 +23,8 @@ Page({
     const subject = decodeURIComponent(options.subject || '');
     const idx = Math.max(0, SUBJECT_OPTIONS.indexOf(subject));
     this.setData({ questionId: qid, subjectIndex: idx });
+
+    this.loadModels();
 
     // 读取题号与科目默认值（不再展示题目原文）
     api
@@ -34,6 +37,53 @@ Page({
         wx.setNavigationBarTitle({ title: `加入错题库：第 ${q.questionNo || ''} 题` });
       })
       .catch(() => {});
+  },
+
+  loadModels() {
+    api
+      .listModels()
+      .then((list) => {
+        const models = list || [];
+        const enabled = models.find((m) => m.enabled);
+        this.setData({
+          models,
+          modelName: enabled ? enabled.name || enabled.model : '',
+        });
+      })
+      .catch(() => {
+        // 模型列表加载失败不阻塞主流程
+      });
+  },
+
+  chooseModel() {
+    const models = this.data.models;
+    if (!models.length) {
+      wx.showModal({
+        title: '还没有模型配置',
+        content: '先去「模型管理」添加一个识别模型？',
+        confirmText: '去添加',
+        success: (r) => {
+          if (r.confirm) wx.navigateTo({ url: '/pages/models/models' });
+        },
+      });
+      return;
+    }
+    wx.showActionSheet({
+      itemList: models.map((m) => (m.enabled ? '✓ ' : '') + (m.name || m.model)),
+      success: (r) => {
+        const picked = models[r.tapIndex];
+        if (!picked || picked.enabled) return;
+        api
+          .enableModel(picked.id)
+          .then(() => {
+            wx.showToast({ title: '已切换识别模型', icon: 'success' });
+            this.loadModels();
+          })
+          .catch((err) =>
+            wx.showToast({ title: err.message || '切换失败', icon: 'none' })
+          );
+      },
+    });
   },
 
   onSubject(e) {
@@ -73,9 +123,7 @@ Page({
         if (anaMarker) {
           analysis = stripSubject(res.slice(anaMarker.index + anaMarker[0].length));
         }
-        // "正确答案"以 AI 分析推导出的最终结论为准（两者不一致时用分析结论）
-        const extracted = extractAnswerFromAnalysis(analysis);
-        const patch = { correctAnswer: extracted || correct, analysis };
+        const patch = { correctAnswer: correct, analysis };
         if (subjectMatch) {
           const i = SUBJECT_OPTIONS.indexOf(subjectMatch[1]);
           if (i >= 0) patch.subjectIndex = i;
@@ -83,11 +131,7 @@ Page({
         // 分析完成后回到 Markdown 预览态
         patch.editCorrect = false;
         this.setData(patch);
-        if (extracted && extracted !== correct.trim()) {
-          wx.showToast({ title: '已按 AI 分析的结论显示正确答案', icon: 'none' });
-        } else {
-          wx.showToast({ title: 'AI 分析完成', icon: 'success' });
-        }
+        wx.showToast({ title: 'AI 分析完成', icon: 'success' });
       })
       .catch((err) => wx.showToast({ title: err.message || 'AI 分析失败', icon: 'none' }))
       .then(() => this.setData({ analyzing: false }));

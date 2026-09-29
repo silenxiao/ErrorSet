@@ -1,21 +1,44 @@
 import {
   LogoutOutlined,
   MessageOutlined,
+  ReadOutlined,
   RightOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Modal, message } from "antd";
-import { useState } from "react";
+import { Button, Card, Modal, Select, Space, message } from "antd";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { clearSession, getUsername } from "../../api/auth";
+import { clearSession, getMe, getUsername, updateGrade } from "../../api/auth";
 import SettingsModal from "../../components/SettingsModal";
+import { GRADE_OPTIONS } from "../../utils/grade";
 
-/** 「我的」页面（与小程序端一致）：账号信息 + 模型管理入口 + 退出登录。 */
+/** 「我的」页面（与小程序端一致）：账号信息 + 年级修改 + 模型管理入口 + 退出登录。 */
 export default function MinePage() {
   const navigate = useNavigate();
   const username = getUsername() ?? "未登录";
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [grade, setGrade] = useState<string | undefined>(undefined);
+  const [savingGrade, setSavingGrade] = useState(false);
+
+  useEffect(() => {
+    getMe()
+      .then((user) => setGrade(user.grade))
+      .catch(() => {});
+  }, []);
+
+  const handleGradeChange = async (value: string) => {
+    setSavingGrade(true);
+    try {
+      const user = await updateGrade(value);
+      setGrade(user.grade);
+      message.success("年级已更新，首次上传试卷将默认使用该年级");
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "保存失败");
+    } finally {
+      setSavingGrade(false);
+    }
+  };
 
   const handleLogout = () => {
     Modal.confirm({
@@ -71,6 +94,33 @@ export default function MinePage() {
       </div>
 
       <Card style={{ marginTop: 16 }} styles={{ body: { padding: 0 } }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "16px 16px",
+            borderBottom: "1px solid #f0f0f0",
+          }}
+        >
+          <ReadOutlined style={{ fontSize: 18, color: "#1677ff" }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, color: "#1f2329" }}>年级</div>
+            <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
+              首次上传试卷时默认使用该年级
+            </div>
+          </div>
+          <Space>
+            <Select
+              value={grade}
+              loading={savingGrade}
+              placeholder="加载中…"
+              options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
+              onChange={(value) => void handleGradeChange(value)}
+              style={{ width: 110 }}
+            />
+          </Space>
+        </div>
         <div
           onClick={() => setSettingsOpen(true)}
           style={{

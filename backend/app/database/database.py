@@ -35,6 +35,7 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE exam ADD COLUMN include_illustrations BOOLEAN DEFAULT 1",
         "ALTER TABLE exam ADD COLUMN grade VARCHAR(32) NOT NULL DEFAULT '一年级'",
         "ALTER TABLE exam ADD COLUMN extra_prompt TEXT",
+        "ALTER TABLE exam ADD COLUMN error_message TEXT",
         "ALTER TABLE question ADD COLUMN subject VARCHAR(32) NOT NULL DEFAULT ''",
         "ALTER TABLE wrong_question ADD COLUMN subject VARCHAR(32) NOT NULL DEFAULT ''",
         "ALTER TABLE wrong_question ADD COLUMN analysis TEXT NOT NULL DEFAULT ''",
@@ -53,6 +54,15 @@ def _sqlite_lightweight_migrations() -> None:
         "WHERE illustration_images IS NULL",
         "ALTER TABLE model_profile ADD COLUMN user_id INTEGER",
         "ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0",
+        "ALTER TABLE user ADD COLUMN grade VARCHAR(32) NOT NULL DEFAULT '一年级'",
+        "ALTER TABLE model_profile ADD COLUMN is_system BOOLEAN DEFAULT 0",
+        "ALTER TABLE model_profile ADD COLUMN origin VARCHAR(16) DEFAULT 'user'",
+        "ALTER TABLE user ADD COLUMN active_model_id INTEGER",
+        "ALTER TABLE user ADD COLUMN system_model_calls INTEGER NOT NULL DEFAULT 0",
+        # 存量用户的当前启用模型回填到 active_model_id（之后由应用层同步维护）
+        "UPDATE user SET active_model_id = "
+        "(SELECT id FROM model_profile WHERE model_profile.user_id = user.id "
+        "AND enabled = 1 ORDER BY id DESC LIMIT 1) WHERE active_model_id IS NULL",
     ]
     with engine.begin() as conn:
         for sql in statements:
@@ -108,7 +118,11 @@ def _seed_default_user() -> None:
 
         changed = False
         for model in (Exam, WrongQuestion, ModelProfile):
-            rows = list(db.scalars(select(model).where(model.user_id.is_(None))))
+            query = select(model).where(model.user_id.is_(None))
+            # 系统模型 user_id 恒为 NULL，不属于任何用户，不能被划归
+            if model is ModelProfile:
+                query = query.where(ModelProfile.is_system.is_(False))
+            rows = list(db.scalars(query))
             for row in rows:
                 row.user_id = owner.id
             changed = changed or bool(rows)

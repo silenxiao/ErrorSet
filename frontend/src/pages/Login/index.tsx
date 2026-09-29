@@ -1,9 +1,10 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, message, Typography } from "antd";
+import { Button, Card, Form, Input, Select, message, Typography } from "antd";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { login, register } from "../../api/auth";
+import { GRADE_OPTIONS } from "../../utils/grade";
 
 /** 登录/注册双模式页：成功后写入 token 并进入主页。 */
 export default function LoginPage() {
@@ -12,13 +13,17 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values: { username: string; password: string }) => {
+  const onFinish = async (values: {
+    username: string;
+    password: string;
+    grade?: string;
+  }) => {
     setLoading(true);
     try {
       const user =
         mode === "login"
           ? await login(values.username, values.password)
-          : await register(values.username, values.password);
+          : await register(values.username, values.password, values.grade ?? GRADE_OPTIONS[0]);
       message.success(`欢迎，${user.username}`);
       navigate("/", { replace: true });
     } catch (err) {
@@ -29,7 +34,7 @@ export default function LoginPage() {
   };
 
   const switchMode = () => {
-    form.resetFields(["password", "confirm"]);
+    form.resetFields(["password", "confirm", "grade"]);
     setMode(mode === "login" ? "register" : "login");
   };
 
@@ -70,23 +75,35 @@ export default function LoginPage() {
             <Input.Password prefix={<LockOutlined />} placeholder="密码" />
           </Form.Item>
           {mode === "register" && (
-            <Form.Item
-              name="confirm"
-              dependencies={["password"]}
-              rules={[
-                { required: true, message: "请再次输入密码" },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue("password") === value) {
-                      return Promise.resolve();
-                    }
-                    return Promise.reject(new Error("两次输入的密码不一致"));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
-            </Form.Item>
+            <>
+              <Form.Item
+                name="confirm"
+                dependencies={["password"]}
+                rules={[
+                  { required: true, message: "请再次输入密码" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("password") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error("两次输入的密码不一致"));
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
+              </Form.Item>
+              <Form.Item
+                name="grade"
+                initialValue={GRADE_OPTIONS[0]}
+                rules={[{ required: true, message: "请选择年级" }]}
+              >
+                <Select
+                  placeholder="孩子所在年级"
+                  options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
+                />
+              </Form.Item>
+            </>
           )}
           <Form.Item style={{ marginBottom: 8 }}>
             <Button type="primary" htmlType="submit" block loading={loading}>

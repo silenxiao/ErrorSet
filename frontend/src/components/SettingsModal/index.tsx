@@ -20,6 +20,7 @@ import {
   deleteModel,
   enableModel,
   listModels,
+  testModel,
   updateModel,
 } from "../../api/settings";
 
@@ -81,6 +82,8 @@ export default function SettingsModal({ open, onClose }: Props) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
+  // 正在测试连通性的模型 id：按钮转圈用
+  const [testingId, setTestingId] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     const list = await listModels();
@@ -168,6 +171,22 @@ export default function SettingsModal({ open, onClose }: Props) {
       await refresh();
     } catch (err) {
       message.error(err instanceof Error ? err.message : "删除失败");
+    }
+  };
+
+  const handleTest = async (item: ModelProfile) => {
+    setTestingId(item.id);
+    try {
+      const result = await testModel(item.id);
+      if (result.ok) {
+        message.success(`「${item.name || item.model}」可用，延迟 ${result.latencyMs} ms`);
+      } else {
+        message.error(`「${item.name || item.model}」不可用：${result.error ?? "未知错误"}`);
+      }
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "测试请求失败");
+    } finally {
+      setTestingId(null);
     }
   };
 
@@ -310,6 +329,11 @@ export default function SettingsModal({ open, onClose }: Props) {
                     {item.name || item.model}
                   </span>
                   <Tag>{providerLabel(item.provider)}</Tag>
+                  {item.scope === "system" ? (
+                    <Tag color="blue">系统</Tag>
+                  ) : (
+                    <Tag>独享</Tag>
+                  )}
                   {item.enabled && <Tag color="green">当前使用</Tag>}
                 </div>
                 <div
@@ -330,15 +354,27 @@ export default function SettingsModal({ open, onClose }: Props) {
               <Button
                 type="text"
                 size="small"
-                icon={<EditOutlined />}
-                onClick={() => openEditForm(item)}
-              />
-              <Popconfirm
-                title="确定删除该模型吗？"
-                onConfirm={() => void handleDelete(item)}
+                loading={testingId === item.id}
+                onClick={() => void handleTest(item)}
               >
-                <Button type="text" size="small" danger icon={<DeleteOutlined />} />
-              </Popconfirm>
+                测试
+              </Button>
+              {item.scope !== "system" && (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => openEditForm(item)}
+                />
+              )}
+              {item.scope !== "system" && (
+                <Popconfirm
+                  title="确定删除该模型吗？"
+                  onConfirm={() => void handleDelete(item)}
+                >
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+              )}
             </div>
           ))}
         </div>

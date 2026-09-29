@@ -15,7 +15,7 @@ from pathlib import Path
 import httpx
 
 from app.core.config import get_settings
-from app.core.exceptions import ProviderAuthError, ProviderError
+from app.core.exceptions import ProviderAuthError, ProviderError, ProviderTimeoutError
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -77,6 +77,11 @@ class VisionProvider(ABC):
             for attempt in range(max_retries + 1):
                 try:
                     resp = await client.post(endpoint, json=payload, headers=headers)
+                except httpx.TimeoutException as exc:
+                    # 超时已耗尽整个超时预算，重试只会再等同样久，直接失败并明示原因
+                    raise ProviderTimeoutError(
+                        f"模型调用超时（{settings.provider_timeout_seconds} 秒无响应）"
+                    ) from exc
                 except httpx.TransportError as exc:
                     # 仅网络层错误重试；LocalProtocolError（如空 key）不重试
                     if attempt >= max_retries:
@@ -179,6 +184,11 @@ class VisionProvider(ABC):
                                 if content:
                                     parts.append(content)
                         return "".join(parts), usage
+                except httpx.TimeoutException as exc:
+                    # 超时已耗尽整个超时预算，重试只会再等同样久，直接失败并明示原因
+                    raise ProviderTimeoutError(
+                        f"模型调用超时（{settings.provider_timeout_seconds} 秒无响应）"
+                    ) from exc
                 except httpx.TransportError as exc:
                     if attempt >= max_retries:
                         raise ProviderError(

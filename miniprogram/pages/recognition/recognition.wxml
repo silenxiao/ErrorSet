@@ -119,6 +119,7 @@
     <view class="dialog-btns">
       <button class="btn-ghost dlg-btn" hover-class="none" bindtap="closeRerecog">取消</button>
       <button class="btn-primary dlg-btn" hover-class="none" bindtap="doRerecog">开始识别</button>
+      <button class="btn-ghost dlg-btn model-dlg-btn" hover-class="none" bindtap="chooseModel">{{modelName || '选择模型'}} ▾</button>
     </view>
   </view>
 </view>

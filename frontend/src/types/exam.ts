@@ -31,5 +31,7 @@ export interface ExamDetail {
   grade: string;
   /** 重新识别时的用户补充提示词，拼入识别提示词 */
   extraPrompt?: string | null;
+  /** 识别失败原因（status=failed 时非空，如模型超时/网络错误） */
+  errorMessage?: string;
   questions: import("./question").Question[];
 }

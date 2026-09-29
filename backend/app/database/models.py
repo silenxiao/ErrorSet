@@ -17,6 +17,13 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(128))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    # 当前生效的模型（可为自有模型，也可为系统模型），与 model_profile.enabled 同步维护。
+    # 不加 FK：与 model_profile.user_id 形成循环依赖，create_all 无法建表
+    active_model_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 用户调用系统模型的累计次数（每次识别任务解析到系统模型 +1），仅后台展示
+    system_model_calls: Mapped[int] = mapped_column(Integer, default=0)
+    # 孩子所在年级：注册时选择，首次上传试卷的默认年级，「我的」页可修改
+    grade: Mapped[str] = mapped_column(String(32), default="一年级")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
@@ -33,6 +40,8 @@ class Exam(Base):
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="uploaded", index=True)
+    # 识别失败原因（超时/网络/API 错误等），状态转为非 failed 时清除
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
@@ -117,12 +126,20 @@ class ProviderSetting(Base):
 
 
 class ModelProfile(Base):
-    """模型管理：用户配置的模型列表。enabled 表示当前启用的模型（每用户最多一条）。"""
+    """模型管理：用户配置的模型列表。enabled 表示当前启用的模型（每用户最多一条）。
+
+    系统模型（is_system=True）user_id 为 NULL、由管理后台统一维护，enabled 表示
+    公共开关（开启后所有用户可见可用）；用户的当前选择记录在 user.active_model_id。
+    """
 
     __tablename__ = "model_profile"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user.id"), nullable=True, index=True
+    )
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    origin: Mapped[str] = mapped_column(String(16), default="user")
     name: Mapped[str] = mapped_column(String(64), default="")
     provider: Mapped[str] = mapped_column(String(64))
     base_url: Mapped[str] = mapped_column(String(512), default="")

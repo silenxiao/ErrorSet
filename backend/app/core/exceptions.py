@@ -51,6 +51,13 @@ class ProviderError(AppError):
     detail = "Vision API 调用失败"
 
 
+class ProviderTimeoutError(ProviderError):
+    """模型调用超时：一次尝试已耗尽整个超时预算，不再重试。"""
+
+    status_code = 504
+    detail = "模型调用超时"
+
+
 class ProviderAuthError(ProviderError):
     """API Key / 认证错误，不重试（§32）。"""
 

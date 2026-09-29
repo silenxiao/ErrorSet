@@ -160,7 +160,8 @@ def analyze_question(db: Session, question_id: int, user_id: int) -> str:
         f"【当前题号】{question.question_no}\n"
         f"【当前题目文字；只解答这一题】\n{question.text.strip()}"
     )
-    provider = get_recognition_provider(exam.user_id)
+    # 二次识别不计入系统模型调用次数（只统计整卷识别）
+    provider = get_recognition_provider(exam.user_id, count_usage=False)
     illustrations = list(question.illustrations)
 
     async def _call(image_path: str) -> str:

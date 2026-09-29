@@ -8,7 +8,7 @@ from app.core.exceptions import AuthError, ValidationError
 from app.core.security import create_token, hash_password, verify_password
 from app.database import repository as repo
 from app.database.database import get_db
-from app.schemas.auth import CredentialsIn, TokenOut, UserOut
+from app.schemas.auth import CredentialsIn, GradeUpdate, TokenOut, UserOut
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -24,12 +24,15 @@ def _check_credentials(username: str, password: str) -> None:
 
 @router.post("/register", response_model=TokenOut, status_code=201)
 def register(payload: CredentialsIn, db: DbSession) -> TokenOut:
-    """注册新用户，成功即登录（返回 token）。"""
+    """注册新用户，成功即登录（返回 token）。年级作为首次上传试卷的默认值。"""
     _check_credentials(payload.username, payload.password)
     if repo.get_user_by_username(db, payload.username) is not None:
         raise ValidationError("用户名已存在")
     user = repo.create_user(
-        db, username=payload.username, password_hash=hash_password(payload.password)
+        db,
+        username=payload.username,
+        password_hash=hash_password(payload.password),
+        grade=payload.grade,
     )
     return TokenOut(token=create_token(user.id), user=UserOut.model_validate(user))
 
@@ -47,3 +50,9 @@ def login(payload: CredentialsIn, db: DbSession) -> TokenOut:
 def me(user: CurrentUser) -> UserOut:
     """当前登录用户信息。"""
     return UserOut.model_validate(user)
+
+
+@router.put("/me", response_model=UserOut)
+def update_me(payload: GradeUpdate, db: DbSession, user: CurrentUser) -> UserOut:
+    """修改当前用户资料（目前支持年级），「我的」页调用。"""
+    return UserOut.model_validate(repo.update_user_grade(db, user, payload.grade))

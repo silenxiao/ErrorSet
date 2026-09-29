@@ -1,26 +1,12 @@
-import { InboxOutlined, CheckOutlined, DownOutlined } from "@ant-design/icons";
-import {
-  Button,
-  Dropdown,
-  Form,
-  Input,
-  Radio,
-  Select,
-  Space,
-  Upload,
-  message,
-  type MenuProps,
-} from "antd";
-import { useCallback, useEffect, useState } from "react";
+import { InboxOutlined } from "@ant-design/icons";
+import { Button, Form, Input, Radio, Select, Space, Upload, message } from "antd";
+import { useState } from "react";
 
 import { createExam } from "../../api/exam";
-import {
-  enableModel,
-  listModels,
-  type ModelProfile,
-} from "../../api/settings";
+import { getStoredGrade } from "../../api/auth";
+import { GRADE_OPTIONS, GRADE_STORAGE_KEY } from "../../utils/grade";
 import type { ExamCreated } from "../../types/exam";
-import SettingsModal from "../SettingsModal";
+import ModelSelector from "../ModelSelector";
 
 interface Props {
   onUploaded: (exam: ExamCreated) => void;
@@ -31,64 +17,16 @@ export default function UploadPanel({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [includeIllustrations, setIncludeIllustrations] = useState(false);
-  const gradeOptions = [
-    "一年级", "二年级", "三年级", "四年级", "五年级", "六年级",
-    "初一", "初二", "初三",
-  ];
   const [grade, setGrade] = useState(() => {
-    const savedGrade = window.localStorage.getItem("lastExamGrade");
-    return savedGrade && gradeOptions.includes(savedGrade) ? savedGrade : "一年级";
+    // 默认年级：上次手动选择 > 注册时选择的年级 > 一年级
+    const saved = window.localStorage.getItem(GRADE_STORAGE_KEY);
+    if (saved && GRADE_OPTIONS.includes(saved)) return saved;
+    const registered = getStoredGrade();
+    if (registered && GRADE_OPTIONS.includes(registered)) return registered;
+    return GRADE_OPTIONS[0];
   });
   const [uploading, setUploading] = useState(false);
   const [form] = Form.useForm();
-
-  const [models, setModels] = useState<ModelProfile[]>([]);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const reloadModels = useCallback(async () => {
-    try {
-      setModels(await listModels());
-    } catch {
-      // 模型列表加载失败不阻塞上传主流程
-    }
-  }, []);
-
-  useEffect(() => {
-    void reloadModels();
-  }, [reloadModels]);
-
-  const enabledModel = models.find((m) => m.enabled);
-
-  const handleModelMenu: MenuProps["onClick"] = async ({ key }) => {
-    if (key === "manage") {
-      setSettingsOpen(true);
-      return;
-    }
-    try {
-      await enableModel(Number(key));
-      message.success("已切换识别模型");
-      void reloadModels();
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : "切换模型失败");
-    }
-  };
-
-  const modelMenu: MenuProps = {
-    items: [
-      ...models.map((m) => ({
-        key: String(m.id),
-        label: (
-          <Space>
-            <span>{m.name || m.model}</span>
-            {m.enabled && <CheckOutlined />}
-          </Space>
-        ),
-      })),
-      ...(models.length > 0 ? [{ type: "divider" as const }] : []),
-      { key: "manage", label: "管理模型" },
-    ],
-    onClick: handleModelMenu,
-  };
 
   const handleUpload = async () => {
     if (!file) {
@@ -129,10 +67,10 @@ export default function UploadPanel({ onUploaded }: Props) {
       <Form.Item label="年级">
         <Select
           value={grade}
-          options={gradeOptions.map((value) => ({ value, label: value }))}
+          options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
           onChange={(value: string) => {
             setGrade(value);
-            window.localStorage.setItem("lastExamGrade", value);
+            window.localStorage.setItem(GRADE_STORAGE_KEY, value);
           }}
         />
       </Form.Item>
@@ -161,22 +99,8 @@ export default function UploadPanel({ onUploaded }: Props) {
         >
           上传并开始识别
         </Button>
-        <Dropdown menu={modelMenu} trigger={["click"]} placement="topLeft">
-          <Button>
-            {enabledModel
-              ? enabledModel.name || enabledModel.model
-              : "选择模型"}
-            <DownOutlined style={{ fontSize: 11, marginLeft: 4 }} />
-          </Button>
-        </Dropdown>
+        <ModelSelector />
       </Space>
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => {
-          setSettingsOpen(false);
-          void reloadModels();
-        }}
-      />
     </Form>
   );
 }

@@ -51,6 +51,7 @@ def get_exam(exam_id: int, db: DbSession, user: CurrentUser) -> ExamDetail:
         include_illustrations=exam.include_illustrations,
         grade=exam.grade,
         extra_prompt=exam.extra_prompt,
+        error_message=exam.error_message or "",
         questions=questions,
     )
 

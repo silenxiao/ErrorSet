@@ -20,7 +20,10 @@ class ProviderSettingUpdate(CamelModel):
 
 
 class ModelProfileOut(CamelModel):
-    """模型列表项。api_key 不回传，只告知是否已保存。"""
+    """模型列表项。api_key 不回传，只告知是否已保存。
+
+    scope: system=系统模型（后台下发，只读），private=独享模型。
+    """
 
     id: int
     name: str
@@ -29,6 +32,7 @@ class ModelProfileOut(CamelModel):
     model: str
     has_api_key: bool
     enabled: bool
+    scope: str = "private"
 
 
 class ModelProfileCreate(CamelModel):

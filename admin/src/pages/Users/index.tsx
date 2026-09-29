@@ -92,6 +92,12 @@ export default function Users() {
           { title: "试卷数", dataIndex: "examCount", width: 90 },
           { title: "错题数", dataIndex: "wrongQuestionCount", width: 90 },
           {
+            title: "系统模型调用",
+            dataIndex: "systemModelCalls",
+            width: 120,
+            render: (value: number) => value ?? 0,
+          },
+          {
             title: "注册时间",
             dataIndex: "createdAt",
             width: 190,

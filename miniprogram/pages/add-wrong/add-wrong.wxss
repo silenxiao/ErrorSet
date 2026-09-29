@@ -104,6 +104,27 @@
 }
 
 /* AI 分析按钮：主色描边样式，左对齐 */
+.ai-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 36rpx;
+}
+
+.ai-row .ai-btn {
+  margin: 0;
+}
+
+.model-btn {
+  width: auto;
+  max-width: 300rpx;
+  padding: 18rpx 24rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: flex;
+  justify-content: center;
+}
+
 .ai-btn {
   display: inline-flex;
   align-items: center;
@@ -148,6 +169,17 @@
     margin: 0 auto;
     width: 100%;
     padding: 16px 16px 24px;
+  }
+
+  .ai-row {
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .model-btn {
+    max-width: 150px;
+    padding: 9px 12px;
+    font-size: 14px;
   }
 
   .section {

@@ -20,6 +20,7 @@ import { createExam, deleteExam, listExams } from '@/api/exam';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { ExamListItem } from '@/types/exam';
 import { GRADE_OPTIONS, examStatusOf, formatDate } from '@/utils/format';
+import { getGradeSync } from '@/api/session';
 import {
   Btn,
   Card,
@@ -48,7 +49,11 @@ export default function ExamScreen() {
   // 上传表单
   const [imageUri, setImageUri] = useState('');
   const [name, setName] = useState('');
-  const [grade, setGrade] = useState(GRADE_OPTIONS[0]);
+  const [grade, setGrade] = useState(() => {
+    // 默认年级：上次手动选择 > 注册时选择的年级 > 一年级
+    const saved = getGradeSync();
+    return saved && GRADE_OPTIONS.includes(saved) ? saved : GRADE_OPTIONS[0];
+  });
   const [includeIllustrations, setIncludeIllustrations] = useState(false);
   const [uploading, setUploading] = useState(false);
 

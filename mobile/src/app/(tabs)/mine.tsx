@@ -4,19 +4,38 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { clearSession, getUsernameSync } from '@/api/session';
-import { Card, Screen, confirm, C } from '@/components/ui';
+import { clearSession, getGradeSync, getUsernameSync } from '@/api/session';
+import { getMe, updateGrade } from '@/api/auth';
+import { GRADE_OPTIONS } from '@/utils/format';
+import { Card, OptionPicker, Screen, confirm, showToast, C } from '@/components/ui';
 
 export default function MineScreen() {
   const [username, setUsername] = useState('');
+  const [grade, setGrade] = useState('');
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
       setUsername(getUsernameSync() || '未登录');
+      setGrade(getGradeSync() || '');
+      // 以服务端为准刷新本地缓存的年级
+      getMe()
+        .then((user) => setGrade(user.grade || '一年级'))
+        .catch(() => {});
     }, []),
   );
+
+  const changeGrade = async (value: string) => {
+    setGrade(value);
+    try {
+      const user = await updateGrade(value);
+      setGrade(user.grade || value);
+      showToast('年级已更新，首次上传试卷将默认使用该年级');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : '保存失败');
+    }
+  };
 
   const logout = () => {
     confirm('退出登录', '确定退出当前账号吗？', () => {
@@ -38,6 +57,21 @@ export default function MineScreen() {
       </View>
 
       <Card style={{ marginTop: 10 }}>
+        <View style={[styles.menuItem, { minHeight: 56 }]}>
+          <Text style={{ fontSize: 20 }}>📚</Text>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.menuTitle}>年级</Text>
+            <Text style={styles.menuSub}>首次上传试卷时默认使用该年级</Text>
+          </View>
+          <View style={styles.gradeBox}>
+            <OptionPicker
+              options={GRADE_OPTIONS}
+              value={grade}
+              onChange={(v) => void changeGrade(v)}
+              placeholder="选择年级"
+            />
+          </View>
+        </View>
         <TouchableOpacity
           activeOpacity={0.6}
           style={styles.menuItem}
@@ -123,6 +157,9 @@ const styles = StyleSheet.create({
   menuArrow: {
     fontSize: 20,
     color: C.muted,
+  },
+  gradeBox: {
+    width: 120,
   },
   logoutBtn: {
     alignItems: 'center',
