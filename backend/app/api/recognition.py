@@ -21,14 +21,14 @@ DbSession = Annotated[Session, Depends(get_db)]
 def list_exams(db: DbSession, user: CurrentUser) -> list[ExamListItem]:
     """当前用户的试卷列表（§26），按创建时间倒序。"""
     items = []
-    for exam in repo.list_exams(db, user.id):
+    for exam, question_count in repo.list_exams_with_question_counts(db, user.id):
         items.append(
             ExamListItem(
                 id=exam.id,
                 name=exam.name,
                 status=exam.status,
                 created_at=exam.created_at,
-                question_count=repo.count_questions(db, exam.id),
+                question_count=question_count,
             )
         )
     return items

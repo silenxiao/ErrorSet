@@ -85,6 +85,24 @@ def list_exams(db: Session, user_id: int) -> list[Exam]:
     return list(db.scalars(stmt))
 
 
+def list_exams_with_question_counts(
+    db: Session, user_id: int
+) -> list[tuple[Exam, int]]:
+    """返回用户试卷及题目数，使用一次聚合查询避免列表接口 N+1。"""
+    question_count = (
+        select(func.count(Question.id))
+        .where(Question.exam_id == Exam.id)
+        .correlate(Exam)
+        .scalar_subquery()
+    )
+    stmt = (
+        select(Exam, question_count)
+        .where(Exam.user_id == user_id)
+        .order_by(Exam.created_at.desc())
+    )
+    return [(exam, int(count or 0)) for exam, count in db.execute(stmt).all()]
+
+
 def list_exams_by_status(db: Session, status: str) -> list[Exam]:
     """跨用户的按状态查询，仅供进程重启后的任务恢复使用。"""
     stmt = select(Exam).where(Exam.status == status)

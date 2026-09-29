@@ -25,9 +25,16 @@ class RecognitionWorker:
         self.queue: asyncio.Queue[RecognitionJob] = asyncio.Queue()
         self._task: asyncio.Task | None = None
         self._pipeline = RecognitionPipeline()
+        # 同一阶段的任务在排队或执行期间只保留一份，避免重复确认/重试
+        # 导致同一试卷被并发或连续覆盖处理结果。
+        self._pending: set[tuple[int, str]] = set()
 
     def start(self) -> None:
         if self._task is None:
+            # asyncio.Queue 会绑定首次消费它的事件循环。开发环境和测试中
+            # lifespan 可能反复创建不同 loop，因此每轮启动都重建队列。
+            self.queue = asyncio.Queue()
+            self._pending.clear()
             self._task = asyncio.create_task(self._run(), name="recognition-worker")
 
     async def stop(self) -> None:
@@ -40,6 +47,11 @@ class RecognitionWorker:
             self._task = None
 
     def enqueue(self, job: RecognitionJob) -> None:
+        key = (job.exam_id, job.stage)
+        if key in self._pending:
+            logger.info("跳过重复任务: exam=%s stage=%s", job.exam_id, job.stage)
+            return
+        self._pending.add(key)
         self.queue.put_nowait(job)
         logger.info("任务入队: exam=%s stage=%s queue=%s", job.exam_id, job.stage, self.queue.qsize())
 
@@ -59,6 +71,7 @@ class RecognitionWorker:
                 )
                 self._mark_failed(job.exam_id, str(exc))
             finally:
+                self._pending.discard((job.exam_id, job.stage))
                 self.queue.task_done()
 
     def _mark_failed(self, exam_id: int, error_message: str = "") -> None:
