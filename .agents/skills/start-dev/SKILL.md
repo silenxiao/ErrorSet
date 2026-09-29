@@ -32,7 +32,7 @@ description: 启动 ErrorSet 本地开发三件套：backend（FastAPI :8000）�
 ## 启动后验证
 
 - 等几秒后 `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/docs` 应返回 200；5173/5174 用同样方式探测首页。
-- 汇报三个地址：后端 http://127.0.0.1:8000 （API 文档 /docs）、Web 前端 http://localhost:5173 、管理后台 http://localhost:5174 。
+- 汇报三个地址：后端 http://127.0.0.1:8000 （API 文档 /docs）、Web 前端 http://127.0.0.1:5173 、管理后台 http://127.0.0.1:5174 。
 - 某个服务启动失败时，读它的后台输出定位原因（常见：8000 端口被旧进程占用，`lsof -ti:8000 | xargs kill` 后重启）。
 
 ## 注意事项

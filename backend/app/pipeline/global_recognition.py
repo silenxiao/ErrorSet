@@ -10,7 +10,7 @@ from app.core.exceptions import ProviderError
 from app.prompts.global_question import (
     GLOBAL_PROMPT,
     NO_ILLUSTRATION_SUFFIX,
-    USER_EXTRA_PROMPT_TEMPLATE,
+    apply_user_extra_prompt,
 )
 from app.providers.base import VisionProvider, VisionRequest, VisionResponse
 
@@ -50,8 +50,7 @@ async def recognize_global(
     prompt = GLOBAL_PROMPT
     if not include_illustrations:
         prompt += NO_ILLUSTRATION_SUFFIX
-    if extra_prompt:
-        prompt += USER_EXTRA_PROMPT_TEMPLATE.format(extra_prompt=extra_prompt.strip())
+    prompt = apply_user_extra_prompt(prompt, extra_prompt)
     last_error: Exception | None = None
 
     for attempt in range(settings.json_max_retries + 1):

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./data/app.db"
     data_dir: str = "./data"
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    cors_origins: list[str] = ["http://127.0.0.1:5173","http://localhost:5173"]
 
     # 上传约束（§5.1）
     allowed_extensions: list[str] = ["jpg", "jpeg", "png", "webp"]

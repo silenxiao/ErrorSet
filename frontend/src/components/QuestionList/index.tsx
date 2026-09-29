@@ -230,18 +230,33 @@ function WrongQuestionModal({
     setAiAnalyzing(true);
     try {
       const result = await analyzeQuestion(questionId);
+      // 「正确答案」「AI分析」两段的先后顺序不稳定（提示词未固定），
+      // 谁在后谁的起始位置就是前一段的结束位置
       const subjectMatch = result.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
       const answerMarker = /^(?:正确答案|答案)：?\s*/m.exec(result);
       const analysisMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(result);
+      const stripSubject = (s: string) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim();
       const answerContent = answerMarker
-        ? result.slice(
-            answerMarker.index + answerMarker[0].length,
-            analysisMarker?.index ?? result.length,
-          ).replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim()
-        : result.replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim();
+        ? stripSubject(
+            result.slice(
+              answerMarker.index + answerMarker[0].length,
+              analysisMarker && analysisMarker.index > answerMarker.index
+                ? analysisMarker.index
+                : result.length,
+            ),
+          )
+        : analysisMarker
+          ? ""
+          : stripSubject(result);
       const analysisContent = analysisMarker
-        ? result.slice(analysisMarker.index + analysisMarker[0].length)
-            .replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim()
+        ? stripSubject(
+            result.slice(
+              analysisMarker.index + analysisMarker[0].length,
+              answerMarker && answerMarker.index > analysisMarker.index
+                ? answerMarker.index
+                : result.length,
+            ),
+          )
         : "";
       form.setFieldsValue({
         ...(subjectMatch ? { subject: subjectMatch[1] } : {}),

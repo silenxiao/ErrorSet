@@ -17,7 +17,9 @@ class ReRecognizeRequest(CamelModel):
     """POST /api/v1/exams/{id}/re-recognize 请求体（均可选）。"""
 
     include_illustrations: bool | None = None
-    extra_prompt: str | None = Field(default=None, max_length=2000)
+    # 仅作防滥用上限；超过 EXTRA_PROMPT_MAX_CHARS（800）的内容在服务层
+    # 直接弃用（保留试卷已有补充提示词），而不是报错
+    extra_prompt: str | None = Field(default=None, max_length=10000)
 
 
 class ExamListItem(CamelModel):

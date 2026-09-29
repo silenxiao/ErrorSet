@@ -70,7 +70,7 @@ export default function RecognitionPage({
 
   const openRerecognize = () => {
     setRerecogIncludeIllus(exam.includeIllustrations);
-    setRerecogExtra(exam.extraPrompt ?? "");
+    setRerecogExtra((exam.extraPrompt ?? "").slice(0, 800));
     setRerecogOpen(true);
   };
 
@@ -196,7 +196,7 @@ export default function RecognitionPage({
           value={rerecogExtra}
           onChange={(e) => setRerecogExtra(e.target.value)}
           rows={3}
-          maxLength={2000}
+          maxLength={800}
           showCount
           placeholder={
             "例如：这是一年级数学卷，注意区分手写答案与印刷题目；\n分数用 \\frac 表示，单位统一保留"

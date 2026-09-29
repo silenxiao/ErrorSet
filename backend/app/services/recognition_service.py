@@ -11,6 +11,7 @@ from app.core.logging import get_logger
 from app.database import repository as repo
 from app.database.models import Exam
 from app.pipeline.preprocess import processed_path_for
+from app.prompts.global_question import EXTRA_PROMPT_MAX_CHARS
 
 logger = get_logger(__name__)
 
@@ -101,6 +102,7 @@ def rerecognize_exam(
 
     include_illustrations 不为 None 时先更新试卷的插图识别设置。
     extra_prompt 不为 None 时更新用户补充提示词（空白视为清除），
+    超过 EXTRA_PROMPT_MAX_CHARS 的提交直接弃用（保留试卷已有设置），
     供本次及后续识别的 Global/Local 两段共同使用。
     """
     exam = get_exam_or_404(db, exam_id, user_id)
@@ -111,8 +113,17 @@ def rerecognize_exam(
         exam.include_illustrations = include_illustrations
         dirty = True
     if extra_prompt is not None:
-        exam.extra_prompt = extra_prompt.strip() or None
-        dirty = True
+        if len(extra_prompt) > EXTRA_PROMPT_MAX_CHARS:
+            # 超过上限直接弃用本次提交的补充提示词，沿用试卷已有设置
+            logger.warning(
+                "试卷 %s 的补充提示词超过 %s 字（%s），已弃用",
+                exam_id,
+                EXTRA_PROMPT_MAX_CHARS,
+                len(extra_prompt),
+            )
+        else:
+            exam.extra_prompt = extra_prompt.strip() or None
+            dirty = True
     if dirty:
         db.commit()
         db.refresh(exam)

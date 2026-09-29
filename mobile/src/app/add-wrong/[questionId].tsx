@@ -75,7 +75,8 @@ export default function AddWrongPage() {
     setAnalyzing(true);
     try {
       const res = await analyzeQuestion(qid);
-      // 与小程序/web 端一致的解析：科目行、"正确答案："、"AI分析："分段
+      // 与小程序/web 端一致的解析：科目行、"正确答案："、"AI分析："分段；
+      // 两段先后顺序不稳定，谁在后谁的起始位置就是前一段的结束位置
       const subjectMatch = res.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
       const ansMarker = /^(?:正确答案|答案)：?\s*/m.exec(res);
       const anaMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(res);
@@ -83,13 +84,14 @@ export default function AddWrongPage() {
       let correct = '';
       let analysisText = '';
       if (ansMarker) {
-        const end = anaMarker ? anaMarker.index : res.length;
+        const end = anaMarker && anaMarker.index > ansMarker.index ? anaMarker.index : res.length;
         correct = stripSubject(res.slice(ansMarker.index + ansMarker[0].length, end));
-      } else {
+      } else if (!anaMarker) {
         correct = stripSubject(res);
       }
       if (anaMarker) {
-        analysisText = stripSubject(res.slice(anaMarker.index + anaMarker[0].length));
+        const end = ansMarker && ansMarker.index > anaMarker.index ? ansMarker.index : res.length;
+        analysisText = stripSubject(res.slice(anaMarker.index + anaMarker[0].length, end));
       }
       const patch: { correct: string; analysis: string; subject?: string } = {
         correct,

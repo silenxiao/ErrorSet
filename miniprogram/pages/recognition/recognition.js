@@ -221,7 +221,7 @@ Page({
     this.setData({
       rerecogVisible: true,
       rerecogInclude: ex.includeIllustrations,
-      rerecogExtra: ex.extraPrompt || '',
+      rerecogExtra: (ex.extraPrompt || '').slice(0, 800),
     });
     this.loadModels();
   },

@@ -7,7 +7,7 @@ from app.core.config import get_settings
 from app.core.exceptions import ProviderError
 from app.core.logging import get_logger
 from app.pipeline.global_recognition import parse_json_text
-from app.prompts.global_question import USER_EXTRA_PROMPT_TEMPLATE
+from app.prompts.global_question import apply_user_extra_prompt
 from app.prompts.local_question import LOCAL_PROMPT
 from app.providers.base import VisionProvider, VisionRequest, VisionResponse
 
@@ -27,9 +27,7 @@ async def recognize_local(
     extra_prompt 为用户补充的识别要求，拼在通用提示词之后。
     """
     settings = get_settings()
-    prompt = LOCAL_PROMPT
-    if extra_prompt:
-        prompt += USER_EXTRA_PROMPT_TEMPLATE.format(extra_prompt=extra_prompt.strip())
+    prompt = apply_user_extra_prompt(LOCAL_PROMPT, extra_prompt)
     last_error: Exception | None = None
 
     for attempt in range(settings.json_max_retries + 1):

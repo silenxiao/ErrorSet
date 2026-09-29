@@ -111,17 +111,19 @@ Page({
         const subjectMatch = res.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
         const ansMarker = /^(?:正确答案|答案)：?\s*/m.exec(res);
         const anaMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(res);
+        // 「正确答案」「AI分析」两段的先后顺序不稳定，谁在后谁是前一段的结束
         const stripSubject = (s) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, '').trim();
         let correct = '';
         let analysis = '';
         if (ansMarker) {
-          const end = anaMarker ? anaMarker.index : res.length;
+          const end = anaMarker && anaMarker.index > ansMarker.index ? anaMarker.index : res.length;
           correct = stripSubject(res.slice(ansMarker.index + ansMarker[0].length, end));
-        } else {
+        } else if (!anaMarker) {
           correct = stripSubject(res);
         }
         if (anaMarker) {
-          analysis = stripSubject(res.slice(anaMarker.index + anaMarker[0].length));
+          const end = ansMarker && ansMarker.index > anaMarker.index ? ansMarker.index : res.length;
+          analysis = stripSubject(res.slice(anaMarker.index + anaMarker[0].length, end));
         }
         const patch = { correctAnswer: correct, analysis };
         if (subjectMatch) {

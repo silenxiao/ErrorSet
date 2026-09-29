@@ -112,8 +112,8 @@
     </view>
 
     <view class="field-col">
-      <text class="label">补充提示词（可选）</text>
-      <textarea class="textarea" value="{{rerecogExtra}}" maxlength="2000" placeholder="例如：这是一年级数学卷，注意区分手写答案与印刷题目" bindinput="onRerecogExtra" />
+      <text class="label">补充提示词（可选，最多 800 字）</text>
+      <textarea class="textarea" value="{{rerecogExtra}}" maxlength="800" placeholder="例如：这是一年级数学卷，注意区分手写答案与印刷题目" bindinput="onRerecogExtra" />
     </view>
 
     <view class="dialog-btns">
