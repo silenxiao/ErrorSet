@@ -2,6 +2,8 @@
 
 from sqlalchemy.orm import Session
 
+from app.prompts.question_answer import QUESTION_ANSWER_PROMPT
+from app.prompts.teacher_system import TEACHER_SYSTEM_PROMPT
 from app.core.exceptions import NotFoundError, ValidationError
 from app.database import repository as repo
 from app.database.models import Question, WrongQuestion
@@ -145,7 +147,7 @@ def analyze_question(db: Session, question_id: int, user_id: int) -> str:
     from PIL import Image
 
     from app.core.config import get_settings
-    from app.prompts.question_answer import ANALYZE_PROMPT
+    from app.prompts.question_answer import QUESTION_ANSWER_PROMPT
     from app.providers.base import VisionRequest
     from app.services.settings_service import get_recognition_provider
 
@@ -155,10 +157,11 @@ def analyze_question(db: Session, question_id: int, user_id: int) -> str:
         raise NotFoundError("题目所属试卷不存在")
 
     prompt = (
-        f"{ANALYZE_PROMPT}\n\n"
-        f"【年级范围】{exam.grade}（解题只用该年级及以下的知识与方法）\n"
-        f"【当前题号】{question.question_no}\n"
-        f"【当前题目文字；只解答这一题】\n{question.text.strip()}"
+        f"{QUESTION_ANSWER_PROMPT}\n\n"
+        f"【年级范围】\n{exam.grade}\n\n"
+        f"【当前题号】\n{question.question_no}\n\n"
+        f"【当前题目文字】\n"
+        f"{question.text.strip()}"
     )
     # 二次识别不计入系统模型调用次数（只统计整卷识别）
     provider = get_recognition_provider(exam.user_id, count_usage=False)
@@ -166,7 +169,11 @@ def analyze_question(db: Session, question_id: int, user_id: int) -> str:
 
     async def _call(image_path: str) -> str:
         response = await provider.analyze(
-            VisionRequest(image_path=image_path, prompt=prompt)
+            VisionRequest(
+                image_path=image_path,
+                prompt=prompt,
+                system_prompt=TEACHER_SYSTEM_PROMPT,
+            )
         )
         return response.text.strip()
 

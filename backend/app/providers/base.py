@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 class VisionRequest:
     image_path: str
     prompt: str
+    system_prompt: str = ""
     temperature: float = 0
 
 

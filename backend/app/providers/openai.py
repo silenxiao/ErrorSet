@@ -22,15 +22,24 @@ class OpenAIProvider(VisionProvider):
             "temperature": request.temperature,
             "messages": [
                 {
+                    "role": "system",
+                    "content": request.system_prompt,
+                },
+                {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": request.prompt},
+                        {
+                            "type": "text",
+                            "text": request.prompt,
+                        },
                         {
                             "type": "image_url",
-                            "image_url": {"url": self._image_url(request)},
+                            "image_url": {
+                                "url": self._image_url(request)
+                            },
                         },
                     ],
-                }
+                },
             ],
         }
         started = time.monotonic()
