@@ -6,6 +6,11 @@ Page({
     detail: null,
     question: null,
     loadError: false,
+    // 题目原文/插图：错题快照优先，快照为空的旧记录回退到实时题目
+    origText: '',
+    origIlls: [],
+    // 原题已随试卷删除（getQuestion 404）
+    questionMissing: false,
     // 插图实际尺寸（key: q.插图id → 行内样式），按自然大小 1:1 显示
     illSizes: {},
   },
@@ -29,7 +34,7 @@ Page({
     api
       .getWrongQuestion(this.id)
       .then((w) => {
-        // 优先用入库时裁剪的快照（静态 /files），旧记录回退到动态裁剪接口
+        // 插图优先用入库时裁剪的快照（静态 /files），旧记录回退到动态裁剪接口
         const snapshots = api.wrongIllustrationUrls(w);
         w.illustrations = snapshots.length
           ? snapshots.map((imgUrl, idx) => ({ id: `s${idx}`, imgUrl }))
@@ -37,7 +42,13 @@ Page({
               ...ill,
               imgUrl: api.illustrationImageUrl(ill.id),
             }));
-        this.setData({ detail: w, loadError: false });
+        this.setData({
+          detail: w,
+          loadError: false,
+          // §28：原文快照优先，保证原题删除后错题仍完整可读
+          origText: w.questionText || '',
+          origIlls: w.illustrations,
+        });
         this.loadQuestion();
       })
       .catch(() => this.setData({ loadError: true }));
@@ -52,9 +63,18 @@ Page({
           ...ill,
           imgUrl: api.illustrationImageUrl(ill.id),
         }));
-        this.setData({ question: q });
+        const patch = { question: q };
+        // 快照为空的旧记录：原文/插图回退到实时题目
+        if (!this.data.origText && q.text) patch.origText = q.text;
+        if (this.data.origIlls.length === 0 && q.illustrations.length > 0) {
+          patch.origIlls = q.illustrations;
+        }
+        this.setData(patch);
       })
-      .catch(() => {});
+      .catch(() => {
+        // 原题行随试卷级联删除：不再阻塞展示，快照兜底
+        this.setData({ questionMissing: true });
+      });
   },
 
   mark(e) {

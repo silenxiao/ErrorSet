@@ -1,5 +1,5 @@
 <view wx:if="{{loadError}}" class="card">
-  <view class="muted" style="padding:30rpx 0;">原题已被删除，仅剩错题记录信息</view>
+  <view class="muted" style="padding:30rpx 0;">错题不存在或已被删除</view>
 </view>
 
 <block wx:if="{{detail}}">
@@ -9,13 +9,15 @@
     </view>
 
     <view class="sec">题目原文</view>
-    <view wx:if="{{question}}" class="answer">
-      <md-render content="{{question.text}}"></md-render>
-      <view wx:if="{{question.illustrations.length > 0}}" class="ills">
-        <image wx:for="{{question.illustrations}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="aspectFit" style="{{illSizes['q.' + ill.id]}}" data-key="q.{{ill.id}}" bindload="onIllLoad"></image>
+    <view wx:if="{{origText}}" class="answer">
+      <md-render content="{{origText}}"></md-render>
+      <view wx:if="{{origIlls.length > 0}}" class="ills">
+        <image wx:for="{{origIlls}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="aspectFit" style="{{illSizes['q.' + ill.id]}}" data-key="q.{{ill.id}}" bindload="onIllLoad"></image>
       </view>
     </view>
-    <view wx:else class="answer muted">加载中…</view>
+    <view wx:elif="{{questionMissing}}" class="answer muted">原题已删除，且该错题未保存原文快照</view>
+    <view wx:elif="{{!question}}" class="answer muted">加载中…</view>
+    <view wx:else class="answer muted">—</view>
 
     <view class="sec">正确答案</view>
     <view class="answer"><md-render content="{{detail.correctAnswer || '—'}}"></md-render></view>
