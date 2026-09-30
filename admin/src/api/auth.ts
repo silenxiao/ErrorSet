@@ -52,3 +52,15 @@ export async function login(
 export async function me(): Promise<AdminAuthUser> {
   return request<AdminAuthUser>("/api/v1/auth/me");
 }
+
+/** 修改当前管理员自己的密码。复用用户端接口（需提供原密码）。 */
+export async function updatePassword(
+  oldPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<void> {
+  await request<{ ok: boolean }>(
+    "/api/v1/auth/me/password",
+    jsonInit("PUT", { oldPassword, newPassword, confirmPassword }),
+  );
+}

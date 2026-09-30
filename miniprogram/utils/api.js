@@ -129,6 +129,13 @@ const api = {
   enableModel: (id) =>
     request(`/api/v1/settings/models/${id}/enable`, { method: 'PUT', data: {} }),
 
+  // 修改密码（「我的」页）：需提供原密码
+  updatePassword: (oldPassword, newPassword, confirmPassword) =>
+    request('/api/v1/auth/me/password', {
+      method: 'PUT',
+      data: { oldPassword, newPassword, confirmPassword },
+    }),
+
   // 连通性测试：返回 { ok, latencyMs, error }（自有模型或已开放的系统模型可测）
   testModel: (id) =>
     request(`/api/v1/settings/models/${id}/test`, { method: 'POST' }),

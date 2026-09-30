@@ -1,15 +1,22 @@
 import {
+  LockOutlined,
   LogoutOutlined,
   MessageOutlined,
   ReadOutlined,
   RightOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Modal, Select, Space, message } from "antd";
+import { Button, Card, Form, Input, Modal, Select, Space, message } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { clearSession, getMe, getUsername, updateGrade } from "../../api/auth";
+import {
+  clearSession,
+  getMe,
+  getUsername,
+  updateGrade,
+  updatePassword,
+} from "../../api/auth";
 import SettingsModal from "../../components/SettingsModal";
 import { GRADE_OPTIONS } from "../../utils/grade";
 
@@ -20,6 +27,9 @@ export default function MinePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [grade, setGrade] = useState<string | undefined>(undefined);
   const [savingGrade, setSavingGrade] = useState(false);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [savingPwd, setSavingPwd] = useState(false);
+  const [pwdForm] = Form.useForm();
 
   useEffect(() => {
     getMe()
@@ -37,6 +47,29 @@ export default function MinePage() {
       message.error(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSavingGrade(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    let values: { oldPassword: string; newPassword: string; confirmPassword: string };
+    try {
+      values = await pwdForm.validateFields();
+    } catch {
+      return; // 表单校验失败，antd 已在字段上提示
+    }
+    setSavingPwd(true);
+    try {
+      await updatePassword(values.oldPassword, values.newPassword, values.confirmPassword);
+      // 旧 token 仍然有效，但改密后要求重新登录更符合用户预期
+      clearSession();
+      setPwdOpen(false);
+      pwdForm.resetFields();
+      message.success("密码已修改，请用新密码重新登录");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "修改失败");
+    } finally {
+      setSavingPwd(false);
     }
   };
 
@@ -128,7 +161,6 @@ export default function MinePage() {
         </div>
         <div
           className="menu-row"
-          style={{ borderBottom: "none" }}
           onClick={() => navigate("/feedback")}
         >
           <MessageOutlined style={{ fontSize: 18, color: "var(--primary)" }} />
@@ -136,6 +168,23 @@ export default function MinePage() {
             <div style={{ fontSize: 15, color: "var(--text-1)" }}>留言板</div>
             <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>
               有问题或建议向我们留言
+            </div>
+          </div>
+          <RightOutlined style={{ color: "var(--text-3)", fontSize: 12 }} />
+        </div>
+        <div
+          className="menu-row"
+          style={{ borderBottom: "none" }}
+          onClick={() => {
+            pwdForm.resetFields();
+            setPwdOpen(true);
+          }}
+        >
+          <LockOutlined style={{ fontSize: 18, color: "var(--primary)" }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, color: "var(--text-1)" }}>修改密码</div>
+            <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>
+              修改后需用新密码重新登录
             </div>
           </div>
           <RightOutlined style={{ color: "var(--text-3)", fontSize: 12 }} />
@@ -154,6 +203,54 @@ export default function MinePage() {
       </Card>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <Modal
+        title="修改密码"
+        open={pwdOpen}
+        onCancel={() => setPwdOpen(false)}
+        onOk={() => void handleChangePassword()}
+        okText="确认修改"
+        cancelText="取消"
+        confirmLoading={savingPwd}
+        destroyOnClose
+      >
+        <Form form={pwdForm} layout="vertical" requiredMark={false}>
+          <Form.Item
+            name="oldPassword"
+            label="原密码"
+            rules={[{ required: true, message: "请输入原密码" }]}
+          >
+            <Input.Password placeholder="请输入当前密码" autoComplete="current-password" />
+          </Form.Item>
+          <Form.Item
+            name="newPassword"
+            label="新密码"
+            rules={[
+              { required: true, message: "请输入新密码" },
+              { min: 6, message: "新密码至少 6 位" },
+              { max: 128, message: "新密码不能超过 128 个字符" },
+            ]}
+          >
+            <Input.Password placeholder="至少 6 位" autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label="确认新密码"
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: "请再次输入新密码" },
+              ({ getFieldValue }) => ({
+                validator: (_, value) =>
+                  !value || getFieldValue("newPassword") === value
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("两次输入的新密码不一致")),
+              }),
+            ]}
+          >
+            <Input.Password placeholder="再次输入新密码" autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

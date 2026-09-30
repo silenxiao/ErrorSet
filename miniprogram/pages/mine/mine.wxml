@@ -33,8 +33,44 @@
     </view>
     <view class="ico menu-arrow ico-chev-right"></view>
   </view>
+  <view class="menu-item" hover-class="menu-item-hover" bindtap="openPwdDialog">
+    <view class="ico menu-icon ico-lock"></view>
+    <view class="menu-main">
+      <view class="menu-title">修改密码</view>
+      <view class="muted">修改后需用新密码重新登录</view>
+    </view>
+    <view class="ico menu-arrow ico-chev-right"></view>
+  </view>
 </view>
 
 <view class="card">
   <button class="btn-danger btn-block" hover-class="none" bindtap="logout">退出登录</button>
+</view>
+
+<!-- 修改密码弹窗 -->
+<view wx:if="{{pwdOpen}}" class="modal-mask" bindtap="closePwdDialog">
+  <!-- catchtap 阻止冒泡，点击弹窗内部不关闭 -->
+  <view class="modal-box" catchtap="noop">
+    <view class="modal-title">修改密码</view>
+
+    <view class="field">
+      <text class="label">原密码</text>
+      <input class="input" password value="{{pwdForm.oldPassword}}" placeholder="请输入当前密码" data-field="oldPassword" bindinput="onPwdInput" />
+    </view>
+
+    <view class="field">
+      <text class="label">新密码</text>
+      <input class="input" password value="{{pwdForm.newPassword}}" placeholder="至少 6 位" data-field="newPassword" bindinput="onPwdInput" />
+    </view>
+
+    <view class="field">
+      <text class="label">确认新密码</text>
+      <input class="input" password value="{{pwdForm.confirmPassword}}" placeholder="再次输入新密码" data-field="confirmPassword" bindinput="onPwdInput" />
+    </view>
+
+    <view class="modal-btns">
+      <button class="btn-ghost" hover-class="none" bindtap="closePwdDialog">取消</button>
+      <button class="btn-primary" hover-class="none" loading="{{pwdSaving}}" bindtap="submitPwd">确认修改</button>
+    </view>
+  </view>
 </view>

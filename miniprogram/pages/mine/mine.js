@@ -8,6 +8,10 @@ Page({
     grade: '',
     gradeIndex: 0,
     savingGrade: false,
+    // 修改密码弹窗
+    pwdOpen: false,
+    pwdSaving: false,
+    pwdForm: { oldPassword: '', newPassword: '', confirmPassword: '' },
   },
 
   onShow() {
@@ -55,6 +59,61 @@ Page({
 
   openFeedback() {
     wx.navigateTo({ url: '/pages/feedback/feedback' });
+  },
+
+  // ===== 修改密码 =====
+  /** 弹窗内层的 catchtap 占位：仅用于阻止点击冒泡到遮罩，不做任何事 */
+  noop() {},
+
+  openPwdDialog() {
+    this.setData({
+      pwdOpen: true,
+      pwdSaving: false,
+      pwdForm: { oldPassword: '', newPassword: '', confirmPassword: '' },
+    });
+  },
+
+  closePwdDialog() {
+    if (this.data.pwdSaving) return;
+    this.setData({ pwdOpen: false });
+  },
+
+  onPwdInput(e) {
+    this.setData({ [`pwdForm.${e.currentTarget.dataset.field}`]: e.detail.value });
+  },
+
+  submitPwd() {
+    if (this.data.pwdSaving) return;
+    const { oldPassword, newPassword, confirmPassword } = this.data.pwdForm;
+    if (!oldPassword) {
+      wx.showToast({ title: '请输入原密码', icon: 'none' });
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      wx.showToast({ title: '新密码至少 6 位', icon: 'none' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      wx.showToast({ title: '两次输入的新密码不一致', icon: 'none' });
+      return;
+    }
+    this.setData({ pwdSaving: true });
+    api
+      .updatePassword(oldPassword, newPassword, confirmPassword)
+      .then(() => {
+        this.setData({ pwdSaving: false, pwdOpen: false });
+        wx.showModal({
+          title: '密码已修改',
+          content: '请使用新密码重新登录',
+          showCancel: false,
+          confirmText: '去登录',
+          success: () => api.logout(),
+        });
+      })
+      .catch((err) => {
+        this.setData({ pwdSaving: false });
+        wx.showToast({ title: (err && err.message) || '修改失败', icon: 'none' });
+      });
   },
 
   logout() {

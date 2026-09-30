@@ -78,3 +78,15 @@ export async function updateGrade(grade: string): Promise<AuthUser> {
   persistUser(user);
   return user;
 }
+
+/** 修改密码。成功后后端不会让旧 token 失效，由调用方决定是否退出重登。 */
+export async function updatePassword(
+  oldPassword: string,
+  newPassword: string,
+  confirmPassword: string,
+): Promise<void> {
+  await request<{ ok: boolean }>(
+    "/api/v1/auth/me/password",
+    jsonInit("PUT", { oldPassword, newPassword, confirmPassword }),
+  );
+}

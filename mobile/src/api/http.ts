@@ -32,8 +32,11 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...init?.headers,
       },
     });
-  } catch {
-    throw new ApiError(0, '网络错误：无法连接后端，请检查服务地址');
+  } catch (e) {
+    // 不要吞掉真实异常：上传等场景失败的原因（如 fetch 实现不支持 FormData 文件写法）
+    // 只能从这里看出来，只报「无法连接后端」会把排查带偏。
+    const reason = e instanceof Error ? e.message : String(e);
+    throw new ApiError(0, `网络错误：无法连接后端，请检查服务地址（${reason}）`);
   }
   if (!resp.ok) {
     if (resp.status === 401 && !isAuthPath(path)) {

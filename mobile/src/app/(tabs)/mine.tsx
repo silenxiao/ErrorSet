@@ -7,13 +7,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { clearSession, getGradeSync, getUsernameSync } from '@/api/session';
-import { getMe, updateGrade } from '@/api/auth';
+import { getMe, updateGrade, updatePassword } from '@/api/auth';
 import { GRADE_OPTIONS } from '@/utils/format';
-import { Card, OptionPicker, Screen, confirm, showToast, C } from '@/components/ui';
+import {
+  Btn,
+  Card,
+  Field,
+  Input,
+  Mask,
+  OptionPicker,
+  Screen,
+  confirm,
+  showToast,
+  C,
+} from '@/components/ui';
 
 export default function MineScreen() {
   const [username, setUsername] = useState('');
   const [grade, setGrade] = useState('');
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [pwdSaving, setPwdSaving] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const router = useRouter();
 
   useFocusEffect(
@@ -43,6 +59,44 @@ export default function MineScreen() {
       clearSession();
       router.replace('/login');
     }, '退出');
+  };
+
+  const openPwd = () => {
+    setOldPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPwdSaving(false);
+    setPwdOpen(true);
+  };
+
+  const submitPwd = async () => {
+    if (pwdSaving) return;
+    if (!oldPassword) {
+      showToast('请输入原密码');
+      return;
+    }
+    if (newPassword.length < 6) {
+      showToast('新密码至少 6 位');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast('两次输入的新密码不一致');
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      await updatePassword(oldPassword, newPassword, confirmPassword);
+      setPwdOpen(false);
+      // 后端旧 token 仍有效，但改密后要求重新登录更符合用户预期
+      confirm('密码已修改', '请使用新密码重新登录', () => {
+        clearSession();
+        router.replace('/login');
+      }, '去登录');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : '修改失败');
+    } finally {
+      setPwdSaving(false);
+    }
   };
 
   return (
@@ -107,12 +161,59 @@ export default function MineScreen() {
           </View>
           <Feather name="chevron-right" size={18} color={C.text3} />
         </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.6} style={styles.menuItem} onPress={openPwd}>
+          <Feather name="lock" size={20} color={C.primary} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.menuTitle}>修改密码</Text>
+            <Text style={styles.menuSub}>修改后需用新密码重新登录</Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={C.text3} />
+        </TouchableOpacity>
       </Card>
 
       {/* 退出登录：独立红色圆角大按钮 */}
       <TouchableOpacity activeOpacity={0.7} style={styles.logoutBtn} onPress={logout}>
         <Text style={styles.logoutText}>退出登录</Text>
       </TouchableOpacity>
+
+      <Mask visible={pwdOpen} onClose={() => !pwdSaving && setPwdOpen(false)}>
+        <Text style={styles.pwdTitle}>修改密码</Text>
+        <Field label="原密码">
+          <Input
+            value={oldPassword}
+            secureTextEntry
+            placeholder="请输入当前密码"
+            autoCapitalize="none"
+            onChangeText={setOldPassword}
+          />
+        </Field>
+        <Field label="新密码">
+          <Input
+            value={newPassword}
+            secureTextEntry
+            placeholder="至少 6 位"
+            autoCapitalize="none"
+            onChangeText={setNewPassword}
+          />
+        </Field>
+        <Field label="确认新密码">
+          <Input
+            value={confirmPassword}
+            secureTextEntry
+            placeholder="再次输入新密码"
+            autoCapitalize="none"
+            onChangeText={setConfirmPassword}
+          />
+        </Field>
+        <View style={styles.pwdBtns}>
+          <Btn kind="ghost" small onPress={() => setPwdOpen(false)}>
+            取消
+          </Btn>
+          <Btn small loading={pwdSaving} onPress={() => void submitPwd()}>
+            确认修改
+          </Btn>
+        </View>
+      </Mask>
     </Screen>
   );
 }
@@ -183,5 +284,18 @@ const styles = StyleSheet.create({
     color: C.danger,
     fontSize: 16,
     fontWeight: '500',
+  },
+  pwdTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: C.textStrong,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  pwdBtns: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 4,
   },
 });

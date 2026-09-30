@@ -51,6 +51,25 @@ class GradeUpdate(CamelModel):
         return _validate_grade(value)
 
 
+class PasswordUpdate(CamelModel):
+    """修改密码，对应「我的」页。必须校验原密码。"""
+
+    old_password: str
+    new_password: str
+    # 二次确认由客户端负责校验，这里仅用于防止"前端漏传校验"导致误改
+    confirm_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _check_new_password(cls, value: str) -> str:
+        if len(value) < 6:
+            raise ValueError("新密码至少 6 位")
+        if len(value) > 128:
+            # 与注册一致：bcrypt 只取前 72 字节，超长部分会被静默截断
+            raise ValueError("新密码不能超过 128 个字符")
+        return value
+
+
 class TokenOut(CamelModel):
     token: str
     user: UserOut
