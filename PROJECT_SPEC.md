@@ -1234,10 +1234,8 @@ wrong_question
 ```text
 id
 question_id
-exam_id
 answer
 correct_answer
-wrong_reason
 knowledge_points
 image
 note
@@ -1247,7 +1245,7 @@ updated_at
 
 说明：
 
-- `question_id` / `exam_id` 指向来源题目和试卷（source_exam）
+- `question_id` 指向来源题目（source_question）
 - `knowledge_points` 是字符串数组，SQLite 中存为 JSON 字符串
 - `image` 保存题图快照路径，加入错题库时从原图裁剪生成，存入 `backend/data/results/`
 - `note` 为用户备注，可空
@@ -1351,7 +1349,6 @@ Request：
   "question_id": 456,
   "answer": "x=1",
   "correct_answer": "x=1 或 x=-1",
-  "wrong_reason": "漏判负根",
   "knowledge_points": ["一元二次方程"],
   "note": ""
 }
@@ -1458,11 +1455,10 @@ MVP 采用**手动添加**：
 
 - 识别结果页的题目列表中，每道题提供「加入错题库」按钮
 - 点击后弹窗，手动填写：
-  - 我的答案（answer）
   - 正确答案（correct_answer）
-  - 错因（wrong_reason）
   - 知识点（knowledge_points，可多个）
   - 备注（note，可空）
+- 错因（wrong_reason）与「我的答案」均已不再采集/记录
 - 提交后调用 `POST /api/v1/wrong-questions` 入库
 - 后端自动从原图裁剪题图快照，作为错题图片保存
 

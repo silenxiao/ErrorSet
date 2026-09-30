@@ -26,10 +26,18 @@
         <text wx:if="{{item.enabled}}" class="tag tag-active">当前使用</text>
       </view>
       <view class="muted model-sub">{{item.model}}{{item.baseUrl ? ' · ' + item.baseUrl : ''}}{{item.hasApiKey ? ' · API Key 已保存' : ''}}</view>
+      <view wx:if="{{testResults[item.id]}}" class="test-result {{testResults[item.id].ok ? 'test-ok' : 'test-fail'}}">
+        {{testResults[item.id].text}}
+      </view>
     </view>
-    <view class="model-actions" wx:if="{{!item.isSystem}}">
-      <view class="text-btn" data-id="{{item.id}}" bindtap="openEditForm">编辑</view>
-      <view class="text-btn danger" data-id="{{item.id}}" bindtap="deleteModel">删除</view>
+    <view class="model-actions">
+      <view class="text-btn {{testingId !== null ? 'testing' : ''}}" data-id="{{item.id}}" bindtap="testModel">
+        {{testingId === item.id ? '测试中…' : '测试'}}
+      </view>
+      <block wx:if="{{!item.isSystem}}">
+        <view class="text-btn" data-id="{{item.id}}" bindtap="openEditForm">编辑</view>
+        <view class="text-btn danger" data-id="{{item.id}}" bindtap="deleteModel">删除</view>
+      </block>
     </view>
   </view>
 

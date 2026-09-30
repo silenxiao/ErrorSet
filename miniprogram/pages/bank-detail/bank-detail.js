@@ -49,7 +49,13 @@ Page({
           origText: w.questionText || '',
           origIlls: w.illustrations,
         });
-        this.loadQuestion();
+        // §28：入库快照齐全时原文与插图都已随详情带回，无需再拉实时题目；
+        // 只有未保存原文快照的旧记录才需要回退
+        if (w.questionText) {
+          this.setData({ question: null, questionMissing: false });
+        } else {
+          this.loadQuestion();
+        }
       })
       .catch(() => this.setData({ loadError: true }));
   },

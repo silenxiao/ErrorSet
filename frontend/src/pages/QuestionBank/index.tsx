@@ -210,7 +210,7 @@ export default function QuestionBankPage() {
         />
       )}
       <Modal
-        title={`错题详情：第 ${detail?.questionNo ?? ""} 题`}
+        title="错题详情"
         open={detail !== null}
         onCancel={() => setDetail(null)}
         footer={null}
@@ -428,6 +428,14 @@ function DetailBody({
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    // §28：入库快照齐全时原文与插图都已由列表接口带回，无需再拉实时题目，
+    // 避免为每条错题详情多发一次注定用不上的请求
+    if (detail.questionText) {
+      setQuestion(null);
+      setLoadError(false);
+      return;
+    }
+
     let cancelled = false;
     setQuestion(null);
     setLoadError(false);
@@ -502,6 +510,18 @@ function DetailBody({
       >
         {renderMarkdown(detail.analysis || "—")}
       </div>
+      {(detail.knowledgePoints?.length ?? 0) > 0 && (
+        <>
+          <SectionTitle>知识点</SectionTitle>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {detail.knowledgePoints.map((point) => (
+              <Tag key={point} color="blue">
+                {point}
+              </Tag>
+            ))}
+          </div>
+        </>
+      )}
       <SectionTitle>备注</SectionTitle>
       <div style={{ color: detail.note ? "var(--text-1)" : "var(--text-3)", whiteSpace: "pre-wrap" }}>
         {detail.note || "—"}

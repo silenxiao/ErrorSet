@@ -39,7 +39,6 @@ export interface WrongQuestionCreate {
   correctAnswer: string;
   subject: string;
   analysis: string;
-  wrongReason: string;
   knowledgePoints: string[];
   note: string;
 }
@@ -47,16 +46,16 @@ export interface WrongQuestionCreate {
 export interface WrongQuestion {
   id: number;
   questionId: number;
-  examId: number;
   answer: string;
   correctAnswer: string;
   correctCount: number;
   wrongCount: number;
   subject: string;
   analysis: string;
-  wrongReason: string;
   knowledgePoints: string[];
   image: string;
+  /** 入库时按当前 bbox 裁剪的插图快照（/files 静态 URL，无需鉴权） */
+  illustrationImages?: string[];
   note: string;
   createdAt: string;
   /** 来源题目的识别内容（§28：保留文本与插图，而非上传图片） */

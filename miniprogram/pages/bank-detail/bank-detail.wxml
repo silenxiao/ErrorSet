@@ -5,7 +5,7 @@
 <block wx:if="{{detail}}">
   <view class="card">
     <view class="row">
-      <view class="card-title" style="margin:0;">第 {{detail.questionNo}} 题</view>
+      <view class="card-title" style="margin:0;">错题详情</view>
     </view>
 
     <view class="sec">题目原文</view>
@@ -24,6 +24,13 @@
 
     <view class="sec">AI 分析结果</view>
     <view class="answer"><md-render content="{{detail.analysis || '—'}}"></md-render></view>
+
+    <block wx:if="{{detail.knowledgePoints.length > 0}}">
+      <view class="sec">知识点</view>
+      <view class="kp-list">
+        <text wx:for="{{detail.knowledgePoints}}" wx:key="*this" class="tag tag-kp">{{item}}</text>
+      </view>
+    </block>
 
     <view class="sec">备注</view>
     <view class="muted">{{detail.note || '—'}}</view>

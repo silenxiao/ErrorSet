@@ -274,7 +274,6 @@ function WrongQuestionModal({
         correctAnswer: values.correctAnswer ?? "",
         subject: values.subject ?? "",
         analysis: values.analysis ?? "",
-        wrongReason: "", // 移除错因
         knowledgePoints: aiResult?.knowledgePoints ?? [],
         note: values.note ?? "",
       });

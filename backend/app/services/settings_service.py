@@ -352,14 +352,19 @@ _TEST_PROMPT = "这是一张测试图片。请直接回复：OK"
 
 
 async def test_model_profile(row: ModelProfile) -> dict:
-    """向该模型发一次最小识别请求，检验配置是否可用。不抛异常，结果见 ok/error。"""
+    """向该模型发一次最小识别请求，检验配置是否可用。不抛异常，结果见 ok/error。
+
+    注意：Provider 层异常（如缺 API Key 的 ProviderAuthError）继承自 AppError
+    而非 ValidationError/ValueError，必须一并捕获，否则接口会 500 而不是
+    返回「不可用 + 原因」。
+    """
     settings = get_settings()
     try:
         provider = _build_provider(
             row.provider, row.model, row.api_key, row.base_url, settings.global_model
         )
-    except (ValidationError, ValueError) as exc:
-        return {"ok": False, "error": str(exc)}
+    except Exception as exc:  # 构造失败同样按"不可用"返回，不中断请求
+        return {"ok": False, "error": str(exc) or type(exc).__name__}
 
     fd, path = tempfile.mkstemp(suffix=".png")
     started = time.monotonic()

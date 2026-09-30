@@ -129,6 +129,10 @@ const api = {
   enableModel: (id) =>
     request(`/api/v1/settings/models/${id}/enable`, { method: 'PUT', data: {} }),
 
+  // 连通性测试：返回 { ok, latencyMs, error }（自有模型或已开放的系统模型可测）
+  testModel: (id) =>
+    request(`/api/v1/settings/models/${id}/test`, { method: 'POST' }),
+
   deleteModel: (id) =>
     request(`/api/v1/settings/models/${id}`, { method: 'DELETE' }),
 

@@ -283,16 +283,12 @@ def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
     （保留打卡计数与手动排序），不产生重复行。
     """
     question = get_question_or_404(db, kwargs["question_id"], user_id)
-    exam = repo.get_exam(db, question.exam_id)
-    if exam is None:
-        raise NotFoundError("题目所属试卷不存在")
 
     fields = dict(
         answer=kwargs.get("answer", ""),
         correct_answer=kwargs.get("correct_answer", ""),
         subject=kwargs.get("subject", ""),
         analysis=kwargs.get("analysis", ""),
-        wrong_reason=kwargs.get("wrong_reason", ""),
         knowledge_points=kwargs.get("knowledge_points") or [],
         note=kwargs.get("note", ""),
         # 题目文本快照：试卷/题目删除后错题列表仍可展示（§28）
@@ -314,9 +310,8 @@ def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
     try:
         return repo.create_wrong_question(
             db,
-            user_id=exam.user_id,
+            user_id=question.exam.user_id,
             question_id=question.id,
-            exam_id=exam.id,
             illustration_images=illustration_images,
             image="",
             **fields,

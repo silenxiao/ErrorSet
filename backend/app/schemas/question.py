@@ -67,7 +67,6 @@ class WrongQuestionCreate(CamelModel):
     correct_answer: str = ""
     subject: str = ""
     analysis: str = ""
-    wrong_reason: str = ""
     knowledge_points: list[str] = []
     note: str = ""
 
@@ -75,14 +74,12 @@ class WrongQuestionCreate(CamelModel):
 class WrongQuestionOut(CamelModel):
     id: int
     question_id: int
-    exam_id: int
     answer: str
     correct_answer: str
     correct_count: int = 0
     wrong_count: int = 0
     subject: str = ""
     analysis: str = ""
-    wrong_reason: str
     knowledge_points: list[str]
     image: str
     # 入库时裁剪的插图快照（/files 静态 URL，无需鉴权）；迁移前的旧行可能为 NULL

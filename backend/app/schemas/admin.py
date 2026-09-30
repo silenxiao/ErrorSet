@@ -41,13 +41,26 @@ class AdminExamOut(CamelModel):
 class AdminWrongQuestionOut(CamelModel):
     id: int
     username: str
-    exam_name: str
     subject: str
     question_text: str
-    wrong_reason: str
     # 题图快照 /files 静态 URL（不回传文件系统路径）
     image_url: str = ""
     created_at: datetime
+
+
+class AdminWrongQuestionDetailOut(AdminWrongQuestionOut):
+    """管理后台错题详情（点击题干弹出）。
+
+    不含用户答案与错因：错题已不记录这两项内容。
+    """
+
+    question_no: str = ""
+    correct_answer: str = ""
+    analysis: str = ""
+    knowledge_points: list[str] = []
+    note: str = ""
+    # 入库时裁剪的插图快照（/files 静态 URL 列表）
+    illustration_images: list[str] = []
 
 
 class AdminFeedbackOut(CamelModel):

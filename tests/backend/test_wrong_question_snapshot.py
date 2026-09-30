@@ -45,7 +45,6 @@ def test_wrong_question_survives_exam_deletion() -> None:
         wrong = WrongQuestion(
             user_id=user.id,
             question_id=question.id,
-            exam_id=exam.id,
             question_no="4",
             question_text=question.text,
             illustration_images=["data/wrong-illustrations/a.png"],
@@ -56,14 +55,20 @@ def test_wrong_question_survives_exam_deletion() -> None:
         # 删除试卷（与 delete_exam_and_files 相同的数据路径）
         repo.delete_exam(session, exam)
 
-        # 错题记录必须还在，且列表接口（admin 外连接 + 快照回填）不丢行
+        # 错题记录必须还在，且管理后台列表（题目外连接 + 快照回填）不丢行
         assert repo.get_wrong_question(session, wrong.id) is not None
         rows = repo.list_all_wrong_questions(session)
         assert len(rows) == 1
         assert rows[0]["wrong_question"].id == wrong.id
         assert rows[0]["wrong_question"].question_text == question.text
+        # 题目行已随试卷删除，题干回落到错题自带快照
         assert rows[0]["question_text"] == question.text
-        assert rows[0]["exam_name"] == "（试卷已删除）"
+
+        # 管理后台详情走同一套快照兜底，删卷后依然可读
+        detail = repo.get_all_wrong_question(session, wrong.id)
+        assert detail is not None
+        assert detail["question_text"] == question.text
+        assert detail["username"] == "u1"
 
         # 用户端列表同样基于快照组装，题目行已不在也不报错、不丢字段
         user_rows = repo.list_wrong_questions(session, user.id)

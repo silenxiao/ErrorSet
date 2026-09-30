@@ -45,6 +45,19 @@
   gap: 12rpx;
 }
 
+/* 知识点标签：自动换行排布 */
+.kp-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 10rpx;
+}
+
+.tag-kp {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
 .ill-img {
   /* 宽高由 bindload 计算的行内样式控制（按图片实际尺寸显示），此处只管外观 */
   border-radius: 12rpx;
@@ -118,6 +131,10 @@
   .ills {
     margin-top: 6px;
     gap: 6px;
+  }
+
+  .kp-list {
+    row-gap: 5px;
   }
 
   .ill-img {

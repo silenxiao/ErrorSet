@@ -21,8 +21,10 @@ import {
   deleteModel,
   enableModel,
   listModels,
+  testModel,
   updateModel,
   type ModelProfile,
+  type ModelTestResult,
 } from '@/api/settings';
 import {
   Btn,
@@ -68,10 +70,20 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { name: '', provider: '', baseUrl: '', model: '', apiKey: '' };
 
+/** 测试结果行文案：可用显示延迟，不可用显示原因 */
+function testResultText(r: ModelTestResult): string {
+  if (r.ok) return `可用 · 延迟 ${r.latencyMs ?? '-'} ms`;
+  return `不可用：${r.error || '未知错误'}`;
+}
+
 export default function ModelsPage() {
   const [models, setModels] = useState<ModelProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // 正在测试的模型 id（null 表示空闲）
+  const [testingId, setTestingId] = useState<number | null>(null);
+  // 测试结果缓存：modelId -> 结果
+  const [testResults, setTestResults] = useState<Record<number, ModelTestResult>>({});
   // 表单态
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -175,6 +187,23 @@ export default function ModelsPage() {
     }
   };
 
+  const runTest = async (item: ModelProfile) => {
+    if (testingId !== null) return;
+    setTestingId(item.id);
+    try {
+      const r = await testModel(item.id);
+      setTestResults((prev) => ({ ...prev, [item.id]: r }));
+      showToast(r.ok ? `可用 ${r.latencyMs} ms` : '不可用');
+    } catch (e) {
+      // 网络/鉴权失败：同样落成结果行，便于对照
+      const r: ModelTestResult = { ok: false, error: e instanceof Error ? e.message : String(e) };
+      setTestResults((prev) => ({ ...prev, [item.id]: r }));
+      Alert.alert('测试请求失败', r.error || '未知错误');
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   const del = (item: ModelProfile) => {
     confirm('删除模型', '确定删除该模型吗？', async () => {
       try {
@@ -214,30 +243,43 @@ export default function ModelsPage() {
 
           {models.map((m) => (
             <Card key={m.id} style={[styles.modelCard, m.enabled && styles.modelEnabled]}>
-              <Switch value={m.enabled} onValueChange={(v) => onEnableChange(m, v)} trackColor={{ true: C.primary }} />
-              <View style={{ flex: 1, marginHorizontal: 8 }}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.modelName} numberOfLines={1}>
-                    {m.name || m.model}
-                  </Text>
-                  <Tag color={C.primary}>{providerLabel(m.provider)}</Tag>
-                  {/* scope: system=系统模型（后台下发，只读），private=独享模型 */}
-                  <Tag color={m.scope === 'system' ? C.primary : C.gray}>{m.scope === 'system' ? '系统' : '独享'}</Tag>
-                  {m.enabled ? <Tag color={C.green}>当前使用</Tag> : null}
+              <View style={styles.modelRow}>
+                <Switch value={m.enabled} onValueChange={(v) => onEnableChange(m, v)} trackColor={{ true: C.primary }} />
+                <View style={{ flex: 1, marginHorizontal: 8 }}>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.modelName} numberOfLines={1}>
+                      {m.name || m.model}
+                    </Text>
+                    <Tag color={C.primary}>{providerLabel(m.provider)}</Tag>
+                    {/* scope: system=系统模型（后台下发，只读），private=独享模型 */}
+                    <Tag color={m.scope === 'system' ? C.primary : C.gray}>{m.scope === 'system' ? '系统' : '独享'}</Tag>
+                    {m.enabled ? <Tag color={C.green}>当前使用</Tag> : null}
+                  </View>
+                  <Muted style={{ marginTop: 2 }} numberOfLines={1}>
+                    {m.model}
+                    {m.baseUrl ? ` · ${m.baseUrl}` : ''}
+                    {m.hasApiKey ? ' · API Key 已保存' : ''}
+                  </Muted>
                 </View>
-                <Muted style={{ marginTop: 2 }} numberOfLines={1}>
-                  {m.model}
-                  {m.baseUrl ? ` · ${m.baseUrl}` : ''}
-                  {m.hasApiKey ? ' · API Key 已保存' : ''}
-                </Muted>
-              </View>
-              {m.scope !== 'system' ? (
                 <View>
-                  <TextBtn onPress={() => openEditForm(m)}>编辑</TextBtn>
-                  <TextBtn danger onPress={() => del(m)}>
-                    删除
+                  {/* 测试对自有模型与已开放的系统模型都可用，故不随 scope 隐藏 */}
+                  <TextBtn onPress={() => runTest(m)}>
+                    {testingId === m.id ? '测试中…' : '测试'}
                   </TextBtn>
+                  {m.scope !== 'system' ? (
+                    <>
+                      <TextBtn onPress={() => openEditForm(m)}>编辑</TextBtn>
+                      <TextBtn danger onPress={() => del(m)}>
+                        删除
+                      </TextBtn>
+                    </>
+                  ) : null}
                 </View>
+              </View>
+              {testResults[m.id] ? (
+                <Text style={[styles.testResult, { color: testResults[m.id].ok ? C.green : C.danger }]}>
+                  {testResultText(testResults[m.id])}
+                </Text>
               ) : null}
             </Card>
           ))}
@@ -323,8 +365,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   modelCard: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  modelRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  testResult: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 16,
   },
   modelEnabled: {
     borderColor: C.primary,

@@ -34,13 +34,22 @@ export interface AdminExamRow {
 export interface AdminWrongQuestionRow {
   id: number;
   username: string;
-  examName: string;
   subject: string;
   questionText: string;
-  wrongReason: string;
   /** 题图快照 /files 静态 URL，空串表示无图 */
   imageUrl: string;
   createdAt: string;
+}
+
+/** 错题详情（点击题干弹出）。不含用户答案与错因：错题已不记录这两项。 */
+export interface AdminWrongQuestionDetail extends AdminWrongQuestionRow {
+  questionNo: string;
+  correctAnswer: string;
+  analysis: string;
+  knowledgePoints: string[];
+  note: string;
+  /** 入库时裁剪的插图快照（/files 静态 URL 列表） */
+  illustrationImages: string[];
 }
 
 export function getStats(): Promise<AdminStats> {
@@ -75,6 +84,12 @@ export function deleteExam(id: number): Promise<void> {
 
 export function listWrongQuestions(): Promise<AdminWrongQuestionRow[]> {
   return request<AdminWrongQuestionRow[]>("/api/v1/admin/wrong-questions");
+}
+
+export function getWrongQuestionDetail(
+  id: number,
+): Promise<AdminWrongQuestionDetail> {
+  return request<AdminWrongQuestionDetail>(`/api/v1/admin/wrong-questions/${id}`);
 }
 
 export function deleteWrongQuestion(id: number): Promise<void> {

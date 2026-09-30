@@ -92,6 +92,80 @@ def _sqlite_lightweight_migrations() -> None:
     _migrate_provider_setting_to_model_profile()
     _seed_default_user()
     _backfill_wrong_question_text()
+    _drop_wrong_question_legacy_columns()
+
+
+def _drop_wrong_question_legacy_columns() -> None:
+    """移除错题表已废弃的 wrong_reason / exam_id 两列。
+
+    错题不再记录「错因」与「来源试卷」：exam_id 原先只用于在管理后台展示
+    来源卷名，不参与删除级联或归属校验，因此可安全移除。
+
+    必须用「重建表」而不是 ALTER TABLE DROP COLUMN：exam_id 带
+    FOREIGN KEY(exam_id) REFERENCES exam(id)，SQLite 会直接拒绝
+    （error in table ... after drop column: unknown column in foreign key
+    definition），而 SQLite 不支持 DROP CONSTRAINT。
+    """
+    with engine.begin() as conn:
+        cols = {
+            row[1] for row in conn.exec_driver_sql("PRAGMA table_info(wrong_question)")
+        }
+        # 全新库由 create_all 直接按当前模型建表，无需迁移
+        if not cols or "exam_id" not in cols:
+            return
+
+        conn.exec_driver_sql(
+            """
+            CREATE TABLE wrong_question_new (
+                id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                question_id INTEGER NOT NULL,
+                answer TEXT NOT NULL,
+                correct_answer TEXT NOT NULL,
+                correct_count INTEGER NOT NULL,
+                wrong_count INTEGER NOT NULL,
+                subject VARCHAR(32) NOT NULL,
+                analysis TEXT NOT NULL,
+                knowledge_points JSON NOT NULL,
+                image VARCHAR(512) NOT NULL,
+                illustration_images JSON NOT NULL,
+                question_no VARCHAR(64) NOT NULL,
+                question_text TEXT NOT NULL,
+                note TEXT NOT NULL,
+                sort_order INTEGER NOT NULL,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                PRIMARY KEY (id),
+                FOREIGN KEY(user_id) REFERENCES user (id),
+                FOREIGN KEY(question_id) REFERENCES question (id)
+            )
+            """
+        )
+        conn.exec_driver_sql(
+            "INSERT INTO wrong_question_new (id, user_id, question_id, answer, "
+            "correct_answer, correct_count, wrong_count, subject, analysis, "
+            "knowledge_points, image, illustration_images, question_no, "
+            "question_text, note, sort_order, created_at, updated_at) "
+            "SELECT id, user_id, question_id, answer, correct_answer, "
+            "correct_count, wrong_count, subject, analysis, knowledge_points, "
+            "image, illustration_images, question_no, question_text, note, "
+            "sort_order, created_at, updated_at FROM wrong_question"
+        )
+        conn.exec_driver_sql("DROP TABLE wrong_question")
+        conn.exec_driver_sql("ALTER TABLE wrong_question_new RENAME TO wrong_question")
+        # 重建模型声明的索引（index=True）与错题唯一约束
+        conn.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_wrong_question_user_id "
+            "ON wrong_question (user_id)"
+        )
+        conn.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_wrong_question_question_id "
+            "ON wrong_question (question_id)"
+        )
+        conn.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_wrong_question_question_id "
+            "ON wrong_question(question_id)"
+        )
 
 
 def _backfill_wrong_question_text() -> None:

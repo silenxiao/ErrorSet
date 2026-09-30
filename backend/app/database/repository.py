@@ -595,15 +595,14 @@ def list_all_exams(db: Session) -> list[dict]:
 
 
 def list_all_wrong_questions(db: Session) -> list[dict]:
-    """跨用户错题列表，附所属用户名、来源试卷名与题干。
+    """跨用户错题列表，附所属用户名与题干。
 
-    试卷/题目可能已被删除（错题按 §28 独立存活），因此用外连接，
+    题目可能已被删除（错题按 §28 独立存活），因此用外连接，
     并优先使用错题自带的文本快照，保证删卷后行不消失。
     """
     rows = db.execute(
-        select(WrongQuestion, User.username, Exam.name, Question.text)
+        select(WrongQuestion, User.username, Question.text)
         .join(User, WrongQuestion.user_id == User.id)
-        .outerjoin(Exam, WrongQuestion.exam_id == Exam.id)
         .outerjoin(Question, WrongQuestion.question_id == Question.id)
         .order_by(WrongQuestion.created_at.desc())
     ).all()
@@ -611,11 +610,27 @@ def list_all_wrong_questions(db: Session) -> list[dict]:
         {
             "wrong_question": row[0],
             "username": row[1],
-            "exam_name": row[2] or "（试卷已删除）",
-            "question_text": row[0].question_text or row[3] or "",
+            "question_text": row[0].question_text or row[2] or "",
         }
         for row in rows
     ]
+
+
+def get_all_wrong_question(db: Session, wrong_id: int) -> dict | None:
+    """单条错题的跨用户视图（管理后台详情用），附用户名与题干快照。"""
+    row = db.execute(
+        select(WrongQuestion, User.username, Question.text)
+        .join(User, WrongQuestion.user_id == User.id)
+        .outerjoin(Question, WrongQuestion.question_id == Question.id)
+        .where(WrongQuestion.id == wrong_id)
+    ).first()
+    if row is None:
+        return None
+    return {
+        "wrong_question": row[0],
+        "username": row[1],
+        "question_text": row[0].question_text or row[2] or "",
+    }
 
 
 def list_all_feedbacks(db: Session) -> list[dict]:

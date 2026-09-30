@@ -154,7 +154,6 @@ Page({
         correctAnswer: this.data.correctAnswer,
         subject,
         analysis: this.data.analysis,
-        wrongReason: '',
         knowledgePoints: [],
         note: this.data.note,
       })

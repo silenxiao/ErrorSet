@@ -43,6 +43,18 @@ export function enableModel(id: number): Promise<ModelProfile> {
   return request(`/api/v1/settings/models/${id}/enable`, jsonInit('PUT', {}));
 }
 
+/** 连通性测试结果：向该模型发一次最小识别请求，不抛异常，结果见 ok/error。 */
+export interface ModelTestResult {
+  ok: boolean;
+  latencyMs?: number;
+  error?: string;
+}
+
+/** 测试模型是否可用（自有模型或已开放的系统模型可测）。 */
+export function testModel(id: number): Promise<ModelTestResult> {
+  return request(`/api/v1/settings/models/${id}/test`, { method: 'POST' });
+}
+
 export function deleteModel(id: number): Promise<{ ok: boolean }> {
   return request(`/api/v1/settings/models/${id}`, { method: 'DELETE' });
 }

@@ -14,6 +14,7 @@ import {
   recordWrongResult,
 } from '@/api/question';
 import type { Question, WrongQuestion } from '@/types/question';
+import { absUrl } from '@/api/config';
 import { MdRender } from '@/components/MdRender';
 import {
   Card,
@@ -21,6 +22,7 @@ import {
   Muted,
   Screen,
   SubHeader,
+  Tag,
   showToast,
   confirm,
   C,
@@ -34,6 +36,8 @@ export default function BankDetailPage() {
   const [detail, setDetail] = useState<WrongQuestion | null>(null);
   const [question, setQuestion] = useState<Question | null>(null);
   const [loadError, setLoadError] = useState(false);
+  /** 原题已随试卷删除（实时题目 404），原文/插图改用错题自带快照 */
+  const [questionMissing, setQuestionMissing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -42,10 +46,15 @@ export default function BankDetailPage() {
           const w = await getWrongQuestion(wrongId);
           setDetail(w);
           setLoadError(false);
-          if (w.questionId) {
+          // §28：未保存原文快照的旧记录才回退实时题目；
+          // 入库快照齐全时无需再拉一次注定用不上的请求
+          setQuestionMissing(false);
+          if (!w.questionText && w.questionId) {
             getQuestion(w.questionId)
               .then(setQuestion)
-              .catch(() => {});
+              .catch(() => setQuestionMissing(true));
+          } else {
+            setQuestion(null);
           }
         } catch {
           setLoadError(true);
@@ -79,13 +88,24 @@ export default function BankDetailPage() {
     }, '删除');
   };
 
+  // §28：原文快照优先——试卷/题目删除后原题仍完整可读；旧记录快照为空才用实时题目
+  const originalText = detail?.questionText || question?.text || '';
+  // 插图快照优先（入库时裁剪的静态 /files 图，无需鉴权），旧记录回退动态裁剪接口
+  const snapshotIlls = detail?.illustrationImages ?? [];
+  const illustrationUris: string[] =
+    snapshotIlls.length > 0
+      ? snapshotIlls.map((src) => absUrl(src)).filter((url): url is string => !!url)
+      : (question?.illustrations || []).map((ill) => illustrationImageUrl(ill.id));
+  // 原文与插图都无从取得时才提示（对应小程序 / Web 的同名分支）
+  const showMissing = !originalText && questionMissing;
+
   return (
     <Screen>
-      <SubHeader title={detail ? `第 ${detail.questionNo} 题` : '错题详情'} />
+      <SubHeader title="错题详情" />
 
       {loadError ? (
         <Card>
-          <CenterMuted>原题已被删除，仅剩错题记录信息</CenterMuted>
+          <CenterMuted>错题不存在或已被删除</CenterMuted>
         </Card>
       ) : null}
 
@@ -93,15 +113,15 @@ export default function BankDetailPage() {
         <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
           <Card>
             <SectionTitle>题目原文</SectionTitle>
-            {question ? (
+            {originalText ? (
               <View>
-                <MdRender content={question.text} />
-                {(question.illustrations || []).length > 0 ? (
+                <MdRender content={originalText} />
+                {illustrationUris.length > 0 ? (
                   <View style={styles.ills}>
-                    {question.illustrations.map((ill) => (
+                    {illustrationUris.map((uri) => (
                       <Image
-                        key={ill.id}
-                        source={{ uri: illustrationImageUrl(ill.id) }}
+                        key={uri}
+                        source={{ uri }}
                         style={styles.illImg}
                         contentFit="contain"
                       />
@@ -109,6 +129,8 @@ export default function BankDetailPage() {
                   </View>
                 ) : null}
               </View>
+            ) : showMissing ? (
+              <Muted>原题已删除，且该错题未保存原文快照</Muted>
             ) : (
               <Muted>加载中…</Muted>
             )}
@@ -118,6 +140,19 @@ export default function BankDetailPage() {
 
             <SectionTitle>AI 分析结果</SectionTitle>
             <MdRender content={detail.analysis || '—'} />
+
+            {(detail.knowledgePoints?.length ?? 0) > 0 ? (
+              <>
+                <SectionTitle>知识点</SectionTitle>
+                <View style={styles.kpList}>
+                  {detail.knowledgePoints.map((point) => (
+                    <Tag key={point} color={C.primary}>
+                      {point}
+                    </Tag>
+                  ))}
+                </View>
+              </>
+            ) : null}
 
             <SectionTitle>备注</SectionTitle>
             <Muted style={{ fontSize: 13 }}>{detail.note || '—'}</Muted>
@@ -163,9 +198,15 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 6,
   },
+  kpList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
   illImg: {
     width: '100%',
-    aspectRatio: 2,
+    // 不写死 aspectRatio：快照按题目 bbox 裁剪，宽高比各不相同，
+    // contentFit="contain" 已能保证不裁切、不拉伸
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },

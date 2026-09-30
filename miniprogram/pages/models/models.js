@@ -20,11 +20,22 @@ function providerIndex(value) {
   return PROVIDERS.findIndex((p) => p.value === value);
 }
 
+// 测试结果行文案：可用显示延迟，不可用显示原因
+function testResultText(item) {
+  if (!item) return '';
+  if (item.ok) return `可用 · 延迟 ${item.latencyMs} ms`;
+  return `不可用：${item.error || '未知错误'}`;
+}
+
 Page({
   data: {
     loading: false,
     error: '',
     models: [],
+    // 正在测试的模型 id（null 表示空闲）
+    testingId: null,
+    // 测试结果缓存：{ [modelId]: { ok, latencyMs, error, text } }
+    testResults: {},
     // 表单态：formOpen=显示表单，editingId=null 表示新增
     formOpen: false,
     editingId: null,
@@ -159,6 +170,28 @@ Page({
     } catch (err) {
       wx.showToast({ title: (err && err.message) || '操作失败', icon: 'none' });
       this.refresh();
+    }
+  },
+
+  async testModel(e) {
+    // dataset 传来的值在部分基础库下是字符串，显式转数字，
+    // 保证与 testingId / testResults 的键类型一致
+    const id = Number(e.currentTarget.dataset.id);
+    if (this.data.testingId !== null) return;
+    this.setData({ testingId: id });
+    try {
+      const res = (await api.testModel(id)) || {};
+      const patch = { [`testResults.${id}`]: { ...res, text: testResultText(res) } };
+      this.setData(patch);
+      // 持久结果行已给出延迟/原因，toast 只做强提示
+      wx.showToast({ title: res.ok ? `可用 ${res.latencyMs} ms` : '不可用', icon: 'none' });
+    } catch (err) {
+      // 网络/鉴权失败：同样落成结果行，便于对照
+      const res = { ok: false, error: (err && err.message) || '测试请求失败' };
+      this.setData({ [`testResults.${id}`]: { ...res, text: testResultText(res) } });
+      wx.showToast({ title: res.error, icon: 'none' });
+    } finally {
+      this.setData({ testingId: null });
     }
   },
 

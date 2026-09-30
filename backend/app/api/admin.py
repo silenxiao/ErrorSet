@@ -20,6 +20,7 @@ from app.schemas.admin import (
     AdminStatsOut,
     AdminUserOut,
     AdminUserUpdate,
+    AdminWrongQuestionDetailOut,
     AdminWrongQuestionOut,
 )
 from app.services import question_service, recognition_service, settings_service
@@ -137,15 +138,47 @@ def list_wrong_questions(
         AdminWrongQuestionOut(
             id=row["wrong_question"].id,
             username=row["username"],
-            exam_name=row["exam_name"],
             subject=row["wrong_question"].subject,
             question_text=row["question_text"],
-            wrong_reason=row["wrong_question"].wrong_reason,
             image_url=recognition_service.data_file_url(row["wrong_question"].image),
             created_at=row["wrong_question"].created_at,
         )
         for row in repo.list_all_wrong_questions(db)
     ]
+
+
+@router.get(
+    "/wrong-questions/{wrong_id}", response_model=AdminWrongQuestionDetailOut
+)
+def get_wrong_question_detail(
+    wrong_id: int, db: DbSession, _admin: AdminUser
+) -> AdminWrongQuestionDetailOut:
+    """错题详情（管理后台点击题干弹出）。"""
+    row = repo.get_all_wrong_question(db, wrong_id)
+    if row is None:
+        raise NotFoundError("错题不存在")
+    wrong = row["wrong_question"]
+    return AdminWrongQuestionDetailOut(
+        id=wrong.id,
+        username=row["username"],
+        subject=wrong.subject,
+        question_text=row["question_text"],
+        image_url=recognition_service.data_file_url(wrong.image),
+        created_at=wrong.created_at,
+        question_no=wrong.question_no,
+        correct_answer=wrong.correct_answer,
+        analysis=wrong.analysis,
+        knowledge_points=wrong.knowledge_points or [],
+        note=wrong.note,
+        illustration_images=[
+            url
+            for url in (
+                recognition_service.data_file_url(path)
+                for path in (wrong.illustration_images or [])
+            )
+            if url
+        ],
+    )
 
 
 @router.delete("/wrong-questions/{wrong_id}", status_code=204)

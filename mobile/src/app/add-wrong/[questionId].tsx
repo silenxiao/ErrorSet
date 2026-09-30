@@ -124,7 +124,6 @@ export default function AddWrongPage() {
         correctAnswer,
         subject: subjectValue,
         analysis,
-        wrongReason: '',
         knowledgePoints: [],
         note,
       });
