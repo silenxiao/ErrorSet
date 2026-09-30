@@ -112,19 +112,6 @@ class RecognitionTask(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
-class ProviderSetting(Base):
-    """识别服务商运行时配置（单行，id=1）。设置后覆盖 .env 默认值。"""
-
-    __tablename__ = "provider_setting"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    provider: Mapped[str] = mapped_column(String(64))
-    base_url: Mapped[str] = mapped_column(String(512), default="")
-    model: Mapped[str] = mapped_column(String(128), default="")
-    api_key: Mapped[str] = mapped_column(String(512), default="")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
-
-
 class ModelProfile(Base):
     """模型管理：用户配置的模型列表。enabled 表示当前启用的模型（每用户最多一条）。
 

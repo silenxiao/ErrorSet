@@ -15,7 +15,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQuestion } from "../../api/question";
 import ModelSelector from "../ModelSelector";
-import type { Question, QuestionStatus } from "../../types/question";
+import type { AnalysisResult, Question, QuestionStatus } from "../../types/question";
 import { renderMathText } from "../../utils/math";
 import { renderMarkdown } from "../../utils/markdown";
 
@@ -24,11 +24,10 @@ interface Props {
   selectedId: number | null;
   onSelect: (questionId: number) => void;
   onChanged: () => void;
-  canReview: boolean;
 }
 
 const STATUS_LABEL: Record<QuestionStatus, { text: string; color: string }> = {
-  pending_review: { text: "待确认", color: "gold" },
+  pending_review: { text: "待确认", color: "warning" },
   confirmed: { text: "已确认", color: "blue" },
   correcting: { text: "二次识别中", color: "processing" },
   completed: { text: "已完成", color: "success" },
@@ -139,10 +138,11 @@ function QuestionItem({
       style={{
         marginLeft: depth * 24,
         padding: "8px 12px",
-        border: `1px solid ${selectedId === question.id ? "#faad14" : "#f0f0f0"}`,
+        border: `1px solid ${selectedId === question.id ? "var(--primary)" : "var(--divider)"}`,
         borderRadius: 8,
         cursor: "pointer",
-        background: selectedId === question.id ? "#fffbe6" : "#fff",
+        background: selectedId === question.id ? "var(--primary-light)" : "#fff",
+        transition: "border-color 0.2s, background 0.2s",
       }}
     >
       <Space size={8} wrap style={{ marginBottom: 4 }}>
@@ -187,7 +187,7 @@ function QuestionItem({
             </Button>
           )}
         </Space>
-        <span style={{ color: "#8c8c8c", whiteSpace: "nowrap" }}>
+        <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>
           {question.status === "completed"
             ? "单击可编辑试题"
             : "二次识别后可编辑试题"}
@@ -215,6 +215,8 @@ function WrongQuestionModal({
   const [editingAnswer, setEditingAnswer] = useState(false);
   const [saving, setSaving] = useState(false);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  /** 最近一次 AI 分析结果，知识点随表单一并入库 */
+  const [aiResult, setAiResult] = useState<AnalysisResult | null>(null);
 
   // 每次换题打开时重置表单：destroyOnClose 只销毁 DOM，
   // form store 里上一次的 AI 分析结果会串到下一题
@@ -224,44 +226,30 @@ function WrongQuestionModal({
     form.resetFields();
     form.setFieldsValue({ subject: defaultSubject || "语文" });
     setEditingAnswer(false);
+    setAiResult(null);
   }, [questionId, form, defaultSubject]);
 
   const handleAiAnalyze = async (questionId: number) => {
     setAiAnalyzing(true);
     try {
       const result = await analyzeQuestion(questionId);
-      // 「正确答案」「AI分析」两段的先后顺序不稳定（提示词未固定），
-      // 谁在后谁的起始位置就是前一段的结束位置
-      const subjectMatch = result.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
-      const answerMarker = /^(?:正确答案|答案)：?\s*/m.exec(result);
-      const analysisMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(result);
-      const stripSubject = (s: string) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, "").trim();
-      const answerContent = answerMarker
-        ? stripSubject(
-            result.slice(
-              answerMarker.index + answerMarker[0].length,
-              analysisMarker && analysisMarker.index > answerMarker.index
-                ? analysisMarker.index
-                : result.length,
-            ),
-          )
-        : analysisMarker
-          ? ""
-          : stripSubject(result);
-      const analysisContent = analysisMarker
-        ? stripSubject(
-            result.slice(
-              analysisMarker.index + analysisMarker[0].length,
-              answerMarker && answerMarker.index > analysisMarker.index
-                ? answerMarker.index
-                : result.length,
-            ),
-          )
-        : "";
+      setAiResult(result);
+      const subjects = [
+        "语文",
+        "数学",
+        "英语",
+        "物理",
+        "化学",
+        "生物",
+        "历史",
+        "政治",
+        "地理",
+      ];
       form.setFieldsValue({
-        ...(subjectMatch ? { subject: subjectMatch[1] } : {}),
-        correctAnswer: answerContent,
-        analysis: analysisContent,
+        // 模型返回的科目不在可选范围内时保留默认值
+        ...(subjects.includes(result.subject) ? { subject: result.subject } : {}),
+        correctAnswer: result.answer,
+        analysis: result.analysis,
       });
     } catch (err) {
       message.error(err instanceof Error ? err.message : "AI 分析失败");
@@ -287,7 +275,7 @@ function WrongQuestionModal({
         subject: values.subject ?? "",
         analysis: values.analysis ?? "",
         wrongReason: "", // 移除错因
-        knowledgePoints: [], // 移除知识点
+        knowledgePoints: aiResult?.knowledgePoints ?? [],
         note: values.note ?? "",
       });
       onSaved();
@@ -306,7 +294,7 @@ function WrongQuestionModal({
       onCancel={onClose}
       confirmLoading={saving}
       destroyOnClose
-      width="75%"
+      width="min(880px, 92vw)"
       style={{ top: 40 }}
     >
       <Form
@@ -334,8 +322,8 @@ function WrongQuestionModal({
               </Button>
             </>
           ) : (
-            <div className="answer-markdown-preview" style={{ position: "relative", minHeight: 64, padding: "10px 40px 10px 12px", border: "1px solid #d9d9d9", borderRadius: 6 }}>
-              {correctAnswer ? renderMarkdown(correctAnswer) : <span style={{ color: "#bfbfbf" }}>AI 分析后显示正确答案</span>}
+            <div className="answer-markdown-preview" style={{ position: "relative", minHeight: 64, padding: "10px 40px 10px 12px", border: "1px solid var(--divider)", borderRadius: 8 }}>
+              {correctAnswer ? renderMarkdown(correctAnswer) : <span style={{ color: "var(--text-3)" }}>AI 分析后显示正确答案</span>}
               <Button
                 type="text"
                 size="small"
@@ -356,8 +344,8 @@ function WrongQuestionModal({
           <Form.Item name="correctAnswer" hidden><Input /></Form.Item>
         </Form.Item>
         <Form.Item label="AI 分析结果">
-          <div className="answer-markdown-preview" style={{ minHeight: 64, padding: "10px 12px", border: "1px solid #d9d9d9", borderRadius: 6 }}>
-            {analysis ? renderMarkdown(analysis) : <span style={{ color: "#bfbfbf" }}>点击 AI 分析后显示结果</span>}
+          <div className="answer-markdown-preview" style={{ minHeight: 64, padding: "10px 12px", border: "1px solid var(--divider)", borderRadius: 8 }}>
+            {analysis ? renderMarkdown(analysis) : <span style={{ color: "var(--text-3)" }}>点击 AI 分析后显示结果</span>}
           </div>
           <Form.Item name="analysis" hidden><Input /></Form.Item>
         </Form.Item>
@@ -433,21 +421,21 @@ function EditQuestionModal({
           style={{ resize: "none", flexShrink: 0 }}
           placeholder="题目文本（数学公式用 $...$ 包裹）"
         />
-        <div style={{ color: "#8c8c8c", flexShrink: 0 }}>预览：</div>
+        <div style={{ color: "var(--text-3)", flexShrink: 0 }}>预览：</div>
         <div
           style={{
             whiteSpace: "pre-wrap",
-            border: "1px solid #f0f0f0",
+            border: "1px solid var(--divider)",
             borderRadius: 8,
             padding: "8px 12px",
-            background: "#fafafa",
+            background: "var(--bg)",
           }}
         >
           {renderMathText(text)}
         </div>
         {(question?.illustrations ?? []).length > 0 && (
           <div style={{ flexShrink: 0 }}>
-            <div style={{ color: "#8c8c8c", marginBottom: 4 }}>
+            <div style={{ color: "var(--text-3)", marginBottom: 4 }}>
               插图（{question?.illustrations.length} 张，按当前 bbox 裁剪）：
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

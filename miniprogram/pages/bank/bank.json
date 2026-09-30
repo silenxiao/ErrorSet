@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "错题库",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
   "usingComponents": {
     "md-render": "../../components/md-render/md-render"
   }

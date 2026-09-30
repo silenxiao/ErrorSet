@@ -1,12 +1,12 @@
 """题目相关业务：bbox 校验与修改、错题入库（§11/§13/§26/§36）。"""
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.prompts.question_answer import QUESTION_ANSWER_PROMPT
-from app.prompts.teacher_system import TEACHER_SYSTEM_PROMPT
 from app.core.exceptions import NotFoundError, ValidationError
 from app.database import repository as repo
 from app.database.models import Question, WrongQuestion
+from app.schemas.question import AnalysisOut
 
 
 def get_question_or_404(db: Session, question_id: int, user_id: int) -> Question:
@@ -137,18 +137,21 @@ def update_wrong_question(
     return repo.update_wrong_question(db, row, **fields)
 
 
-def analyze_question(db: Session, question_id: int, user_id: int) -> str:
-    """Analyze recognized text and only illustrations associated with this question."""
-    import asyncio
+def _prepare_analyze_input(
+    db: Session, question_id: int, user_id: int
+) -> tuple[object, "TeacherQuestion"]:
+    """同步准备 AI 分析输入：校验归属、渲染插图拼图，返回 (provider, TeacherQuestion)。
+
+    Provider 接口是视觉专用的：无插图题目给一张 1x1 占位白图，
+    答案完全基于已识别的题目文本。
+    """
     import io
+    import os
     import tempfile
-    from pathlib import Path
 
     from PIL import Image
 
-    from app.core.config import get_settings
-    from app.prompts.question_answer import QUESTION_ANSWER_PROMPT
-    from app.providers.base import VisionRequest
+    from app.schemas.teacher import TeacherQuestion
     from app.services.settings_service import get_recognition_provider
 
     question = get_question_or_404(db, question_id, user_id)
@@ -156,71 +159,95 @@ def analyze_question(db: Session, question_id: int, user_id: int) -> str:
     if exam is None:
         raise NotFoundError("题目所属试卷不存在")
 
-    prompt = (
-        f"{QUESTION_ANSWER_PROMPT}\n\n"
-        f"【年级范围】\n{exam.grade}\n\n"
-        f"【当前题号】\n{question.question_no}\n\n"
-        f"【当前题目文字】\n"
-        f"{question.text.strip()}"
-    )
     # 二次识别不计入系统模型调用次数（只统计整卷识别）
     provider = get_recognition_provider(exam.user_id, count_usage=False)
+
     illustrations = list(question.illustrations)
-
-    async def _call(image_path: str) -> str:
-        response = await provider.analyze(
-            VisionRequest(
-                image_path=image_path,
-                prompt=prompt,
-                system_prompt=TEACHER_SYSTEM_PROMPT,
-            )
-        )
-        return response.text.strip()
-
     if not illustrations:
-        # Provider interface is vision-only. Give it a neutral placeholder so the
-        # actual answer is derived solely from the already-recognized question text.
-        settings = get_settings()
-        placeholder = Path(settings.data_dir) / "analysis-blank.png"
-        placeholder.parent.mkdir(parents=True, exist_ok=True)
-        if not placeholder.exists():
-            Image.new("RGB", (1, 1), "white").save(placeholder, format="PNG")
-        return asyncio.run(_call(str(placeholder)))
-
-    # Render the linked diagrams and combine them into one canvas. Never send the
-    # full exam or the question crop: only the selected question's own figures.
-    figures = [
-        Image.open(io.BytesIO(render_illustration_image(db, ill.id, user_id))).convert("RGB")
-        for ill in illustrations
-    ]
-    try:
-        gap = 16
-        canvas = Image.new(
-            "RGB",
-            (
-                max(image.width for image in figures),
-                sum(image.height for image in figures) + gap * (len(figures) - 1),
-            ),
-            "white",
-        )
-        y = 0
-        for image in figures:
-            canvas.paste(image, ((canvas.width - image.width) // 2, y))
-            y += image.height + gap
-        settings = get_settings()
-        Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            suffix=".png", dir=settings.data_dir, delete=False
-        ) as image_file:
-            image_path = image_file.name
+        image_path = _write_blank_placeholder()
+    else:
+        # Render the linked diagrams and combine them into one canvas. Never send the
+        # full exam or the question crop: only the selected question's own figures.
+        figures = [
+            Image.open(io.BytesIO(render_illustration_image(db, ill.id, user_id))).convert("RGB")
+            for ill in illustrations
+        ]
         try:
-            canvas.save(image_path, format="PNG")
-            return asyncio.run(_call(image_path))
+            gap = 16
+            canvas = Image.new(
+                "RGB",
+                (
+                    max(image.width for image in figures),
+                    sum(image.height for image in figures) + gap * (len(figures) - 1),
+                ),
+                "white",
+            )
+            y = 0
+            for image in figures:
+                canvas.paste(image, ((canvas.width - image.width) // 2, y))
+                y += image.height + gap
+            # 拼图临时文件放系统临时目录（/files 只暴露 data_dir 的图片子目录）
+            fd, image_path = tempfile.mkstemp(suffix=".png", prefix="analyze-")
+            with os.fdopen(fd, "wb") as image_file:
+                canvas.save(image_file, format="PNG")
         finally:
-            Path(image_path).unlink(missing_ok=True)
+            for image in figures:
+                image.close()
+
+    question_input = TeacherQuestion(
+        text=question.text,
+        grade=exam.grade,
+        subject=question.subject or None,
+        image_path=image_path,
+    )
+    return provider, question_input
+
+
+def _write_blank_placeholder() -> str:
+    """无插图题目给一张 1x1 白图占位，用后即删。"""
+    import os
+    import tempfile
+
+    from PIL import Image
+
+    fd, path = tempfile.mkstemp(suffix=".png", prefix="analyze-blank-")
+    with os.fdopen(fd, "wb") as image_file:
+        Image.new("RGB", (1, 1), "white").save(image_file, format="PNG")
+    return path
+
+
+async def analyze_question(db: Session, question_id: int, user_id: int) -> AnalysisOut:
+    """AI 分析题目答案，返回结构化 TeacherAnswer 字段。
+
+    DB/PIL 准备工作放线程池，Provider 调用直接 await：视觉请求可长达数分钟，
+    不能长期占用线程池线程，也不能阻塞事件循环。
+    """
+    import asyncio
+    from pathlib import Path
+
+    from app.agents.teacher_agent import TeacherAgent, TeacherAgentError
+    from app.core.exceptions import ProviderError
+
+    provider, question_input = await asyncio.to_thread(
+        _prepare_analyze_input, db, question_id, user_id
+    )
+    try:
+        agent = TeacherAgent(provider)
+        try:
+            answer = await agent.answer(question_input)
+        except TeacherAgentError as exc:
+            raise ProviderError(f"AI 分析失败：{exc}") from exc
     finally:
-        for image in figures:
-            image.close()
+        if question_input.image_path:
+            Path(question_input.image_path).unlink(missing_ok=True)
+    return AnalysisOut(
+        subject=answer.subject,
+        answer=answer.answer,
+        analysis=answer.analysis,
+        knowledge_points=answer.knowledge_points,
+        out_of_scope=answer.out_of_scope,
+        confidence=answer.confidence,
+    )
 
 
 def _snapshot_illustrations(
@@ -284,15 +311,30 @@ def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
             image="",
             **fields,
         )
-    return repo.create_wrong_question(
-        db,
-        user_id=exam.user_id,
-        question_id=question.id,
-        exam_id=exam.id,
-        illustration_images=illustration_images,
-        image="",
-        **fields,
-    )
+    try:
+        return repo.create_wrong_question(
+            db,
+            user_id=exam.user_id,
+            question_id=question.id,
+            exam_id=exam.id,
+            illustration_images=illustration_images,
+            image="",
+            **fields,
+        )
+    except IntegrityError:
+        # 并发加入同一题目撞了 question_id 唯一索引：回滚后就地更新已有记录
+        db.rollback()
+        existing = repo.get_wrong_question_by_question(db, question.id)
+        if existing is None:
+            raise
+        _delete_wrong_question_files(existing)
+        return repo.update_wrong_question(
+            db,
+            existing,
+            illustration_images=illustration_images,
+            image="",
+            **fields,
+        )
 
 
 def render_illustration_image(

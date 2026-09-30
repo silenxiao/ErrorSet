@@ -9,6 +9,7 @@ from app.core.exceptions import NotFoundError
 from app.database import repository as repo
 from app.database.database import get_db
 from app.schemas.question import (
+    AnalysisOut,
     BBoxUpdate,
     IllustrationOut,
     QuestionOut,
@@ -84,14 +85,20 @@ def reset_illustration_bbox(
     return IllustrationOut.model_validate(illustration)
 
 
-def _wrong_question_out(db: Session, row) -> WrongQuestionOut:
-    """组装错题响应，附带来源题目的编号与文本（§28：保留文本与插图）。"""
+def _wrong_question_out(
+    db: Session, row, question=None
+) -> WrongQuestionOut:
+    """组装错题响应，附带来源题目的编号与文本（§28：保留文本与插图）。
+
+    question 可传入预载好插图的 Question（批量列表场景），缺省时按需查库。
+    """
     out = WrongQuestionOut.model_validate(row)
     out.illustration_images = [
         recognition_service.data_file_url(path)
         for path in (row.illustration_images or [])
     ]
-    question = repo.get_question(db, row.question_id)
+    if question is None:
+        question = repo.get_question(db, row.question_id)
     if question is not None:
         # 文本快照优先；旧记录（快照为空）回退到实时读取
         out.question_no = row.question_no or question.question_no
@@ -120,8 +127,12 @@ def create_wrong_question(
 @router.get("/api/v1/wrong-questions", response_model=list[WrongQuestionOut])
 def list_wrong_questions(db: DbSession, user: CurrentUser) -> list[WrongQuestionOut]:
     """当前用户的错题列表（§26）。"""
+    rows = repo.list_wrong_questions(db, user.id)
+    questions = repo.map_questions_with_illustrations(
+        db, {row.question_id for row in rows}
+    )
     return [
-        _wrong_question_out(db, row) for row in repo.list_wrong_questions(db, user.id)
+        _wrong_question_out(db, row, questions.get(row.question_id)) for row in rows
     ]
 
 
@@ -190,7 +201,9 @@ def get_illustration_image(
     return ImageResponse(content=data, media_type="image/png")
 
 
-@router.get("/api/v1/questions/{question_id}/analyze")
-def analyze_question(question_id: int, db: DbSession, user: CurrentUser) -> str:
-    """AI 分析题目答案。"""
-    return question_service.analyze_question(db, question_id, user.id)
+@router.get("/api/v1/questions/{question_id}/analyze", response_model=AnalysisOut)
+async def analyze_question(
+    question_id: int, db: DbSession, user: CurrentUser
+) -> AnalysisOut:
+    """AI 分析题目答案（结构化结果）。"""
+    return await question_service.analyze_question(db, question_id, user.id)

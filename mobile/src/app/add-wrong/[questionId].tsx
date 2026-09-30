@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import { analyzeQuestion, addWrongQuestion, getQuestion } from '@/api/question';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { Question } from '@/types/question';
@@ -150,8 +151,8 @@ export default function AddWrongPage() {
           <View style={styles.section}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>正确答案</Text>
-              <TouchableOpacity activeOpacity={0.6} onPress={() => setEditCorrect(!editCorrect)}>
-                <Text style={styles.editIcon}>✎</Text>
+              <TouchableOpacity activeOpacity={0.6} onPress={() => setEditCorrect(!editCorrect)} hitSlop={6}>
+                <Feather name="edit-2" size={16} color={C.primary} />
               </TouchableOpacity>
             </View>
             {editCorrect ? (
@@ -253,11 +254,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: C.textStrong,
     marginBottom: 6,
-  },
-  editIcon: {
-    fontSize: 16,
-    color: C.primary,
-    paddingHorizontal: 6,
   },
   textarea: {
     borderWidth: StyleSheet.hairlineWidth,

@@ -72,13 +72,13 @@ export default function FeedbackPage() {
                 key={row.id}
                 style={{
                   padding: "12px 0",
-                  borderBottom: "1px solid #f0f0f0",
+                  borderBottom: "1px solid var(--divider)",
                 }}
               >
-                <div style={{ whiteSpace: "pre-wrap", color: "#1f2329" }}>
+                <div style={{ whiteSpace: "pre-wrap", color: "var(--text-1)" }}>
                   {row.content}
                 </div>
-                <div style={{ color: "#999", fontSize: 12, marginTop: 4 }}>
+                <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 4 }}>
                   {new Date(row.createdAt).toLocaleString("zh-CN")}
                 </div>
               </div>

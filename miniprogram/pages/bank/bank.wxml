@@ -1,5 +1,6 @@
-<view class="card">
-  <view wx:if="{{subjectTags.length > 0}}" class="filter-row">
+<!-- 科目筛选 chips -->
+<view wx:if="{{subjectTags.length > 0}}" class="filter-wrap">
+  <view class="filter-row">
     <text class="filter-tag {{subjectFilter === null ? 'active' : ''}}" data-name="" bindtap="onFilterTap">全部 {{totalAll}}</text>
     <text
       wx:for="{{subjectTags}}"
@@ -9,7 +10,9 @@
       bindtap="onFilterTap"
     >{{item.name}} {{item.count}}</text>
   </view>
+</view>
 
+<view class="page-wrap">
   <view wx:if="{{error && error !== 'empty'}}" class="err-box">
     <view class="err-msg">加载失败：{{error}}</view>
     <view class="err-hint">后端地址：{{backendBase}}（请确认后端已启动，且开发者工具已勾选「不校验合法域名」）</view>
@@ -17,12 +20,18 @@
   </view>
 
   <view wx:if="{{loading && rows.length === 0}}" class="muted" style="padding:20rpx 0;">加载中…</view>
-  <view wx:if="{{!loading && !error && rows.length === 0}}" class="muted" style="padding:20rpx 0;">暂无错题，去识别结果页把题目加入错题库吧</view>
-  <view wx:if="{{!loading && rows.length > 0 && visibleRows.length === 0}}" class="muted" style="padding:20rpx 0;">该科目下暂无错题</view>
+  <view wx:if="{{!loading && !error && rows.length === 0}}" class="empty card">
+    <view class="ico ico-inbox"></view>
+    <view class="muted">暂无错题，去识别结果页把题目加入错题库吧</view>
+  </view>
+  <view wx:if="{{!loading && rows.length > 0 && visibleRows.length === 0}}" class="empty card">
+    <view class="ico ico-inbox"></view>
+    <view class="muted">该科目下暂无错题</view>
+  </view>
 
-  <view wx:for="{{visibleRows}}" wx:key="id" class="wrow">
+  <view wx:for="{{visibleRows}}" wx:key="id" class="wrow" hover-class="wrow-hover" hover-stay-time="80">
     <view class="whead">
-      <text class="tag" style="background:{{item.subjectColor}}1a;color:{{item.subjectColor}};" bindtap="editSubject" data-id="{{item.id}}" data-subject="{{item.subject}}">{{item.subject || '未设置'}}</text>
+      <text class="tag tag-subject" style="background:{{item.subjectColor}}1a;color:{{item.subjectColor}};" bindtap="editSubject" data-id="{{item.id}}" data-subject="{{item.subject}}">{{item.subject || '未设置'}}</text>
       <text class="muted">第 {{item.questionNo}} 题</text>
     </view>
 
@@ -37,7 +46,10 @@
         wx:key="id"
         class="ill-img"
         src="{{ill.imgUrl}}"
-        mode="widthFix"
+        mode="aspectFit"
+        style="{{illSizes[item.id + '.' + ill.id]}}"
+        data-key="{{item.id}}.{{ill.id}}"
+        bindload="onIllLoad"
       ></image>
     </view>
 
@@ -46,9 +58,9 @@
       <view class="text-btn" data-id="{{item.id}}" data-position="top" bindtap="sort">置顶</view>
       <view class="text-btn" data-id="{{item.id}}" data-position="bottom" bindtap="sort">置底</view>
       <view class="text-btn danger" data-id="{{item.id}}" bindtap="del">删除</view>
-      <view class="text-btn" data-id="{{item.id}}" data-result="correct" bindtap="mark">😀 做对</view>
-      <view class="text-btn" data-id="{{item.id}}" data-result="wrong" bindtap="mark">😢 做错</view>
-      <text class="muted" style="margin-left:auto;">做对 {{item.correctCount}} · 做错 {{item.wrongCount}}</text>
+      <view class="text-btn" data-id="{{item.id}}" data-result="correct" bindtap="mark"><view class="ico ico-like"></view>做对</view>
+      <view class="text-btn" data-id="{{item.id}}" data-result="wrong" bindtap="mark"><view class="ico ico-dislike"></view>做错</view>
+      <text class="muted wcount">做对 {{item.correctCount}} · 做错 {{item.wrongCount}}</text>
     </view>
   </view>
 
@@ -65,7 +77,7 @@
     <view class="field">
       <text class="label">选择科目</text>
       <picker mode="selector" range="{{subjectOptions}}" value="{{subjectOptions.indexOf(editValue)}}" bindchange="onSubjectPick">
-        <view class="picker">{{editValue || '未设置'}}</view>
+        <view class="field-value picker">{{editValue || '未设置'}}<view class="ico ico-chev-down"></view></view>
       </picker>
     </view>
     <view class="dialog-btns">

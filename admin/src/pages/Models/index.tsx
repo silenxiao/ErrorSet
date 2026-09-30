@@ -101,9 +101,9 @@ function ModelFormModal(props: {
   }, [open, editing, form]);
 
   const handleSave = async () => {
-    const values: ModelFormValues = await form.validateFields();
     setSaving(true);
     try {
+      const values: ModelFormValues = await form.validateFields();
       const payload = {
         name: values.name ?? "",
         provider: values.provider ?? "",
@@ -129,7 +129,10 @@ function ModelFormModal(props: {
       onSaved();
       onClose();
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "保存失败");
+      // 表单校验失败由 antd 在字段下方展示，不弹全局错误
+      if (!(err && typeof err === "object" && "errorFields" in err)) {
+        message.error(err instanceof Error ? err.message : "保存失败");
+      }
     } finally {
       setSaving(false);
     }

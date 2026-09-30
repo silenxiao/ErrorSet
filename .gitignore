@@ -12,6 +12,7 @@ node_modules/
 frontend/dist/
 admin/dist/
 *.local
+*.tsbuildinfo
 
 # 密钥与部署备份（.env 含 AI API Key 与 JWT 密钥，严禁入库）
 .env
@@ -26,9 +27,6 @@ backend/data/**
 
 # 系统
 .DS_Store
-
-# 测试
-tests/
 
 # AI 工程目录
 .workbuddy/

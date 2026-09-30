@@ -40,6 +40,21 @@ class BBoxUpdate(BaseModel):
         return v
 
 
+class AnalysisOut(CamelModel):
+    """GET /api/v1/questions/{id}/analyze 的结构化 AI 分析结果。
+
+    取代旧的自由文本（科目：… 正确答案：… AI分析：…），
+    前端不再需要正则拆分。
+    """
+
+    subject: str
+    answer: str
+    analysis: str
+    knowledge_points: list[str] = []
+    out_of_scope: bool = False
+    confidence: Literal["high", "medium", "low"] = "medium"
+
+
 class QuestionUpdate(CamelModel):
     """PATCH /api/v1/questions/{id} 可编辑字段，None 表示不修改。"""
 

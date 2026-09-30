@@ -12,11 +12,11 @@ Page({
     error: '',
     backendBase: '',
     gradeOptions: GRADE_OPTIONS,
-    // 默认年级：上次手动选择 > 注册时选择的年级 > 一年级
+    // 默认年级：上次手动选择 > 注册时选择的年级 > 六年级（三端统一规范默认）
     gradeIndex: Math.max(
       0,
       GRADE_OPTIONS.indexOf(
-        wx.getStorageSync('lastExamGrade') || wx.getStorageSync('errorset_grade') || GRADE_OPTIONS[0]
+        wx.getStorageSync('lastExamGrade') || wx.getStorageSync('errorset_grade') || '六年级'
       )
     ),
     previewImage: '',
@@ -39,6 +39,12 @@ Page({
 
   onUnload() {
     this.stopPolling();
+  },
+
+  // 下拉刷新：重新拉取试卷列表后收起刷新动画
+  onPullDownRefresh() {
+    this.loadExams(true);
+    setTimeout(() => wx.stopPullDownRefresh(), 600);
   },
 
   loadExams(silent) {

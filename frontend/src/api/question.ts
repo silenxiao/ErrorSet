@@ -1,5 +1,12 @@
 import { jsonInit, request } from "./http";
-import type { BBox, Question, WrongQuestion, WrongQuestionCreate } from "../types/question";
+import { TOKEN_KEY } from "./auth";
+import type {
+  AnalysisResult,
+  BBox,
+  Question,
+  WrongQuestion,
+  WrongQuestionCreate,
+} from "../types/question";
 
 export function getQuestion(questionId: number): Promise<Question> {
   return request(`/api/v1/questions/${questionId}`);
@@ -7,7 +14,7 @@ export function getQuestion(questionId: number): Promise<Question> {
 
 /** 动态插图裁剪图 URL：<img> 标签带不上 Authorization 头，用 ?token= 回退。 */
 export function illustrationSrc(illustrationId: number): string {
-  const token = localStorage.getItem("errorset_token");
+  const token = localStorage.getItem(TOKEN_KEY);
   const query = token ? `?token=${encodeURIComponent(token)}` : "";
   return `/api/v1/illustrations/${illustrationId}/image${query}`;
 }
@@ -69,7 +76,8 @@ export function updateWrongQuestion(
   return request(`/api/v1/wrong-questions/${id}`, jsonInit("PATCH", fields));
 }
 
-export function analyzeQuestion(questionId: number): Promise<string> {
+/** AI 分析题目，返回结构化结果（科目/答案/分析/知识点/置信度）。 */
+export function analyzeQuestion(questionId: number): Promise<AnalysisResult> {
   return request(`/api/v1/questions/${questionId}/analyze`);
 }
 

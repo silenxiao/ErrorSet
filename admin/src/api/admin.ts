@@ -26,7 +26,8 @@ export interface AdminExamRow {
   status: string;
   username: string;
   questionCount: number;
-  originalImage: string;
+  /** 原图 /files 静态 URL，空串表示无图 */
+  imageUrl: string;
   createdAt: string;
 }
 
@@ -37,7 +38,8 @@ export interface AdminWrongQuestionRow {
   subject: string;
   questionText: string;
   wrongReason: string;
-  image: string;
+  /** 题图快照 /files 静态 URL，空串表示无图 */
+  imageUrl: string;
   createdAt: string;
 }
 

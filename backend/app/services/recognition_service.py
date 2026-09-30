@@ -22,6 +22,17 @@ def resolve_data_file(path_str: str) -> Path:
     return path if path.is_absolute() else Path.cwd() / path
 
 
+def _sniff_image_format(file_bytes: bytes) -> str | None:
+    """按文件头识别真实图片格式，返回归一化扩展名（jpg/jpeg 同义）；识别不出返回 None。"""
+    if file_bytes.startswith(b"\xff\xd8\xff"):
+        return "jpg"
+    if file_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if file_bytes[:4] == b"RIFF" and file_bytes[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
 def get_exam_or_404(db: Session, exam_id: int, user_id: int) -> Exam:
     exam = repo.get_exam(db, exam_id)
     if exam is None or exam.user_id != user_id:
@@ -48,6 +59,11 @@ def create_exam_from_upload(
         raise UploadError("文件为空")
     if len(file_bytes) > settings.max_upload_bytes:
         raise UploadError("文件超过 10MB 限制")
+    # 内容与扩展名双重校验：改后缀伪装的文件在这里被拒
+    normalized_ext = "jpg" if ext == "jpeg" else ext
+    sniffed = _sniff_image_format(file_bytes)
+    if sniffed != normalized_ext:
+        raise UploadError("文件内容与扩展名不符，请上传真实图片")
 
     originals_dir = Path(settings.data_dir) / "originals"
     originals_dir.mkdir(parents=True, exist_ok=True)
@@ -67,7 +83,12 @@ def create_exam_from_upload(
 
 
 def data_file_url(path: str) -> str:
-    """data_dir 内相对路径 → /files 静态访问 URL（main.py 把 data_dir 挂载在 /files）。"""
+    """data_dir 内相对路径 → /files 静态访问 URL（main.py 把 data_dir 挂载在 /files）。
+
+    空路径返回空串，调用方以真值判断是否有图可展示。
+    """
+    if not path:
+        return ""
     settings = get_settings()
     try:
         relative = Path(path).relative_to(Path(settings.data_dir))

@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "试卷上传",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
   "usingComponents": {}
 }

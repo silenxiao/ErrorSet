@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Button, Card, Form, Input, message, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
@@ -12,8 +13,10 @@ interface LoginForm {
 export default function Login() {
   const navigate = useNavigate();
   const [form] = Form.useForm<LoginForm>();
+  const [submitting, setSubmitting] = useState(false);
 
   const onFinish = async (values: LoginForm) => {
+    setSubmitting(true);
     try {
       const user = await login(values.username.trim(), values.password);
       if (!user.isAdmin) {
@@ -25,6 +28,8 @@ export default function Login() {
       navigate("/", { replace: true });
     } catch (error) {
       message.error(error instanceof Error ? error.message : "登录失败");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -65,7 +70,13 @@ export default function Login() {
               size="large"
             />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block size="large">
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            size="large"
+            loading={submitting}
+          >
             登录
           </Button>
         </Form>

@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
+  DislikeOutlined,
+  LikeOutlined,
+  VerticalAlignBottomOutlined,
+  VerticalAlignTopOutlined,
+} from "@ant-design/icons";
+import {
+  Alert,
   Button,
   Card,
   Empty,
@@ -45,6 +52,8 @@ const SUBJECT_OPTIONS = [
 export default function QuestionBankPage() {
   const [rows, setRows] = useState<WrongQuestion[]>([]);
   const [loading, setLoading] = useState(false);
+  /** 列表加载失败信息，null 表示正常 */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [detail, setDetail] = useState<WrongQuestion | null>(null);
   const [page, setPage] = useState(1);
   /** 当前筛选科目，null 表示全部 */
@@ -54,6 +63,9 @@ export default function QuestionBankPage() {
     setLoading(true);
     try {
       setRows(await listWrongQuestions());
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "加载错题列表失败");
     } finally {
       setLoading(false);
     }
@@ -80,7 +92,7 @@ export default function QuestionBankPage() {
     if (subjectFilter !== null && !subjectCounts.has(subjectFilter)) {
       setSubjectFilter(null);
     }
-  });
+  }, [subjectFilter, rows]);
 
   const visibleRows =
     subjectFilter === null
@@ -137,33 +149,42 @@ export default function QuestionBankPage() {
   return (
     <Card>
       <Spin spinning={loading}>
+        {loadError !== null && (
+          <Alert
+            type="error"
+            showIcon
+            message="错题列表加载失败"
+            description={loadError}
+            style={{ marginBottom: 12 }}
+          />
+        )}
         {rows.length > 0 && (
-          <Space size={4} wrap style={{ marginBottom: 12 }}>
-            <Tag
-              color={subjectFilter === null ? "blue" : "default"}
-              style={{ cursor: "pointer" }}
+          <Space size={8} wrap style={{ marginBottom: 16 }}>
+            <button
+              type="button"
+              className={`filter-chip${subjectFilter === null ? " filter-chip-active" : ""}`}
               onClick={() => handleFilter(null)}
             >
               全部 {rows.length}
-            </Tag>
+            </button>
             {subjects.map((subject) => (
-              <Tag
+              <button
                 key={subject}
-                color={subjectFilter === subject ? "blue" : "default"}
-                style={{ cursor: "pointer" }}
+                type="button"
+                className={`filter-chip${subjectFilter === subject ? " filter-chip-active" : ""}`}
                 onClick={() =>
                   handleFilter(subjectFilter === subject ? null : subject)
                 }
               >
                 {subject} {subjectCounts.get(subject)}
-              </Tag>
+              </button>
             ))}
           </Space>
         )}
         {rows.length === 0 && !loading ? (
           <Empty description="暂无错题" />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {currentRows.map((row) => (
               <WrongQuestionItem
                 key={row.id}
@@ -193,7 +214,7 @@ export default function QuestionBankPage() {
         open={detail !== null}
         onCancel={() => setDetail(null)}
         footer={null}
-        width="85%"
+        width="min(1080px, 92vw)"
         style={{ top: 40 }}
       >
         {detail && (
@@ -277,11 +298,13 @@ function WrongQuestionItem({
 }) {
   return (
     <div
+      className="hover-lift"
       style={{
-        padding: "8px 12px",
-        border: "1px solid #f0f0f0",
-        borderRadius: 8,
-        background: "#fff",
+        padding: 16,
+        border: "1px solid var(--divider)",
+        borderRadius: "var(--radius-card)",
+        background: "var(--card)",
+        boxShadow: "var(--shadow-card)",
       }}
     >
       <Space size={8} wrap style={{ marginBottom: 4 }}>
@@ -316,18 +339,28 @@ function WrongQuestionItem({
           justifyContent: "space-between",
           alignItems: "center",
           gap: 8,
-          marginTop: 8,
+          marginTop: 12,
           flexWrap: "wrap",
         }}
       >
-        <Space size={8}>
+        <Space size={8} wrap>
           <Button size="small" onClick={() => onDetail(row)}>
             详情
           </Button>
-          <Button size="small" title="放到列表最前面" onClick={() => onSort(row, "top")}>
+          <Button
+            size="small"
+            icon={<VerticalAlignTopOutlined />}
+            title="放到列表最前面"
+            onClick={() => onSort(row, "top")}
+          >
             置顶
           </Button>
-          <Button size="small" title="放到列表最后面" onClick={() => onSort(row, "bottom")}>
+          <Button
+            size="small"
+            icon={<VerticalAlignBottomOutlined />}
+            title="放到列表最后面"
+            onClick={() => onSort(row, "bottom")}
+          >
             置底
           </Button>
           <Popconfirm title="确定删除该错题？" onConfirm={() => onDelete(row)}>
@@ -336,27 +369,25 @@ function WrongQuestionItem({
             </Button>
           </Popconfirm>
           <Button
-            type="link"
             size="small"
-            style={{ padding: 0 }}
+            icon={<LikeOutlined />}
             title="做对了，做对次数 +1"
             aria-label="做对了"
             onClick={() => onMark(row, "correct")}
           >
-            😀 做对
+            做对
           </Button>
           <Button
-            type="link"
             size="small"
-            style={{ padding: 0 }}
+            icon={<DislikeOutlined />}
             title="做错了，做错次数 +1"
             aria-label="做错了"
             onClick={() => onMark(row, "wrong")}
           >
-            😢 做错
+            做错
           </Button>
         </Space>
-        <span style={{ color: "#8c8c8c", whiteSpace: "nowrap" }}>
+        <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>
           做对 {row.correctCount ?? 0} 次 · 做错 {row.wrongCount ?? 0} 次
         </span>
       </div>
@@ -375,10 +406,10 @@ function SectionTitle({ children }: { children: ReactNode }) {
         margin: "16px 0 6px",
         fontWeight: 600,
         fontSize: 14,
-        color: "#1f2329",
+        color: "var(--text-1)",
       }}
     >
-      <span style={{ width: 4, height: 14, borderRadius: 2, background: "#1677ff" }} />
+      <span style={{ width: 4, height: 14, borderRadius: 2, background: "var(--primary)" }} />
       {children}
     </div>
   );
@@ -405,6 +436,7 @@ function DetailBody({
         if (!cancelled) setQuestion(q);
       })
       .catch(() => {
+        // 原题行随试卷删除时 404：文本/插图改用错题自带快照展示
         if (!cancelled) setLoadError(true);
       });
     return () => {
@@ -412,76 +444,80 @@ function DetailBody({
     };
   }, [detail.questionId, detail.id]);
 
+  // §28：入库时的文本快照优先——试卷/题目删除后原题仍完整可读；
+  // 快照为空的旧记录回退到实时题目
+  const originalText = detail.questionText || question?.text || "";
+
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <SectionTitle>题目原文</SectionTitle>
       <div
         className="answer-markdown-preview"
-        style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 12px" }}
+        style={{ background: "var(--bg)", border: "1px solid var(--divider)", borderRadius: 8, padding: "8px 12px" }}
       >
-        {loadError ? (
-          <span style={{ color: "#bbb" }}>原题已被删除，仅剩错题记录信息</span>
-        ) : question ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ whiteSpace: "pre-wrap" }}>
-              {renderMathText(question.text)}
-            </div>
-            {(detail.illustrationImages?.length ?? 0) > 0
-              ? detail.illustrationImages.map((url) => (
-                  <Image
-                    key={url}
-                    src={url}
-                    alt="插图"
-                    // width:auto 覆盖 antd 默认的 width:100% 拉伸，
-                    // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
-                    style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
-                  />
-                ))
-              : question.illustrations.map((ill) => (
-                  <Image
-                    key={ill.id}
-                    src={illustrationSrc(ill.id)}
-                    alt={`插图（${ill.type}）`}
-                    // width:auto 覆盖 antd 默认的 width:100% 拉伸，
-                    // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
-                    style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
-                  />
-                ))}
+        {originalText ? (
+          <div style={{ whiteSpace: "pre-wrap" }}>
+            {renderMathText(originalText)}
           </div>
+        ) : loadError ? (
+          <span style={{ color: "var(--text-3)" }}>原题已删除，且该错题未保存原文快照</span>
         ) : (
-          <span style={{ color: "#bbb" }}>加载中…</span>
+          <span style={{ color: "var(--text-3)" }}>加载中…</span>
         )}
+        {(detail.illustrationImages?.length ?? 0) > 0
+          ? detail.illustrationImages.map((url) => (
+              <Image
+                key={url}
+                src={url}
+                alt="插图"
+                // width:auto 覆盖 antd 默认的 width:100% 拉伸，
+                // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
+                style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+              />
+            ))
+          : question
+            ? question.illustrations.map((ill) => (
+                <Image
+                  key={ill.id}
+                  src={illustrationSrc(ill.id)}
+                  alt={`插图（${ill.type}）`}
+                  // width:auto 覆盖 antd 默认的 width:100% 拉伸，
+                  // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小
+                  style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+                />
+              ))
+            : null}
       </div>
       <SectionTitle>正确答案</SectionTitle>
       <div
         className="answer-markdown-preview"
-        style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 12px" }}
+        style={{ background: "var(--bg)", border: "1px solid var(--divider)", borderRadius: 8, padding: "8px 12px" }}
       >
         {renderMarkdown(detail.correctAnswer || "—")}
       </div>
       <SectionTitle>AI 分析结果</SectionTitle>
       <div
         className="answer-markdown-preview"
-        style={{ background: "#fafafa", border: "1px solid #f0f0f0", borderRadius: 6, padding: "8px 12px" }}
+        style={{ background: "var(--bg)", border: "1px solid var(--divider)", borderRadius: 8, padding: "8px 12px" }}
       >
         {renderMarkdown(detail.analysis || "—")}
       </div>
       <SectionTitle>备注</SectionTitle>
-      <div style={{ color: detail.note ? "#333" : "#bbb", whiteSpace: "pre-wrap" }}>
+      <div style={{ color: detail.note ? "var(--text-1)" : "var(--text-3)", whiteSpace: "pre-wrap" }}>
         {detail.note || "—"}
       </div>
       <SectionTitle>打卡</SectionTitle>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <Button type="link" style={{ padding: 0 }} onClick={() => onMark(detail, "correct")}>
-          😀 做对
+        <Button icon={<LikeOutlined />} onClick={() => onMark(detail, "correct")}>
+          做对
         </Button>
-        <Button type="link" style={{ padding: 0 }} onClick={() => onMark(detail, "wrong")}>
-          😢 做错
+        <Button icon={<DislikeOutlined />} onClick={() => onMark(detail, "wrong")}>
+          做错
         </Button>
         <Popconfirm title="确定删除该错题？" onConfirm={() => onDelete(detail)}>
           <Button danger>删除</Button>
         </Popconfirm>
-        <span style={{ color: "#8c8c8c", marginLeft: "auto" }}>
+        <span style={{ color: "var(--text-3)", marginLeft: "auto" }}>
           做对 {detail.correctCount ?? 0} 次 · 做错 {detail.wrongCount ?? 0} 次
         </span>
       </div>

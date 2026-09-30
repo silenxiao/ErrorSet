@@ -41,7 +41,7 @@ function inlineHtml(text) {
       if (m) { out += '<em style="font-style:italic;">' + inlineHtml(m[1]) + '</em>'; i += m[0].length; continue; }
     } else if (ch === '[') {
       const m = /^\[([^\]]*)\]\(([^)]*)\)/.exec(s.slice(i));
-      if (m) { out += '<a style="color:#1677ff;" href="' + esc(m[2]) + '">' + inlineHtml(m[1]) + '</a>'; i += m[0].length; continue; }
+      if (m) { out += '<a style="color:#165DFF;" href="' + esc(m[2]) + '">' + inlineHtml(m[1]) + '</a>'; i += m[0].length; continue; }
     }
     if (ch === '\n') { out += '<br/>'; i++; continue; }
     out += esc(ch);
@@ -85,7 +85,7 @@ function mdHtml(md) {
     if (h) {
       const level = h[1].length;
       const sizes = { 1: '22px', 2: '20px', 3: '18px', 4: '16px', 5: '15px', 6: '14px' };
-      out.push('<div style="font-weight:700;font-size:' + (sizes[level] || '15px') + ';line-height:1.4;margin:12px 0 6px;color:#1f2329;">' + inlineHtml(h[2].trim()) + '</div>');
+      out.push('<div style="font-weight:700;font-size:' + (sizes[level] || '15px') + ';line-height:1.4;margin:12px 0 6px;color:#1D2129;">' + inlineHtml(h[2].trim()) + '</div>');
       i++;
       continue;
     }
@@ -126,7 +126,7 @@ function mdHtml(md) {
     // 段落
     const pl = [];
     while (i < lines.length && lines[i].trim() !== '' && !isBlockStart(lines[i])) { pl.push(lines[i]); i++; }
-    if (pl.length) out.push('<div style="margin:6px 0;font-size:14px;line-height:1.7;color:#1f2329;">' + inlineHtml(pl.join('\n')) + '</div>');
+    if (pl.length) out.push('<div style="margin:6px 0;font-size:14px;line-height:1.7;color:#1D2129;">' + inlineHtml(pl.join('\n')) + '</div>');
   }
   return out.join('');
 }

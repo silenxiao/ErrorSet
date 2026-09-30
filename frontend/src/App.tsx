@@ -1,16 +1,34 @@
-import { Layout, Menu, ConfigProvider } from "antd";
-import { useEffect } from "react";
+import { BookOutlined } from "@ant-design/icons";
+import { Layout, Spin } from "antd";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { getToken } from "./api/auth";
-import FeedbackPage from "./pages/Feedback";
-import LoginPage from "./pages/Login";
-import MinePage from "./pages/Mine";
-import QuestionBankPage from "./pages/QuestionBank";
-import RecognitionPage from "./pages/Recognition";
-import UploadPage from "./pages/Upload";
+
+// 路由级代码分割：识别/错题库等重组件（KaTeX、marked）只进各自 chunk
+const FeedbackPage = lazy(() => import("./pages/Feedback"));
+const LoginPage = lazy(() => import("./pages/Login"));
+const MinePage = lazy(() => import("./pages/Mine"));
+const QuestionBankPage = lazy(() => import("./pages/QuestionBank"));
+const RecognitionPage = lazy(() => import("./pages/Recognition"));
+const UploadPage = lazy(() => import("./pages/Upload"));
 
 const { Header, Content } = Layout;
+
+const NAV_ITEMS = [
+  { key: "upload", label: "上传试卷", path: "/" },
+  { key: "wrong-questions", label: "错题库", path: "/wrong-questions" },
+  { key: "mine", label: "我的", path: "/mine" },
+];
+
+/** 懒加载 chunk 加载期间的占位 */
+function PageFallback() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: 80 }}>
+      <Spin size="large" />
+    </div>
+  );
+}
 
 /** 路由变化时把页面滚回顶部（菜单跳转、"打开"进入识别页等） */
 function ScrollToTop() {
@@ -35,7 +53,8 @@ function MainLayout() {
   const location = useLocation();
   const selectedKey = location.pathname.startsWith("/wrong-questions")
     ? "wrong-questions"
-    : location.pathname.startsWith("/mine")
+    : location.pathname.startsWith("/mine") ||
+        location.pathname.startsWith("/feedback")
       ? "mine"
       : "upload";
 
@@ -50,14 +69,15 @@ function MainLayout() {
           position: "sticky",
           top: 0,
           zIndex: 100,
-          background: "linear-gradient(90deg, #10265c 0%, #1677ff 100%)",
-          boxShadow: "0 2px 8px rgba(16, 38, 92, 0.25)",
+          paddingInline: 24,
+          background: "var(--primary-dark)",
+          boxShadow: "0 2px 8px rgba(14, 66, 184, 0.25)",
         }}
       >
         <div
           style={{
             color: "#fff",
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: 600,
             whiteSpace: "nowrap",
             display: "flex",
@@ -73,54 +93,40 @@ function MainLayout() {
               width: 30,
               height: 30,
               borderRadius: 8,
-              background: "rgba(255, 255, 255, 0.18)",
-              fontSize: 17,
+              background: "rgba(255, 255, 255, 0.16)",
+              fontSize: 16,
             }}
           >
-            📘
+            <BookOutlined />
           </span>
           AI 试卷识别与错题库
         </div>
-        <ConfigProvider
-          theme={{
-            components: {
-              Menu: {
-                // 顶栏是蓝渐变背景，菜单必须透明，否则会盖出一块深色
-                darkItemBg: "transparent",
-                darkPopupBg: "transparent",
-                darkItemHoverBg: "rgba(255, 255, 255, 0.12)",
-                darkItemSelectedBg: "rgba(255, 255, 255, 0.18)",
-                itemBorderRadius: 8,
-                itemMarginInline: 8,
-              },
-            },
-          }}
-        >
-          <Menu
-            theme="dark"
-            mode="horizontal"
-            style={{ flex: 1, minWidth: 0, background: "transparent", borderBottom: "none" }}
-            selectedKeys={[selectedKey]}
-            items={[
-              { key: "upload", label: "上传试卷" },
-              { key: "wrong-questions", label: "错题库" },
-              { key: "mine", label: "我的" },
-            ]}
-            onClick={({ key }) =>
-              navigate(key === "upload" ? "/" : `/${key}`)
-            }
-          />
-        </ConfigProvider>
+        <nav className="nav-tabs">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`nav-tab${selectedKey === item.key ? " nav-tab-active" : ""}`}
+              onClick={() => navigate(item.path)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </Header>
       <Content style={{ padding: 24 }}>
-        <Routes>
-          <Route path="/" element={<UploadPage />} />
-          <Route path="/exams/:examId" element={<RecognitionPage />} />
-          <Route path="/wrong-questions" element={<QuestionBankPage />} />
-          <Route path="/mine" element={<MinePage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              <Route path="/" element={<UploadPage />} />
+              <Route path="/exams/:examId" element={<RecognitionPage />} />
+              <Route path="/wrong-questions" element={<QuestionBankPage />} />
+              <Route path="/mine" element={<MinePage />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </div>
       </Content>
     </Layout>
   );
@@ -128,16 +134,18 @@ function MainLayout() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="*"
-        element={
-          <RequireAuth>
-            <MainLayout />
-          </RequireAuth>
-        }
-      />
-    </Routes>
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="*"
+          element={
+            <RequireAuth>
+              <MainLayout />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }

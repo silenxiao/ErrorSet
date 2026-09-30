@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { login, register } from '@/api/auth';
@@ -61,10 +63,15 @@ export default function LoginPage() {
 
   return (
     <View style={[styles.page, { paddingTop: insets.top }]}>
+      {/* 深蓝实底页面：状态栏用浅色内容 */}
+      <StatusBar style="light" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
-            <Text style={styles.title}>📘 AI 错题本</Text>
+            <View style={styles.titleRow}>
+              <Feather name="book" size={22} color={C.primary} />
+              <Text style={styles.title}>AI 试卷识别与错题库</Text>
+            </View>
             <Text style={styles.subtitle}>
               {mode === 'login' ? '登录后查看你的错题库' : '注册一个新账号'}
             </Text>
@@ -122,7 +129,7 @@ export default function LoginPage() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: C.bg,
+    backgroundColor: C.primaryDark,
   },
   scroll: {
     flex: 1,
@@ -134,13 +141,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 22,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: C.textStrong,
     textAlign: 'center',

@@ -1,6 +1,6 @@
 <view class="page">
   <view class="toolbar">
-    <button class="btn-primary btn-sm" hover-class="none" bindtap="openAddForm" disabled="{{formOpen}}">＋ 添加模型</button>
+    <button class="btn-primary btn-sm" hover-class="none" bindtap="openAddForm" disabled="{{formOpen}}"><view class="ico ico-plus-sm"></view>添加模型</button>
     <text class="muted">开关表示当前启用的模型，切换后下一次识别生效</text>
   </view>
 
@@ -12,12 +12,12 @@
   <view wx:if="{{loading}}" class="muted" style="padding:20rpx 0;">加载中…</view>
 
   <view wx:if="{{!loading && !error && models.length === 0}}" class="empty">
-    <view class="empty-icon">🤖</view>
+    <view class="ico ico-inbox"></view>
     <view class="muted">暂无模型，点击「添加模型」开始配置</view>
   </view>
 
   <view wx:for="{{models}}" wx:key="id" class="model-card {{item.enabled ? 'model-enabled' : ''}}">
-    <switch checked="{{item.enabled}}" color="#1677ff" data-id="{{item.id}}" bindchange="onEnableChange" />
+    <switch checked="{{item.enabled}}" color="#165DFF" data-id="{{item.id}}" bindchange="onEnableChange" />
     <view class="model-main">
       <view class="model-title-row">
         <text class="model-name">{{item.name || item.model}}</text>
@@ -46,7 +46,7 @@
       <picker mode="selector" range="{{providerOptions}}" value="{{form.providerIndex}}" bindchange="onProviderChange">
         <view class="select-box">
           <text class="{{form.provider ? 'select-value' : 'select-placeholder'}}">{{form.providerText || '点击选择预设'}}</text>
-          <text class="arrow">›</text>
+          <view class="ico ico-chev-right"></view>
         </view>
       </picker>
       <view class="muted" style="margin-top:8rpx;">自定义服务商需填写 API 地址</view>

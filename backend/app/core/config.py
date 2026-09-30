@@ -32,9 +32,18 @@ class Settings(BaseSettings):
     jwt_secret: str = "errorset-dev-secret-change-me"
     jwt_expire_days: int = 30
 
+    # 首次启动（用户表为空时）播种的管理员账号；生产环境务必在 .env 覆盖密码
+    seed_admin_username: str = "xiaohui"
+    seed_admin_password: str = "123456"
+
     database_url: str = "sqlite:///./data/app.db"
     data_dir: str = "./data"
-    cors_origins: list[str] = ["http://127.0.0.1:5173","http://localhost:5173"]
+    cors_origins: list[str] = [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:5174",
+        "http://localhost:5174",
+    ]
 
     # 上传约束（§5.1）
     allowed_extensions: list[str] = ["jpg", "jpeg", "png", "webp"]

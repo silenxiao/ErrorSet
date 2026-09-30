@@ -2,6 +2,7 @@ import time
 
 from app.core.exceptions import ProviderError
 from app.providers.base import VisionProvider, VisionRequest, VisionResponse
+from app.providers.base import serialize_user_content
 
 
 class OpenAIProvider(VisionProvider):
@@ -9,14 +10,27 @@ class OpenAIProvider(VisionProvider):
 
     name = "openai"
     endpoint = "https://api.openai.com/v1/chat/completions"
-    # USD / 1K tokens：(input, output)。未知模型不计成本。
-    PRICING: dict[str, tuple[float, float]] = {}
 
     def __init__(self, model: str, api_key: str):
         self.model = model
         self.api_key = api_key
 
     async def analyze(self, request: VisionRequest) -> VisionResponse:
+        if request.task_prompt or request.user_content is not None:
+
+            user_text = request.task_prompt
+
+            if request.user_content is not None:
+                user_text += "\n\n"
+                user_text += serialize_user_content(
+                    request.user_content
+                )
+
+        else:
+
+            # Legacy recognition path
+            user_text = request.prompt
+
         payload = {
             "model": self.model,
             "temperature": request.temperature,
@@ -30,7 +44,7 @@ class OpenAIProvider(VisionProvider):
                     "content": [
                         {
                             "type": "text",
-                            "text": request.prompt,
+                            "text": user_text,
                         },
                         {
                             "type": "image_url",
@@ -61,9 +75,3 @@ class OpenAIProvider(VisionProvider):
         from app.providers.base import image_data_url
 
         return image_data_url(request.image_path)
-
-    def estimate_cost(self, input_tokens: int | None, output_tokens: int | None) -> float:
-        rates = self.PRICING.get(self.model)
-        if not rates or input_tokens is None or output_tokens is None:
-            return 0.0
-        return input_tokens / 1000 * rates[0] + output_tokens / 1000 * rates[1]

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,8 +13,9 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   deleteWrongQuestion,
   illustrationImageUrl,
@@ -38,6 +40,7 @@ import {
   showToast,
   confirm,
   C,
+  font,
 } from '@/components/ui';
 
 const PAGE_SIZE = 10;
@@ -52,7 +55,7 @@ export default function BankScreen() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const reload = useCallback(async () => {
@@ -142,16 +145,26 @@ export default function BankScreen() {
 
   return (
     <Screen>
+      {/* 页头为主蓝底：状态栏用浅色内容 */}
+      <StatusBar style="light" />
       <FlatList
         data={visibleRows}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 16 }}
+        contentContainerStyle={{ paddingBottom: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={reload}
+            tintColor={C.primary}
+            colors={[C.primary]}
+          />
+        }
         onEndReached={() => {
           if (hasMore && !loading) setPage((p) => p + 1);
         }}
         onEndReachedThreshold={0.2}
         ListHeaderComponent={
-          <Card style={{ marginBottom: 2 }}>
+          <View style={styles.listHeader}>
             {subjectTags.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
                 <TouchableOpacity onPress={() => setSubjectFilter(null)}>
@@ -182,7 +195,7 @@ export default function BankScreen() {
             {!error && allRows.length > 0 && visibleRows.length === 0 ? (
               <CenterMuted>该科目下暂无错题</CenterMuted>
             ) : null}
-          </Card>
+          </View>
         }
         renderItem={({ item }) => (
           <Card>
@@ -211,13 +224,14 @@ export default function BankScreen() {
             ) : null}
 
             <View style={styles.wactions}>
+              <TextBtn onPress={() => router.push(`/bank-detail/${item.id}`)}>详情</TextBtn>
               <TextBtn onPress={() => sort(item, 'top')}>置顶</TextBtn>
               <TextBtn onPress={() => sort(item, 'bottom')}>置底</TextBtn>
               <TextBtn danger onPress={() => del(item)}>
                 删除
               </TextBtn>
-              <TextBtn onPress={() => mark(item, 'correct')}>😀 做对</TextBtn>
-              <TextBtn onPress={() => mark(item, 'wrong')}>😢 做错</TextBtn>
+              <MarkBtn type="correct" onPress={() => mark(item, 'correct')} />
+              <MarkBtn type="wrong" onPress={() => mark(item, 'wrong')} />
               <View style={{ flex: 1 }} />
               <Muted>
                 做对 {item.correctCount} · 做错 {item.wrongCount}
@@ -257,24 +271,45 @@ function BtnSmallSave({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** 做对/做错打卡按钮：Feather thumbs-up/down 图标 + 文字。 */
+function MarkBtn({ type, onPress }: { type: 'correct' | 'wrong'; onPress: () => void }) {
+  const correct = type === 'correct';
+  const color = correct ? C.green : C.danger;
+  return (
+    <TouchableOpacity activeOpacity={0.6} onPress={onPress} style={styles.markBtn}>
+      <Feather name={correct ? 'thumbs-up' : 'thumbs-down'} size={14} color={color} />
+      <Text style={[styles.markBtnText, { color }]}>{correct ? '做对' : '做错'}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
+  listHeader: {
+    // 筛选 chips 独立于卡片列表之上
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
   filterRow: {
     flexDirection: 'row',
-    marginBottom: 4,
   },
+  // 未激活：白底灰字 + 细边框；激活：主蓝底白字，圆角 8
   filterTag: {
-    color: C.text,
-    backgroundColor: '#f2f3f5',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontSize: 13,
+    color: C.text2,
+    backgroundColor: '#fff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: font.aux,
     marginRight: 8,
     overflow: 'hidden',
   },
   filterTagActive: {
     color: '#fff',
     backgroundColor: C.primary,
+    borderColor: C.primary,
+    fontWeight: '500',
   },
   whead: {
     flexDirection: 'row',
@@ -292,7 +327,7 @@ const styles = StyleSheet.create({
   illImg: {
     width: '100%',
     aspectRatio: 2,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },
   wactions: {
@@ -301,7 +336,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 2,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: C.border,
     paddingTop: 4,
   },
   more: {
@@ -323,8 +358,18 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     backgroundColor: C.primary,
-    borderRadius: 7,
+    borderRadius: 8,
     paddingHorizontal: 18,
     paddingVertical: 9,
+  },
+  markBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  markBtnText: {
+    fontSize: font.aux,
   },
 });

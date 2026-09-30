@@ -1,20 +1,21 @@
 // 状态文案、科目/年级选项、日期格式化。
+// 状态色对齐三端设计令牌：成功 #00B42A、危险 #F53F3F、警示 #FF7D00、主色 #165DFF、辅助 #86909C。
 
 const EXAM_STATUS = {
-  uploaded: { text: '排队中', color: '#999999' },
-  global_processing: { text: '整页识别中', color: '#1677ff' },
-  awaiting_review: { text: '待人工确认', color: '#fa8c16' },
-  local_processing: { text: '二次识别中', color: '#1677ff' },
-  completed: { text: '已完成', color: '#52c41a' },
-  failed: { text: '失败', color: '#ff4d4f' },
+  uploaded: { text: '排队中', color: '#86909C' },
+  global_processing: { text: '整页识别中', color: '#165DFF' },
+  awaiting_review: { text: '待人工确认', color: '#FF7D00' },
+  local_processing: { text: '二次识别中', color: '#165DFF' },
+  completed: { text: '已完成', color: '#00B42A' },
+  failed: { text: '失败', color: '#F53F3F' },
 };
 
 const Q_STATUS = {
-  pending_review: { text: '待确认', color: '#fa8c16' },
-  confirmed: { text: '已确认', color: '#1677ff' },
-  correcting: { text: '二次识别中', color: '#1677ff' },
-  completed: { text: '已完成', color: '#52c41a' },
-  failed: { text: '失败', color: '#ff4d4f' },
+  pending_review: { text: '待确认', color: '#FF7D00' },
+  confirmed: { text: '已确认', color: '#165DFF' },
+  correcting: { text: '二次识别中', color: '#165DFF' },
+  completed: { text: '已完成', color: '#00B42A' },
+  failed: { text: '失败', color: '#F53F3F' },
 };
 
 const SUBJECT_OPTIONS = ['数学', '语文', '英语', '物理', '化学', '生物', '历史', '地理', '政治'];

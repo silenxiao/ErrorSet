@@ -33,7 +33,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#f5f5f5' },
+          contentStyle: { backgroundColor: '#F7F8FA' },
         }}
       >
         <Stack.Screen name="index" />
@@ -41,6 +41,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="recognition/[id]" />
         <Stack.Screen name="add-wrong/[questionId]" />
+        <Stack.Screen name="bank-detail/[id]" />
         <Stack.Screen name="models" />
         <Stack.Screen name="feedback" />
       </Stack>

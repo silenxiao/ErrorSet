@@ -168,7 +168,7 @@ Page({
       title: '删除模型',
       content: '确定删除该模型吗？',
       confirmText: '删除',
-      confirmColor: '#ff4d4f',
+      confirmColor: '#F53F3F',
       success: async (res) => {
         if (!res.confirm) return;
         try {

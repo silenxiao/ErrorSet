@@ -4,6 +4,7 @@
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   deleteWrongQuestion,
@@ -123,11 +124,13 @@ export default function BankDetailPage() {
 
             <SectionTitle>打卡</SectionTitle>
             <View style={styles.markRow}>
-              <TouchableOpacity activeOpacity={0.6} onPress={() => mark('correct')}>
-                <Text style={styles.markBtn}>😀 做对</Text>
+              <TouchableOpacity activeOpacity={0.6} style={styles.markBtn} onPress={() => mark('correct')}>
+                <Feather name="thumbs-up" size={14} color={C.green} />
+                <Text style={[styles.markText, { color: C.green }]}>做对</Text>
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.6} onPress={() => mark('wrong')}>
-                <Text style={styles.markBtn}>😢 做错</Text>
+              <TouchableOpacity activeOpacity={0.6} style={styles.markBtn} onPress={() => mark('wrong')}>
+                <Feather name="thumbs-down" size={14} color={C.danger} />
+                <Text style={[styles.markText, { color: C.danger }]}>做错</Text>
               </TouchableOpacity>
               <TouchableOpacity activeOpacity={0.6} onPress={del}>
                 <Text style={styles.delLink}>删 除</Text>
@@ -163,7 +166,7 @@ const styles = StyleSheet.create({
   illImg: {
     width: '100%',
     aspectRatio: 2,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },
   markRow: {
@@ -172,7 +175,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   markBtn: {
-    color: C.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  markText: {
     fontSize: 14,
   },
   delLink: {

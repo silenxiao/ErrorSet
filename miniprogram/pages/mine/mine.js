@@ -62,7 +62,7 @@ Page({
       title: '退出登录',
       content: '确定退出当前账号吗？',
       confirmText: '退出',
-      confirmColor: '#ff4d4f',
+      confirmColor: '#F53F3F',
       success: (res) => {
         if (res.confirm) api.logout();
       },

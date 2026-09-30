@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Alert,
@@ -14,20 +14,11 @@ import {
 } from "antd";
 
 import { confirmExam, reRecognizeExam } from "../../api/exam";
+import { STATUS_LABEL } from "../../constants/examStatus";
 import ImageViewer from "../../components/ImageViewer";
 import ModelSelector from "../../components/ModelSelector";
 import QuestionList from "../../components/QuestionList";
 import { useRecognition } from "../../hooks/useRecognition";
-import type { ExamStatus } from "../../types/exam";
-
-const STATUS_LABEL: Record<ExamStatus, { text: string; color: string }> = {
-  uploaded: { text: "排队中", color: "default" },
-  global_processing: { text: "整页识别中…", color: "processing" },
-  awaiting_review: { text: "待人工确认", color: "gold" },
-  local_processing: { text: "二次识别中…", color: "processing" },
-  completed: { text: "已完成", color: "success" },
-  failed: { text: "失败", color: "error" },
-};
 
 /** 识别结果页面（§27.2）：左侧原图 + bbox，右侧题目列表。
  * 路由中使用时 examId 来自 URL；被嵌入浮窗时由 props 传入。 */
@@ -93,29 +84,14 @@ export default function RecognitionPage({
 
   // 父级（如"打开试卷"浮窗）有固定高度时，两栏等高填满、各自内部滚动；
   // 作为路由页面时父级高度自动，退化为原有的整页滚动。
-  const cardStyle: CSSProperties = {
-    flex: 1,
-    minWidth: 0,
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-  };
   const cardBodyStyle = { flex: 1, minHeight: 0, overflowY: "auto" } as const;
-
+  // 布局类 .recognition-split / .recognition-pane 见 index.css（窄屏自动堆叠）
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: 16,
-        alignItems: "stretch",
-        height: "100%",
-        minHeight: 0,
-      }}
-    >
+    <div className="recognition-split">
       <Card
         title={exam.name || `试卷 #${exam.id}`}
         extra={<Tag color={label.color}>{label.text}</Tag>}
-        style={cardStyle}
+        className="recognition-pane"
         styles={{ header: { flexShrink: 0 }, body: cardBodyStyle }}
       >
         <ImageViewer
@@ -140,7 +116,7 @@ export default function RecognitionPage({
       </Card>
       <Card
         title="题目列表"
-        style={cardStyle}
+        className="recognition-pane"
         styles={{ header: { flexShrink: 0 }, body: cardBodyStyle }}
         extra={
           <Space>
@@ -162,7 +138,6 @@ export default function RecognitionPage({
           selectedId={selectedId}
           onSelect={setSelectedId}
           onChanged={() => void refresh()}
-          canReview={canConfirm}
         />
       </Card>
 

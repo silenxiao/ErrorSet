@@ -52,7 +52,7 @@ export default function IllustrationBox({
   const bbox = preview ?? illustration.bbox;
   const [x1, y1, x2, y2] = bbox;
   const manual = illustration.bboxSource === "manual";
-  const color = parentSelected ? "#fa8c16" : "#8c8c8c";
+  const color = parentSelected ? "#165DFF" : "#86909C";
 
   const startDrag = (mode: DragMode) => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
@@ -104,7 +104,7 @@ export default function IllustrationBox({
         y={y1}
         width={x2 - x1}
         height={y2 - y1}
-        fill={parentSelected ? "rgba(250, 140, 22, 0.10)" : "transparent"}
+        fill={parentSelected ? "rgba(22, 93, 255, 0.10)" : "transparent"}
         stroke={color}
         strokeDasharray={manual ? undefined : "10 6"}
         strokeWidth={parentSelected ? 3 : 1.5}

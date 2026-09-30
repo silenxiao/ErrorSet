@@ -1,8 +1,10 @@
-// 共享 UI 基础组件与配色（对齐小程序 app.wxss 的视觉规范）。
+// 共享 UI 基础组件与配色（三端统一设计令牌，对齐小程序 app.wxss 的视觉规范）。
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Animated,
   Modal,
   Pressable,
   ScrollView,
@@ -15,26 +17,47 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/** 三端统一设计令牌：主色/语义色/中性色/圆角。保持旧字段名兼容（text2/text3、radius 为新增）。 */
 export const C = {
-  primary: '#1677ff',
-  primaryDark: '#0958d9',
-  primaryBg: 'rgba(22, 119, 255, 0.1)',
-  bg: '#f5f5f5',
-  card: '#ffffff',
-  text: '#333333',
-  textStrong: '#1f2329',
-  muted: '#999999',
-  border: '#e2e5ea',
-  danger: '#ff4d4f',
-  dangerDark: '#d9363e',
-  green: '#52c41a',
-  orange: '#fa8c16',
-  purple: '#722ed1',
-  gray: '#8c8c8c',
+  primary: '#165DFF',
+  primaryDark: '#0E42B8',
+  primaryLight: '#E8F3FF',
+  primaryBg: 'rgba(22, 93, 255, 0.08)',
+  bg: '#F7F8FA',
+  card: '#FFFFFF',
+  text: '#1D2129',
+  text2: '#4E5969',
+  text3: '#86909C',
+  textStrong: '#1D2129',
+  muted: '#86909C',
+  border: '#E5E6EB',
+  danger: '#F53F3F',
+  dangerDark: '#CB2634',
+  green: '#00B42A',
+  orange: '#FF7D00',
+  purple: '#722ED1',
+  gray: '#86909C',
 } as const;
+
+/** 圆角规范：卡片 14 / 控件（按钮、输入框）10。 */
+export const radius = { card: 14, control: 10 } as const;
+
+/** 字号规范：页面标题 18 / 正文 16 / 辅助文字 14 / Tab 小字 12。 */
+export const font = { title: 18, body: 16, aux: 14, tab: 12 } as const;
+
+/** 卡片阴影（iOS shadow + Android elevation，规范统一值）。 */
+export const cardShadow: ViewStyle = {
+  shadowColor: '#000',
+  shadowOpacity: 0.06,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
+};
 
 /** 简易 toast：模块级单监听者，根布局挂载 <ToastHost />。 */
 let toastListener: ((msg: string) => void) | null = null;
@@ -45,6 +68,7 @@ export function showToast(msg: string) {
 
 export function ToastHost() {
   const [msg, setMsg] = useState<string | null>(null);
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     toastListener = (m) => setMsg(m);
@@ -55,17 +79,31 @@ export function ToastHost() {
 
   useEffect(() => {
     if (!msg) return;
-    const t = setTimeout(() => setMsg(null), 1800);
-    return () => clearTimeout(t);
-  }, [msg]);
+    // 淡入，停留 1.8s 后淡出（动画克制，仅透明度）
+    Animated.timing(opacity, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    const timer = setTimeout(() => {
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(
+        ({ finished }) => {
+          if (finished) setMsg(null);
+        },
+      );
+    }, 1800);
+    return () => {
+      clearTimeout(timer);
+      opacity.stopAnimation();
+    };
+  }, [msg, opacity]);
 
   if (!msg) return null;
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.toastWrap]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, styles.toastWrap, { opacity }]}
+    >
       <View style={styles.toast}>
         <Text style={styles.toastText}>{msg}</Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -126,17 +164,30 @@ export function Btn({
   const kindStyle =
     kind === 'primary' ? styles.btnPrimary : kind === 'danger' ? styles.btnDanger : styles.btnGhost;
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
+    <Pressable
       disabled={disabled || loading}
       onPress={onPress}
-      style={[styles.btn, kindStyle, block && styles.btnBlock, small && styles.btnSmall, (disabled || loading) && { opacity: 0.55 }, style]}
+      style={({ pressed }) => [
+        styles.btn,
+        kindStyle,
+        block && styles.btnBlock,
+        small && styles.btnSmall,
+        (disabled || loading) && { opacity: 0.55 },
+        pressed && !disabled && !loading && { opacity: 0.7 },
+        style,
+      ]}
     >
-      {loading && <View style={styles.spinner} />}
+      {loading && (
+        <ActivityIndicator
+          size="small"
+          color={kind === 'ghost' ? C.primary : '#fff'}
+          style={styles.btnSpinner}
+        />
+      )}
       <Text style={[styles.btnText, kind === 'ghost' && { color: C.textStrong }]}>
         {children}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -164,16 +215,22 @@ export function Tag({ color, children }: { color: string; children: React.ReactN
   );
 }
 
-/** 二级页面头部：返回按钮 + 标题（自绘，全局 Stack headerShown=false）。 */
+/** 二级页面头部：返回按钮 + 标题（自绘，全局 Stack headerShown=false）。
+ * 高度 48px（不含状态栏）、主蓝底白字居中标题、浅色状态栏。 */
 export function SubHeader({ title }: { title: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.subHeader, { paddingTop: insets.top + 6 }]}>
-      <TouchableOpacity activeOpacity={0.6} onPress={() => router.back()} style={styles.backBtn}>
-        <Text style={styles.backIcon}>‹</Text>
+    <View style={[styles.subHeader, { paddingTop: insets.top, height: insets.top + 48 }]}>
+      <StatusBar style="light" />
+      <Pressable
+        onPress={() => router.back()}
+        hitSlop={6}
+        style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+      >
+        <Feather name="chevron-left" size={22} color="#fff" />
         <Text style={styles.backText}>返回</Text>
-      </TouchableOpacity>
+      </Pressable>
       <Text style={styles.subHeaderTitle} numberOfLines={1}>{title}</Text>
       <View style={styles.backBtn} />
     </View>
@@ -192,7 +249,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
 
 /** 输入框（对齐小程序 .input）。 */
 export function Input(props: React.ComponentProps<typeof TextInput>) {
-  return <TextInput placeholderTextColor={C.muted} style={[styles.input, props.style]} {...props} />;
+  return <TextInput placeholderTextColor={C.text3} style={[styles.input, props.style]} {...props} />;
 }
 
 /** 简易选择器：点击弹出选项列表 Modal（RN 已移除内置 Picker）。 */
@@ -212,7 +269,7 @@ export function OptionPicker({
     <>
       <TouchableOpacity activeOpacity={0.6} style={styles.selectBox} onPress={() => setOpen(true)}>
         <Text style={value ? styles.selectValue : styles.selectPlaceholder}>{value || placeholder}</Text>
-        <Text style={styles.selectArrow}>⌄</Text>
+        <Feather name="chevron-down" size={16} color={C.text3} />
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.mask} onPress={() => setOpen(false)}>
@@ -232,12 +289,12 @@ export function OptionPicker({
                   <Text style={[styles.optionText, o === value && { color: C.primary, fontWeight: '600' }]}>
                     {o}
                   </Text>
-                  {o === value && <Text style={{ color: C.primary }}>✓</Text>}
+                  {o === value && <Feather name="check" size={16} color={C.primary} />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
             <TouchableOpacity activeOpacity={0.6} style={styles.optionCancel} onPress={() => setOpen(false)}>
-              <Text style={{ color: C.muted }}>取消</Text>
+              <Text style={{ color: C.text3 }}>取消</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -306,30 +363,26 @@ export function Screen({ children, style }: { children: React.ReactNode; style?:
 const styles = StyleSheet.create({
   card: {
     backgroundColor: C.card,
-    borderRadius: 8,
-    padding: 12,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    borderRadius: radius.card,
+    padding: 16,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    ...cardShadow,
   },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: C.textStrong,
   },
   muted: {
-    color: C.muted,
-    fontSize: 12,
+    color: C.text3,
+    fontSize: font.aux,
   },
   btn: {
     flexDirection: 'row',
@@ -337,7 +390,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 44,
     paddingHorizontal: 16,
-    borderRadius: 7,
+    borderRadius: radius.control,
   },
   btnSmall: {
     height: 36,
@@ -359,23 +412,17 @@ const styles = StyleSheet.create({
   },
   btnText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: font.body,
     fontWeight: '500',
   },
-  spinner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
-    borderTopColor: '#fff',
+  btnSpinner: {
     marginRight: 8,
   },
   textBtn: {
     color: C.primary,
-    fontSize: 13,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    fontSize: font.aux,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   tag: {
     alignSelf: 'flex-start',
@@ -392,7 +439,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.primary,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 8,
     paddingHorizontal: 8,
   },
   backBtn: {
@@ -400,63 +446,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 26,
-    lineHeight: 30,
-    marginRight: 2,
-  },
   backText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: font.aux,
   },
   subHeaderTitle: {
     flex: 1,
     textAlign: 'center',
     color: '#fff',
-    fontSize: 16,
+    fontSize: font.title,
     fontWeight: '600',
   },
   field: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 13,
-    color: C.textStrong,
-    marginBottom: 6,
+    fontSize: font.aux,
+    color: C.text2,
+    marginBottom: 8,
   },
   input: {
     backgroundColor: '#fff',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.border,
-    borderRadius: 7,
-    paddingHorizontal: 10,
-    height: 40,
-    fontSize: 14,
+    borderRadius: radius.control,
+    paddingHorizontal: 12,
+    height: 44,
+    fontSize: font.body,
     color: C.text,
   },
   selectBox: {
     backgroundColor: '#fff',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: C.border,
-    borderRadius: 7,
-    paddingHorizontal: 10,
-    height: 40,
+    borderRadius: radius.control,
+    paddingHorizontal: 12,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   selectValue: {
-    fontSize: 14,
+    fontSize: font.body,
     color: C.text,
   },
   selectPlaceholder: {
-    fontSize: 14,
-    color: C.muted,
-  },
-  selectArrow: {
-    color: C.muted,
-    fontSize: 14,
+    fontSize: font.body,
+    color: C.text3,
   },
   mask: {
     flex: 1,
@@ -469,7 +505,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: radius.card,
     padding: 16,
   },
   dialogTitle: {
@@ -488,7 +524,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
   },
   optionText: {
-    fontSize: 15,
+    fontSize: font.body,
     color: C.text,
   },
   optionCancel: {
@@ -497,34 +533,34 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   errBox: {
-    backgroundColor: '#fff2f0',
-    borderRadius: 8,
+    backgroundColor: '#FFECE8',
+    borderRadius: radius.control,
     padding: 12,
-    marginHorizontal: 10,
-    marginVertical: 5,
+    marginHorizontal: 12,
+    marginBottom: 12,
     gap: 4,
   },
   errMsg: {
     color: C.danger,
-    fontSize: 13,
+    fontSize: font.aux,
   },
   errHint: {
-    fontSize: 11,
+    fontSize: font.tab,
   },
   toastWrap: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   toast: {
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(29,33,41,0.9)',
+    borderRadius: radius.control,
     paddingHorizontal: 18,
     paddingVertical: 10,
     maxWidth: '80%',
   },
   toastText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: font.aux,
     textAlign: 'center',
   },
 });

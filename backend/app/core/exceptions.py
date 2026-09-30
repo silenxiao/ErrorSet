@@ -51,6 +51,13 @@ class ProviderError(AppError):
     detail = "Vision API 调用失败"
 
 
+class RateLimitError(AppError):
+    """请求过于频繁（登录爆破/注册刷号防护）。"""
+
+    status_code = 429
+    detail = "尝试过于频繁，请稍后再试"
+
+
 class ProviderTimeoutError(ProviderError):
     """模型调用超时：一次尝试已耗尽整个超时预算，不再重试。"""
 

@@ -113,7 +113,7 @@ def list_exams(db: DbSession, _admin: AdminUser) -> list[AdminExamOut]:
             status=row["exam"].status,
             username=row["username"],
             question_count=row["question_count"],
-            original_image=row["exam"].original_image,
+            image_url=recognition_service.data_file_url(row["exam"].original_image),
             created_at=row["exam"].created_at,
         )
         for row in repo.list_all_exams(db)
@@ -141,7 +141,7 @@ def list_wrong_questions(
             subject=row["wrong_question"].subject,
             question_text=row["question_text"],
             wrong_reason=row["wrong_question"].wrong_reason,
-            image=row["wrong_question"].image,
+            image_url=recognition_service.data_file_url(row["wrong_question"].image),
             created_at=row["wrong_question"].created_at,
         )
         for row in repo.list_all_wrong_questions(db)

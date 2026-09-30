@@ -2,8 +2,10 @@
 
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { clearSession, getGradeSync, getUsernameSync } from '@/api/session';
 import { getMe, updateGrade } from '@/api/auth';
 import { GRADE_OPTIONS } from '@/utils/format';
@@ -13,7 +15,6 @@ export default function MineScreen() {
   const [username, setUsername] = useState('');
   const [grade, setGrade] = useState('');
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -46,7 +47,17 @@ export default function MineScreen() {
 
   return (
     <Screen>
-      <View style={[styles.userCard, { paddingTop: insets.top + 20 }]}>
+      {/* 页头为主蓝底：状态栏用浅色内容 */}
+      <StatusBar style="light" />
+
+      {/* 用户信息卡片：蓝色渐变 + 圆形头像 */}
+      <Card style={styles.userCard}>
+        <LinearGradient
+          colors={[C.primary, C.primaryDark]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
         <View style={styles.avatar}>
           <Text style={styles.avatarChar}>{username[0] || '?'}</Text>
         </View>
@@ -54,11 +65,11 @@ export default function MineScreen() {
           <Text style={styles.username}>{username}</Text>
           <Text style={styles.sub}>AI 错题本</Text>
         </View>
-      </View>
+      </Card>
 
-      <Card style={{ marginTop: 10 }}>
-        <View style={[styles.menuItem, { minHeight: 56 }]}>
-          <Text style={{ fontSize: 20 }}>📚</Text>
+      <Card>
+        <View style={[styles.menuItem, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border }]}>
+          <Feather name="book-open" size={20} color={C.primary} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.menuTitle}>年级</Text>
             <Text style={styles.menuSub}>首次上传试卷时默认使用该年级</Text>
@@ -74,46 +85,45 @@ export default function MineScreen() {
         </View>
         <TouchableOpacity
           activeOpacity={0.6}
-          style={styles.menuItem}
+          style={[styles.menuItem, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border }]}
           onPress={() => router.push('/models')}
         >
-          <Text style={{ fontSize: 20 }}>⚙️</Text>
+          <Feather name="settings" size={20} color={C.primary} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.menuTitle}>模型管理</Text>
             <Text style={styles.menuSub}>配置识别使用的 AI 模型</Text>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Feather name="chevron-right" size={18} color={C.text3} />
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.6}
           style={styles.menuItem}
           onPress={() => router.push('/feedback')}
         >
-          <Text style={{ fontSize: 20 }}>📝</Text>
+          <Feather name="edit-3" size={20} color={C.primary} />
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.menuTitle}>留言板</Text>
             <Text style={styles.menuSub}>有问题或建议向我们留言</Text>
           </View>
-          <Text style={styles.menuArrow}>›</Text>
+          <Feather name="chevron-right" size={18} color={C.text3} />
         </TouchableOpacity>
       </Card>
 
-      <Card>
-        <TouchableOpacity activeOpacity={0.7} style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>退出登录</Text>
-        </TouchableOpacity>
-      </Card>
+      {/* 退出登录：独立红色圆角大按钮 */}
+      <TouchableOpacity activeOpacity={0.7} style={styles.logoutBtn} onPress={logout}>
+        <Text style={styles.logoutText}>退出登录</Text>
+      </TouchableOpacity>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   userCard: {
-    backgroundColor: C.primary,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    paddingTop: 28,
+    marginTop: 12,
+    overflow: 'hidden',
   },
   avatar: {
     width: 54,
@@ -131,43 +141,47 @@ const styles = StyleSheet.create({
   },
   username: {
     color: '#fff',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
   },
   sub: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 2,
   },
+  // 设置单元格：高度 52px，带底部分割线
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    minHeight: 52,
   },
   menuTitle: {
-    fontSize: 15,
-    color: C.textStrong,
+    fontSize: 16,
+    color: C.text,
     fontWeight: '500',
   },
   menuSub: {
     fontSize: 12,
-    color: C.muted,
+    color: C.text3,
     marginTop: 2,
-  },
-  menuArrow: {
-    fontSize: 20,
-    color: C.muted,
   },
   gradeBox: {
     width: 120,
   },
   logoutBtn: {
+    marginTop: 12,
+    height: 48,
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: C.danger,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    marginHorizontal: 12,
   },
   logoutText: {
     color: C.danger,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
   },
 });

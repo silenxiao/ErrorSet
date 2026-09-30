@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
   qitemSel: {
     borderColor: C.primary,
-    backgroundColor: 'rgba(22,119,255,0.04)',
+    backgroundColor: 'rgba(22,93,255,0.04)',
   },
   qhead: {
     flexDirection: 'row',

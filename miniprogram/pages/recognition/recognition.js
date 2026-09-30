@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { EXAM_STATUS, formatDate } = require('../../utils/format');
+const { illStyle } = require('../../utils/device');
 
 const POLLING = ['uploaded', 'global_processing', 'local_processing'];
 const POLL_INTERVAL = 1500;
@@ -19,6 +20,18 @@ Page({
     editQuestion: null,
     editText: '',
     editIlls: [],
+    // 编辑弹窗插图实际尺寸（key: e.插图id → 行内样式），按自然大小 1:1 显示
+    illSizes: {},
+  },
+
+  // 插图加载完成：记录自然尺寸，超宽时等比缩小到弹窗内
+  onIllLoad(e) {
+    const key = e.currentTarget.dataset.key;
+    const { width, height } = e.detail;
+    if (!key || !width || !height) return;
+    this.setData({
+      illSizes: Object.assign({}, this.data.illSizes, { [key]: illStyle(width, height) }),
+    });
   },
 
   onLoad(options) {

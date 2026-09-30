@@ -10,4 +10,3 @@ class ZhipuProvider(OpenAIProvider):
 
     name = "zhipu"
     endpoint = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    PRICING: dict[str, tuple[float, float]] = {}

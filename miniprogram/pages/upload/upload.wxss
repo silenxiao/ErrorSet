@@ -1,19 +1,26 @@
+/* 上传区：白底虚线大卡片（与 Web 端 UploadPanel 一致） */
 .uploader {
-  border: 2rpx dashed #d9d9d9;
-  border-radius: 12rpx;
+  border: 2rpx dashed var(--border);
+  border-radius: 16rpx;
   padding: 48rpx 20rpx;
-  text-align: center;
-  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  background: var(--bg);
+  transition: border-color 0.2s ease;
 }
 
-.plus {
-  font-size: 64rpx;
-  color: #1677ff;
-  line-height: 1;
+.uploader:active {
+  border-color: var(--primary);
+  background: var(--primary-light);
 }
 
-.uploader .muted {
-  margin-top: 12rpx;
+.uploader-text {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  color: var(--text-1);
+  font-weight: 500;
 }
 
 .preview {
@@ -22,52 +29,24 @@
 
 .preview-img {
   width: 100%;
-  border-radius: 12rpx;
-  border: 1rpx solid #eee;
+  border-radius: 16rpx;
+  border: 1rpx solid var(--border);
 }
 
-.preview .text-btn {
+.preview .preview-remove {
   position: absolute;
   top: 12rpx;
   right: 12rpx;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(29, 33, 41, 0.55);
   color: #fff;
   border-radius: 8rpx;
   padding: 4rpx 16rpx;
 }
 
-.field {
+.field-value {
   display: flex;
   align-items: center;
-  margin-top: 24rpx;
-}
-
-.label {
-  width: 150rpx;
-  font-size: 28rpx;
-  color: #333;
-}
-
-.input {
-  flex: 1;
-  border: 1rpx solid #e8e8e8;
-  border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  font-size: 28rpx;
-}
-
-.picker {
-  flex: 1;
-  border: 1rpx solid #e8e8e8;
-  border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  font-size: 28rpx;
-  background: #fff;
-}
-
-.submit {
-  margin-top: 32rpx;
-  border-radius: 12rpx;
+  justify-content: space-between;
 }
 
 .submit-row {
@@ -80,7 +59,6 @@
 .submit-row .submit-grow {
   flex: 1;
   min-width: 0;
-  margin-top: 0;
 }
 
 .model-btn {
@@ -89,7 +67,9 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 88rpx;
   font-size: 28rpx;
 }
@@ -99,11 +79,16 @@
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .exam-row:last-child {
   border-bottom: none;
+}
+
+/* 行按压反馈 */
+.exam-row-hover {
+  background: var(--bg);
 }
 
 .exam-main {
@@ -126,7 +111,7 @@
 
 .exam-btns {
   display: flex;
-  gap: 16rpx;
+  gap: 8rpx;
 }
 
 /* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
@@ -134,46 +119,23 @@
   .uploader {
     padding: 24px 10px;
     border-radius: 8px;
+    gap: 4px;
   }
 
-  .plus {
-    font-size: 32px;
-  }
-
-  .uploader .muted {
-    margin-top: 6px;
+  .uploader-text {
+    margin-top: 4px;
+    font-size: 14px;
   }
 
   .preview-img {
     border-radius: 8px;
   }
 
-  .preview .text-btn {
+  .preview .preview-remove {
     top: 6px;
     right: 6px;
     padding: 2px 8px;
     border-radius: 5px;
-  }
-
-  .field {
-    margin-top: 12px;
-  }
-
-  .label {
-    width: 75px;
-    font-size: 14px;
-  }
-
-  .input,
-  .picker {
-    padding: 6px 8px;
-    font-size: 14px;
-    border-radius: 6px;
-  }
-
-  .submit {
-    margin-top: 16px;
-    border-radius: 8px;
   }
 
   .submit-row {
@@ -201,7 +163,6 @@
   }
 
   .exam-btns {
-    gap: 8px;
+    gap: 4px;
   }
 }
-

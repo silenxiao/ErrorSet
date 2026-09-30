@@ -9,7 +9,7 @@
     <picker mode="selector" range="{{subjectOptions}}" value="{{subjectIndex}}" bindchange="onSubject">
       <view class="select-box">
         <text class="select-value">{{subjectOptions[subjectIndex]}}</text>
-        <text class="arrow">⌄</text>
+        <view class="ico ico-chev-down"></view>
       </view>
     </picker>
   </view>
@@ -20,7 +20,7 @@
       <text class="label">正确答案</text>
     </view>
     <view class="ans-box">
-      <view class="edit-icon" catchtap="toggleCorrect">✎</view>
+      <view class="edit-icon" catchtap="toggleCorrect"><view class="ico ico-edit"></view></view>
       <view wx:if="{{!editCorrect}}" class="preview-area" bindtap="toggleCorrect">
         <md-render wx:if="{{correctAnswer}}" content="{{correctAnswer}}"></md-render>
         <text wx:else class="ph">AI 分析后显示正确答案</text>
@@ -40,7 +40,7 @@
   <!-- AI 分析按钮 + 识别模型选择（AI 分析用当前启用模型） -->
   <view class="ai-row">
     <button class="ai-btn" hover-class="none" loading="{{analyzing}}" bindtap="aiAnalyze">AI 分析</button>
-    <button class="ai-btn model-btn" hover-class="none" bindtap="chooseModel">{{modelName || '选择模型'}} ▾</button>
+    <button class="ai-btn model-btn" hover-class="none" bindtap="chooseModel">{{modelName || '选择模型'}}<view class="ico ico-chev-down-p"></view></button>
   </view>
 
   <!-- AI 分析结果：仅展示（Markdown 渲染），不可编辑 -->

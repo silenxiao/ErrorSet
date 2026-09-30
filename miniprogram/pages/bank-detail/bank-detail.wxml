@@ -12,7 +12,7 @@
     <view wx:if="{{question}}" class="answer">
       <md-render content="{{question.text}}"></md-render>
       <view wx:if="{{question.illustrations.length > 0}}" class="ills">
-        <image wx:for="{{question.illustrations}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="widthFix"></image>
+        <image wx:for="{{question.illustrations}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="aspectFit" style="{{illSizes['q.' + ill.id]}}" data-key="q.{{ill.id}}" bindload="onIllLoad"></image>
       </view>
     </view>
     <view wx:else class="answer muted">加载中…</view>
@@ -28,9 +28,9 @@
 
     <view class="sec">打卡</view>
     <view class="mark-row">
-      <text class="mark-btn" data-result="correct" bindtap="mark">😀 做对</text>
-      <text class="mark-btn" data-result="wrong" bindtap="mark">😢 做错</text>
-      <text class="del-link" bindtap="del">删 除</text>
+      <view class="mark-btn" data-result="correct" bindtap="mark"><view class="ico ico-like"></view>做对</view>
+      <view class="mark-btn" data-result="wrong" bindtap="mark"><view class="ico ico-dislike"></view>做错</view>
+      <view class="del-link" bindtap="del">删 除</view>
       <text class="mark-count">做对 {{detail.correctCount}} 次 · 做错 {{detail.wrongCount}} 次</text>
     </view>
   </view>

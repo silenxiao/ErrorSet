@@ -9,6 +9,16 @@ export type QuestionStatus =
   | "completed"
   | "failed";
 
+/** AI 分析的结构化结果（取代旧的自由文本 + 前端正则拆分） */
+export interface AnalysisResult {
+  subject: string;
+  answer: string;
+  analysis: string;
+  knowledgePoints: string[];
+  outOfScope: boolean;
+  confidence: "high" | "medium" | "low";
+}
+
 export interface Illustration {
   id: number;
   bbox: BBox;

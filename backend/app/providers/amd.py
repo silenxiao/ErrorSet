@@ -10,4 +10,3 @@ class AMDProvider(OpenAIProvider):
 
     name = "amd"
     endpoint = "https://developer.amd.com.cn/radeon/api/v1/chat/completions"
-    PRICING: dict[str, tuple[float, float]] = {}

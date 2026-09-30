@@ -1,6 +1,9 @@
 <view class="login-page">
   <view class="login-card">
-    <view class="login-title">📘 AI 错题本</view>
+    <view class="login-head">
+      <view class="ico ico-book-lg"></view>
+    </view>
+    <view class="login-title">AI 试卷识别与错题库</view>
     <view class="login-subtitle">{{mode === 'login' ? '登录后查看你的错题库' : '注册一个新账号'}}</view>
 
     <input
@@ -33,7 +36,7 @@
     >
       <view class="login-input grade-picker">
         <text>孩子所在年级：{{gradeOptions[gradeIndex]}}</text>
-        <text class="grade-arrow">⌄</text>
+        <view class="ico ico-chev-down"></view>
       </view>
     </picker>
 

@@ -1,33 +1,30 @@
-/* 科目筛选标签行 */
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx;
-  margin-bottom: 8rpx;
+/* 页面容器：筛选行 + 卡片列表（错题每行一张白卡片，与 Web 端一致） */
+.filter-wrap {
+  padding: 20rpx 20rpx 0;
 }
 
-.filter-tag {
-  padding: 6rpx 20rpx;
-  border-radius: 8rpx;
-  border: 1rpx solid #e2e5ea;
-  background: #fff;
-  color: #555;
-  font-size: 24rpx;
+.page-wrap {
+  padding: 20rpx;
 }
 
-.filter-tag.active {
-  background: #e6f4ff;
-  border-color: #91caff;
-  color: #1677ff;
+/* 空状态复用 .card 时收窄外边距（外层已有 padding） */
+.page-wrap .empty.card {
+  margin: 0 0 20rpx;
 }
 
 .wrow {
-  padding: 20rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  background: var(--card);
+  border: 1rpx solid var(--border);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.wrow:last-child {
-  border-bottom: none;
+/* 卡片按压反馈（极轻微，避免误读为可跳转整卡） */
+.wrow-hover {
+  background: #fcfcfd;
 }
 
 .whead {
@@ -37,9 +34,14 @@
   margin-bottom: 10rpx;
 }
 
+.tag-subject {
+  margin-right: 0;
+}
+
 .wtext {
   font-size: 26rpx;
-  line-height: 1.5;
+  line-height: 1.6;
+  color: var(--text-1);
   word-break: break-word;
 }
 
@@ -51,108 +53,60 @@
 }
 
 .ill-img {
-  width: 100%;
-  border-radius: 8rpx;
-  border: 1rpx solid #eee;
+  /* 宽高由 bindload 计算的行内样式控制（按图片实际尺寸显示），此处只管外观 */
+  border-radius: 12rpx;
+  border: 1rpx solid var(--border);
+  background: var(--bg);
 }
 
 .wactions {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 4rpx;
   margin-top: 14rpx;
+  margin-left: -16rpx;
   flex-wrap: wrap;
+}
+
+.wcount {
+  margin-left: auto;
 }
 
 .more {
   text-align: center;
-  color: #1677ff;
+  color: var(--primary);
   padding: 24rpx 0;
   font-size: 26rpx;
 }
 
-.field {
+.field-value {
   display: flex;
   align-items: center;
-  margin-bottom: 16rpx;
-}
-
-.label {
-  width: 150rpx;
-  font-size: 28rpx;
-  color: #333;
-}
-
-.picker {
-  flex: 1;
-  border: 1rpx solid #e8e8e8;
-  border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  font-size: 28rpx;
-  background: #fff;
-}
-
-.input {
-  border: 1rpx solid #e8e8e8;
-  border-radius: 8rpx;
-  padding: 12rpx 16rpx;
-  font-size: 28rpx;
-}
-
-/* 弹窗 */
-.mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.dialog {
-  width: 600rpx;
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 32rpx;
-}
-
-.dialog-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  margin-bottom: 20rpx;
-}
-
-.dialog-btns {
-  display: flex;
-  gap: 20rpx;
-  margin-top: 28rpx;
-}
-
-.dlg-btn {
-  flex: 1;
-  margin: 0;
-  border-radius: 10rpx;
-  line-height: 72rpx;
-  height: 72rpx;
-  font-size: 28rpx;
+  justify-content: space-between;
 }
 
 /* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
 @media (min-width: 500px) {
-  .filter-row {
-    gap: 7px;
-    margin-bottom: 4px;
+  .filter-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 10px 10px 0;
+    box-sizing: border-box;
   }
 
-  .filter-tag {
-    padding: 3px 10px;
-    border-radius: 5px;
-    font-size: 12px;
+  .page-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
   }
 
   .wrow {
-    padding: 10px 0;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
   }
 
   .whead {
@@ -170,57 +124,17 @@
   }
 
   .ill-img {
-    border-radius: 5px;
+    border-radius: 6px;
   }
 
   .wactions {
-    gap: 8px;
+    gap: 2px;
     margin-top: 7px;
+    margin-left: -8px;
   }
 
   .more {
     padding: 12px 0;
     font-size: 13px;
   }
-
-  .field {
-    margin-bottom: 8px;
-  }
-
-  .label {
-    width: 75px;
-    font-size: 14px;
-  }
-
-  .picker,
-  .input {
-    padding: 6px 8px;
-    font-size: 14px;
-    border-radius: 6px;
-  }
-
-  .dialog {
-    width: 480px;
-    max-width: calc(100vw - 32px);
-    padding: 16px;
-    border-radius: 10px;
-  }
-
-  .dialog-title {
-    font-size: 16px;
-    margin-bottom: 10px;
-  }
-
-  .dialog-btns {
-    gap: 10px;
-    margin-top: 14px;
-  }
-
-  .dlg-btn {
-    border-radius: 6px;
-    line-height: 36px;
-    height: 36px;
-    font-size: 14px;
-  }
 }
-

@@ -63,10 +63,10 @@ export default function MinePage() {
           alignItems: "center",
           gap: 16,
           padding: "36px 24px 24px",
-          borderRadius: 12,
-          background: "linear-gradient(90deg, #10265c 0%, #1677ff 100%)",
+          borderRadius: "var(--radius-card)",
+          background: "linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 100%)",
           color: "#fff",
-          boxShadow: "0 2px 8px rgba(16, 38, 92, 0.25)",
+          boxShadow: "var(--shadow-card)",
         }}
       >
         <span
@@ -94,19 +94,11 @@ export default function MinePage() {
       </div>
 
       <Card style={{ marginTop: 16 }} styles={{ body: { padding: 0 } }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "16px 16px",
-            borderBottom: "1px solid #f0f0f0",
-          }}
-        >
-          <ReadOutlined style={{ fontSize: 18, color: "#1677ff" }} />
+        <div className="menu-row-static">
+          <ReadOutlined style={{ fontSize: 18, color: "var(--primary)" }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, color: "#1f2329" }}>年级</div>
-            <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
+            <div style={{ fontSize: 15, color: "var(--text-1)" }}>年级</div>
+            <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>
               首次上传试卷时默认使用该年级
             </div>
           </div>
@@ -122,48 +114,31 @@ export default function MinePage() {
           </Space>
         </div>
         <div
+          className="menu-row"
           onClick={() => setSettingsOpen(true)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "16px 16px",
-            cursor: "pointer",
-            borderBottom: "1px solid #f0f0f0",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9f9")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "")}
         >
-          <SettingOutlined style={{ fontSize: 18, color: "#1677ff" }} />
+          <SettingOutlined style={{ fontSize: 18, color: "var(--primary)" }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, color: "#1f2329" }}>模型管理</div>
-            <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
+            <div style={{ fontSize: 15, color: "var(--text-1)" }}>模型管理</div>
+            <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>
               配置识别使用的 AI 模型
             </div>
           </div>
-          <RightOutlined style={{ color: "#a9aeb8", fontSize: 12 }} />
+          <RightOutlined style={{ color: "var(--text-3)", fontSize: 12 }} />
         </div>
         <div
+          className="menu-row"
+          style={{ borderBottom: "none" }}
           onClick={() => navigate("/feedback")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "16px 16px",
-            cursor: "pointer",
-            borderBottom: "1px solid #f0f0f0",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#f9f9f9")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "")}
         >
-          <MessageOutlined style={{ fontSize: 18, color: "#1677ff" }} />
+          <MessageOutlined style={{ fontSize: 18, color: "var(--primary)" }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, color: "#1f2329" }}>留言板</div>
-            <div style={{ color: "#999", fontSize: 12, marginTop: 2 }}>
+            <div style={{ fontSize: 15, color: "var(--text-1)" }}>留言板</div>
+            <div style={{ color: "var(--text-3)", fontSize: 12, marginTop: 2 }}>
               有问题或建议向我们留言
             </div>
           </div>
-          <RightOutlined style={{ color: "#a9aeb8", fontSize: 12 }} />
+          <RightOutlined style={{ color: "var(--text-3)", fontSize: 12 }} />
         </div>
       </Card>
 

@@ -14,7 +14,7 @@
     <view class="qbody">
       <view class="qhead">
         <text class="tag" style="background:{{item.statusColor}}1a;color:{{item.statusColor}};">{{item.statusText}}</text>
-        <text wx:if="{{item.suspicious}}" class="tag" style="background:#faad141a;color:#fa8c16;">可疑</text>
+        <text wx:if="{{item.suspicious}}" class="tag" style="background:rgba(255,125,0,0.1);color:#FF7D00;">可疑</text>
         <text wx:if="{{item.manual}}" class="tag" style="background:#8c8c8c1a;color:#666;">已手动调整</text>
         <text wx:if="{{item.illCount > 0}}" class="tag" style="background:#722ed11a;color:#722ed1;">含插图 ×{{item.illCount}}</text>
       </view>

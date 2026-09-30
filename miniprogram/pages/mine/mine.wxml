@@ -2,36 +2,36 @@
   <view class="avatar">{{avatarChar}}</view>
   <view class="user-info">
     <view class="username">{{username}}</view>
-    <view class="muted">AI 错题本</view>
+    <view class="user-sub">AI 错题本</view>
   </view>
 </view>
 
 <view class="card menu">
   <view class="menu-item">
-    <text class="menu-icon">📚</text>
+    <view class="ico menu-icon ico-book"></view>
     <view class="menu-main">
       <view class="menu-title">年级</view>
       <view class="muted">首次上传试卷时默认使用该年级</view>
     </view>
     <picker mode="selector" range="{{gradeOptions}}" value="{{gradeIndex}}" bindchange="onGradeChange">
-      <view class="grade-value">{{grade || '选择年级'}} ⌄</view>
+      <view class="grade-value">{{grade || '选择年级'}}<view class="ico ico-chev-down-p"></view></view>
     </picker>
   </view>
   <view class="menu-item" hover-class="menu-item-hover" bindtap="openModels">
-    <text class="menu-icon">⚙️</text>
+    <view class="ico menu-icon ico-settings"></view>
     <view class="menu-main">
       <view class="menu-title">模型管理</view>
       <view class="muted">配置识别使用的 AI 模型</view>
     </view>
-    <text class="menu-arrow">›</text>
+    <view class="ico menu-arrow ico-chev-right"></view>
   </view>
   <view class="menu-item" hover-class="menu-item-hover" bindtap="openFeedback">
-    <text class="menu-icon">📝</text>
+    <view class="ico menu-icon ico-message"></view>
     <view class="menu-main">
       <view class="menu-title">留言板</view>
       <view class="muted">有问题或建议向我们留言</view>
     </view>
-    <text class="menu-arrow">›</text>
+    <view class="ico menu-arrow ico-chev-right"></view>
   </view>
 </view>
 

@@ -24,6 +24,7 @@ class RecognitionWorker:
     def __init__(self) -> None:
         self.queue: asyncio.Queue[RecognitionJob] = asyncio.Queue()
         self._task: asyncio.Task | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._pipeline = RecognitionPipeline()
         # 同一阶段的任务在排队或执行期间只保留一份，避免重复确认/重试
         # 导致同一试卷被并发或连续覆盖处理结果。
@@ -35,6 +36,7 @@ class RecognitionWorker:
             # lifespan 可能反复创建不同 loop，因此每轮启动都重建队列。
             self.queue = asyncio.Queue()
             self._pending.clear()
+            self._loop = asyncio.get_running_loop()
             self._task = asyncio.create_task(self._run(), name="recognition-worker")
 
     async def stop(self) -> None:
@@ -45,6 +47,7 @@ class RecognitionWorker:
             except asyncio.CancelledError:
                 pass
             self._task = None
+            self._loop = None
 
     def enqueue(self, job: RecognitionJob) -> None:
         key = (job.exam_id, job.stage)
@@ -52,8 +55,19 @@ class RecognitionWorker:
             logger.info("跳过重复任务: exam=%s stage=%s", job.exam_id, job.stage)
             return
         self._pending.add(key)
-        self.queue.put_nowait(job)
-        logger.info("任务入队: exam=%s stage=%s queue=%s", job.exam_id, job.stage, self.queue.qsize())
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        if running is not None and running is self._loop:
+            self.queue.put_nowait(job)
+        elif self._loop is not None and self._loop.is_running():
+            # 同步路由在线程池里执行，asyncio.Queue 非线程安全，必须跨线程投递
+            self._loop.call_soon_threadsafe(self.queue.put_nowait, job)
+        else:
+            # worker 未启动（如纯单元测试）：直接入队，等 start() 后消费
+            self.queue.put_nowait(job)
+        logger.info("任务入队: exam=%s stage=%s", job.exam_id, job.stage)
 
     async def _run(self) -> None:
         while True:

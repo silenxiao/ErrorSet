@@ -1,15 +1,37 @@
+/* ===== 设计令牌（与 Web index.css、mobile ui.tsx 三端一致）=====
+   主色 #165DFF / 深 #0E42B8 / 浅 #E8F3FF；成功 #00B42A；危险 #F53F3F；
+   警示 #FF7D00；插图紫 #722ED1；文字 #1D2129/#4E5969/#86909C；
+   分割线 #E5E6EB；背景 #F7F8FA；卡片圆角 24rpx(12px)、控件圆角 16rpx(8px)。 */
 page {
-  background: #f5f5f5;
+  /* 色彩令牌 */
+  --primary: #165dff;
+  --primary-dark: #0e42b8;
+  --primary-light: #e8f3ff;
+  --success: #00b42a;
+  --danger: #f53f3f;
+  --warning: #ff7d00;
+  --purple: #722ed1;
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --text-1: #1d2129;
+  --text-2: #4e5969;
+  --text-3: #86909c;
+  --border: #e5e6eb;
+  --shadow-card: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+
+  background: var(--bg);
   font-size: 28rpx;
-  color: #333;
+  color: var(--text-1);
+  line-height: 1.6;
 }
 
+/* ===== 卡片 ===== */
 .card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
+  background: var(--card);
+  border-radius: 24rpx;
+  padding: 32rpx;
   margin: 20rpx;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .card-title {
@@ -25,7 +47,7 @@ page {
 }
 
 .muted {
-  color: #999;
+  color: var(--text-3);
   font-size: 24rpx;
 }
 
@@ -39,10 +61,11 @@ page {
 }
 
 .danger {
-  color: #ff4d4f;
+  color: var(--danger);
 }
 
-/* ===== 全局按钮系统 ===== */
+/* ===== 全局按钮系统 =====
+   规范：主按钮蓝底白字；次要按钮白底蓝边；危险按钮红字。 */
 button {
   padding: 0;
   margin: 0;
@@ -64,7 +87,7 @@ button::after {
   box-sizing: border-box;
   height: 88rpx;
   padding: 0 32rpx;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   font-size: 30rpx;
   font-weight: 500;
   line-height: 1;
@@ -73,28 +96,29 @@ button::after {
 }
 
 .btn-primary {
-  background: #1677ff;
+  background: var(--primary);
   color: #fff;
 }
 .btn-primary:active {
-  background: #0958d9;
+  background: var(--primary-dark);
 }
 
 .btn-ghost {
   background: #fff;
-  color: #1f2329;
-  border: 1rpx solid #e2e5ea;
+  color: var(--primary);
+  border: 1rpx solid var(--primary);
 }
 .btn-ghost:active {
-  background: #f2f3f5;
+  background: var(--primary-light);
 }
 
 .btn-danger {
-  background: #ff4d4f;
-  color: #fff;
+  background: #fff;
+  color: var(--danger);
+  border: 1rpx solid var(--danger);
 }
 .btn-danger:active {
-  background: #d9363e;
+  background: rgba(245, 63, 63, 0.06);
 }
 
 /* 通栏主按钮 */
@@ -102,12 +126,13 @@ button::after {
   width: 100%;
 }
 
-/* 行内文字按钮（通常为 view，bindtap 触发） */
+/* 行内文字按钮（通常为 view，bindtap 触发）：加大热区到约 56rpx 高 */
 .text-btn {
-  display: inline-block;
-  color: #1677ff;
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary);
   font-size: 26rpx;
-  padding: 8rpx 12rpx;
+  padding: 12rpx 16rpx;
   line-height: 1.4;
   border-radius: 8rpx;
 }
@@ -115,36 +140,336 @@ button::after {
   opacity: 0.6;
 }
 .text-btn.danger {
-  color: #ff4d4f;
+  color: var(--danger);
 }
 
-/* 加载失败提示框（替代无提示的空白页） */
+/* ===== 共享弹窗（mask / dialog / dlg-btn，各页不再重复定义） ===== */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(29, 33, 41, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.dialog {
+  width: 620rpx;
+  max-width: calc(100vw - 48rpx);
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+}
+
+.dialog-btns {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+
+.dlg-btn {
+  flex: 1;
+  margin: 0;
+  border-radius: 16rpx;
+  line-height: 80rpx;
+  height: 80rpx;
+  font-size: 28rpx;
+}
+
+/* ===== 共享表单（field / label / input / picker） ===== */
+.field {
+  display: flex;
+  align-items: center;
+  margin-top: 24rpx;
+}
+
+.label {
+  width: 150rpx;
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: var(--text-2);
+}
+
+.input {
+  flex: 1;
+  border: 1rpx solid var(--border);
+  border-radius: 16rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  color: var(--text-1);
+  background: #fff;
+}
+
+.picker {
+  flex: 1;
+  border: 1rpx solid var(--border);
+  border-radius: 16rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  color: var(--text-1);
+  background: #fff;
+}
+
+/* ===== 错题库科目筛选 chip：激活蓝字浅蓝底 ===== */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-bottom: 16rpx;
+}
+
+.filter-tag {
+  padding: 8rpx 24rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid var(--border);
+  background: #fff;
+  color: var(--text-2);
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.filter-tag:active {
+  color: var(--primary);
+}
+
+.filter-tag.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* ===== 「我的」设置单元格（与 Web 端 menu-row 一致） ===== */
+.menu {
+  padding: 0 24rpx;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item-hover {
+  background: var(--bg);
+}
+
+.menu-icon {
+  width: 40rpx;
+  height: 40rpx;
+  margin-right: 20rpx;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.menu-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-title {
+  font-size: 30rpx;
+  color: var(--text-1);
+}
+
+.menu-arrow {
+  width: 32rpx;
+  height: 32rpx;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+/* ===== 模型卡片（models 页） ===== */
+.model-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: #fff;
+  border: 1rpx solid var(--border);
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: var(--shadow-card);
+}
+
+.model-enabled {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* ===== 空状态：线性图标 + 文案 ===== */
+.empty {
+  padding: 80rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.empty-icon {
+  width: 96rpx;
+  height: 96rpx;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  opacity: 0.45;
+}
+
+/* ===== 加载失败提示框（替代无提示的空白页） ===== */
 .err-box {
-  background: #fff2f0;
-  border: 1rpx solid #ffccc7;
-  border-radius: 12rpx;
+  background: rgba(245, 63, 63, 0.06);
+  border: 1rpx solid rgba(245, 63, 63, 0.25);
+  border-radius: 16rpx;
   padding: 20rpx 24rpx;
   margin-bottom: 16rpx;
 }
 
 .err-msg {
-  color: #cf1322;
+  color: var(--danger);
   font-size: 26rpx;
   font-weight: 600;
   margin-bottom: 8rpx;
 }
 
 .err-hint {
-  color: #999;
+  color: var(--text-3);
   font-size: 22rpx;
   line-height: 1.5;
   margin-bottom: 12rpx;
 }
 
+/* ===== 线性图标（Feather 风格，2px 圆头线条，data-URI SVG） ===== */
+.ico {
+  display: inline-block;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+/* 加号（主色/白色） */
+.ico-plus {
+  width: 64rpx;
+  height: 64rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'/%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3C/svg%3E");
+}
+
+.ico-plus-sm {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 8rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'/%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3C/svg%3E");
+}
+
+/* 下箭头（选择器）：灰色 / 主色 / 白色 */
+.ico-chev-down {
+  width: 28rpx;
+  height: 28rpx;
+  margin-left: 8rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.ico-chev-down-p {
+  width: 26rpx;
+  height: 26rpx;
+  margin-left: 8rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+.ico-chev-down-w {
+  width: 26rpx;
+  height: 26rpx;
+  margin-left: 8rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* 右箭头（菜单/选择器）：浅灰 */
+.ico-chev-right {
+  width: 32rpx;
+  height: 32rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C9CDD4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'/%3E%3C/svg%3E");
+}
+
+/* 做对 / 做错（拇指） */
+.ico-like {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 6rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3'/%3E%3C/svg%3E");
+}
+
+.ico-dislike {
+  width: 28rpx;
+  height: 28rpx;
+  margin-right: 6rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23F53F3F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17'/%3E%3C/svg%3E");
+}
+
+/* 铅笔（编辑） */
+.ico-edit {
+  width: 36rpx;
+  height: 36rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234E5969' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z'/%3E%3C/svg%3E");
+}
+
+/* 书本：主色（我的-年级）/ 白色（登录标题） */
+.ico-book {
+  width: 40rpx;
+  height: 40rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/%3E%3Cpath d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/%3E%3C/svg%3E");
+}
+
+.ico-book-lg {
+  width: 56rpx;
+  height: 56rpx;
+  margin-bottom: 16rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/%3E%3Cpath d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/%3E%3C/svg%3E");
+}
+
+/* 齿轮（模型管理） */
+.ico-settings {
+  width: 40rpx;
+  height: 40rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E");
+}
+
+/* 留言（气泡） */
+.ico-message {
+  width: 40rpx;
+  height: 40rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
+}
+
+/* 收件箱（空状态通用图标） */
+.ico-inbox {
+  width: 96rpx;
+  height: 96rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 16 12 14 15 10 15 8 12 2 12'/%3E%3Cpath d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E");
+}
+
+/* 上传（托盘+上箭头） */
+.ico-upload {
+  width: 64rpx;
+  height: 64rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23165DFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'/%3E%3Cpolyline points='17 8 12 3 7 8'/%3E%3Cline x1='12' y1='3' x2='12' y2='15'/%3E%3C/svg%3E");
+}
+
 /* ===== Pad / 大屏适配 =====
    手机端锁竖屏不会命中以下查询；窗口宽度 ≥ 500px（iPad/安卓平板/PC/分屏）生效。
    rpx 以窗口宽度为 750 等分，大屏上会等比放大 2~3 倍，因此统一改用 px
-   （数值 ≈ rpx/2，即还原手机设计稿尺寸），并将卡片限宽居中。 */
+   （数值 ≈ rpx/2，即还原手机设计稿尺寸），并将卡片限宽居中。
+   颜色走上方令牌变量，媒体块只需覆盖布局尺寸。 */
 @media (min-width: 500px) {
   page {
     font-size: 14px;
@@ -154,8 +479,7 @@ button::after {
     max-width: 720px;
     margin: 10px auto;
     padding: 16px;
-    border-radius: 10px;
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 12px;
   }
 
   .card-title {
@@ -186,14 +510,175 @@ button::after {
     font-size: 15px;
   }
 
-  .btn-ghost {
-    border: 1px solid #e2e5ea;
-  }
-
   .text-btn {
     font-size: 13px;
-    padding: 4px 6px;
+    padding: 6px 8px;
     border-radius: 5px;
+  }
+
+  .mask {
+    z-index: 100;
+  }
+
+  .dialog {
+    width: 480px;
+    max-width: calc(100vw - 32px);
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .dialog-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  .dialog-btns {
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .dlg-btn {
+    border-radius: 8px;
+    line-height: 40px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .field {
+    margin-top: 12px;
+  }
+
+  .label {
+    width: 75px;
+    font-size: 14px;
+  }
+
+  .input,
+  .picker {
+    padding: 8px 10px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .filter-row {
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+
+  .filter-tag {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+
+  .menu {
+    padding: 0 12px;
+  }
+
+  .menu-item {
+    padding: 14px 0;
+  }
+
+  .menu-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+  }
+
+  .menu-arrow {
+    width: 16px;
+    height: 16px;
+  }
+
+  .menu-title {
+    font-size: 15px;
+  }
+
+  .model-card {
+    gap: 10px;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+
+  .empty {
+    padding: 40px 0;
+    gap: 8px;
+  }
+
+  .empty-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ico-inbox {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ico-book {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ico-settings {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ico-message {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ico-book-lg {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 8px;
+  }
+
+  .ico-plus {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ico-plus-sm {
+    width: 14px;
+    height: 14px;
+    margin-right: 4px;
+  }
+
+  .ico-chev-down {
+    width: 14px;
+    height: 14px;
+    margin-left: 4px;
+  }
+
+  .ico-chev-down-p {
+    width: 13px;
+    height: 13px;
+    margin-left: 4px;
+  }
+
+  .ico-chev-right {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ico-like,
+  .ico-dislike {
+    width: 14px;
+    height: 14px;
+    margin-right: 3px;
+  }
+
+  .ico-edit {
+    width: 18px;
+    height: 18px;
+  }
+
+  .ico-upload {
+    width: 32px;
+    height: 32px;
   }
 
   .err-box {

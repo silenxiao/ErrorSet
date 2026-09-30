@@ -14,6 +14,9 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** 401 后只触发一次跳转，避免并发请求重复 assign */
+let redirectingToLogin = false;
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(path, {
     ...init,
@@ -21,9 +24,12 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!resp.ok) {
     if (resp.status === 401 && !path.startsWith("/api/v1/auth/login")) {
-      localStorage.removeItem("errorset_admin_token");
-      localStorage.removeItem("errorset_admin_user");
-      window.location.assign("/login");
+      if (!redirectingToLogin) {
+        redirectingToLogin = true;
+        localStorage.removeItem("errorset_admin_token");
+        localStorage.removeItem("errorset_admin_user");
+        window.location.assign("/login");
+      }
     }
     let detail = `HTTP ${resp.status}`;
     try {

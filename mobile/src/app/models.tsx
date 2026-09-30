@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
 import {
   createModel,
   deleteModel,
@@ -194,7 +195,8 @@ export default function ModelsPage() {
         <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
           <View style={styles.toolbar}>
             <TouchableOpacity activeOpacity={0.7} disabled={formOpen} onPress={openAddForm} style={[styles.addBtn, formOpen && { opacity: 0.5 }]}>
-              <Text style={{ color: '#fff', fontSize: 13 }}>＋ 添加模型</Text>
+              <Feather name="plus" size={14} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 13, marginLeft: 4 }}>添加模型</Text>
             </TouchableOpacity>
             <Muted style={{ flex: 1 }}>开关表示当前启用的模型，切换后下一次识别生效</Muted>
           </View>
@@ -203,7 +205,10 @@ export default function ModelsPage() {
           {loading ? <CenterMuted>加载中…</CenterMuted> : null}
           {!loading && !error && models.length === 0 ? (
             <Card>
-              <CenterMuted>🤖 暂无模型，点击「添加模型」开始配置</CenterMuted>
+              <View style={styles.emptyWrap}>
+                <Feather name="inbox" size={30} color={C.text3} />
+                <CenterMuted>暂无模型，点击「添加模型」开始配置</CenterMuted>
+              </View>
             </Card>
           ) : null}
 
@@ -307,9 +312,15 @@ const styles = StyleSheet.create({
   },
   addBtn: {
     backgroundColor: C.primary,
-    borderRadius: 7,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   modelCard: {
     flexDirection: 'row',

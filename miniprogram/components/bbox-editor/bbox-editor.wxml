@@ -16,7 +16,7 @@
     bindtouchstart="onHandleStart"
     bindtap="onTapBox"
   >
-    <text class="blabel">{{item.no}}{{item.suspicious ? ' ⚠' : ''}}</text>
+    <text class="blabel">{{item.no}}</text>
 
     <block wx:if="{{item.selected}}">
       <view

@@ -1,9 +1,13 @@
+/* 用户卡：深蓝渐变圆角卡片（与 Web 端「我的」页一致） */
 .user-card {
   display: flex;
   align-items: center;
+  margin: 20rpx;
   padding: 48rpx 32rpx 32rpx;
-  background: #1677ff;
+  border-radius: 24rpx;
+  background: linear-gradient(90deg, var(--primary-dark) 0%, var(--primary) 100%);
   color: #fff;
+  box-shadow: var(--shadow-card);
 }
 
 .avatar {
@@ -17,6 +21,7 @@
   font-size: 44rpx;
   font-weight: 600;
   margin-right: 24rpx;
+  flex-shrink: 0;
 }
 
 .user-info .username {
@@ -24,59 +29,28 @@
   font-weight: 600;
 }
 
-.user-info .muted {
+.user-info .user-sub {
   color: rgba(255, 255, 255, 0.75);
+  font-size: 24rpx;
   margin-top: 4rpx;
 }
 
-.menu {
-  padding: 0 24rpx;
-}
-
-.menu-item {
+.grade-value {
   display: flex;
   align-items: center;
-  padding: 28rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
-}
-
-.menu-item:last-child {
-  border-bottom: none;
-}
-
-.menu-item-hover {
-  background: #f9f9f9;
-}
-
-.menu-icon {
-  font-size: 36rpx;
-  margin-right: 20rpx;
-}
-
-.menu-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.menu-title {
-  font-size: 30rpx;
-  color: #1f2329;
-}
-
-.menu-arrow {
-  color: #a9aeb8;
-  font-size: 40rpx;
-  line-height: 1;
+  font-size: 28rpx;
+  color: var(--primary);
 }
 
 /* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
 @media (min-width: 500px) {
   .user-card {
     max-width: 720px;
-    margin: 0 auto;
+    margin: 10px auto;
     width: 100%;
     box-sizing: border-box;
     padding: 24px 16px 16px;
+    border-radius: 12px;
   }
 
   .avatar {
@@ -90,34 +64,12 @@
     font-size: 17px;
   }
 
-  .user-info .muted {
+  .user-info .user-sub {
     margin-top: 2px;
+    font-size: 12px;
   }
 
-  .menu {
-    padding: 0 12px;
+  .grade-value {
+    font-size: 14px;
   }
-
-  .menu-item {
-    padding: 14px 0;
-  }
-
-  .menu-icon {
-    font-size: 18px;
-    margin-right: 10px;
-  }
-
-  .menu-title {
-    font-size: 15px;
-  }
-
-  .menu-arrow {
-    font-size: 20px;
-  }
-}
-
-
-.grade-value {
-  font-size: 28rpx;
-  color: #1677ff;
 }

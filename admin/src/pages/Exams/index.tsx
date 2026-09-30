@@ -3,7 +3,7 @@ import { Button, Popconfirm, Space, Table, Tag, message } from "antd";
 
 import { deleteExam, listExams } from "../../api/admin";
 import type { AdminExamRow } from "../../api/admin";
-import { examStatusColor, examStatusLabel, fileUrl, formatDate } from "../../utils/format";
+import { examStatusColor, examStatusLabel, formatDate } from "../../utils/format";
 
 export default function Exams() {
   const [rows, setRows] = useState<AdminExamRow[]>([]);
@@ -60,14 +60,14 @@ export default function Exams() {
           width: 170,
           render: (_, row) => (
             <Space>
-              {row.originalImage && (
-                <a href={fileUrl(row.originalImage)} target="_blank" rel="noreferrer">
+              {row.imageUrl && (
+                <a href={row.imageUrl} target="_blank" rel="noreferrer">
                   查看原图
                 </a>
               )}
               <Popconfirm
                 title="删除试卷"
-                description="将同时删除题目、识别记录、错题与图片，不可恢复。"
+                description="将同时删除题目、识别记录与图片，不可恢复；已加入错题库的题目会保留。"
                 okText="删除"
                 okButtonProps={{ danger: true }}
                 onConfirm={() => handleDelete(row)}

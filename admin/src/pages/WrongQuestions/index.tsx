@@ -3,7 +3,7 @@ import { Button, Popconfirm, Space, Table, Tag, Typography, message } from "antd
 
 import { deleteWrongQuestion, listWrongQuestions } from "../../api/admin";
 import type { AdminWrongQuestionRow } from "../../api/admin";
-import { fileUrl, formatDate } from "../../utils/format";
+import { formatDate } from "../../utils/format";
 
 export default function WrongQuestions() {
   const [rows, setRows] = useState<AdminWrongQuestionRow[]>([]);
@@ -74,8 +74,8 @@ export default function WrongQuestions() {
           width: 170,
           render: (_, row) => (
             <Space>
-              {row.image && (
-                <a href={fileUrl(row.image)} target="_blank" rel="noreferrer">
+              {row.imageUrl && (
+                <a href={row.imageUrl} target="_blank" rel="noreferrer">
                   查看快照
                 </a>
               )}

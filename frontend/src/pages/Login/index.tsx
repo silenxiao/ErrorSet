@@ -1,4 +1,4 @@
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
+import { BookOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import { Button, Card, Form, Input, Select, message, Typography } from "antd";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -45,12 +45,38 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #10265c 0%, #1677ff 100%)",
+        padding: 24,
+        background: "var(--primary-dark)",
       }}
     >
-      <Card style={{ width: 360, boxShadow: "0 8px 24px rgba(16, 38, 92, 0.35)" }}>
+      <Card style={{ width: 380, boxShadow: "0 8px 24px rgba(8, 35, 96, 0.35)" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              background: "var(--primary-light)",
+              color: "var(--primary)",
+              fontSize: 18,
+            }}
+          >
+            <BookOutlined />
+          </span>
+        </div>
         <Typography.Title level={4} style={{ textAlign: "center", marginBottom: 4 }}>
-          📘 AI 试卷识别与错题库
+          AI 试卷识别与错题库
         </Typography.Title>
         <Typography.Paragraph type="secondary" style={{ textAlign: "center" }}>
           {mode === "login" ? "登录后查看你的错题库" : "注册一个新账号"}

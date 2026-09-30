@@ -1,11 +1,11 @@
 // 试卷 Tab：上传试卷（拍照/相册）+ 历史试卷列表（识别中自动轮询）。
-// 对齐小程序 pages/upload。
+// 对齐小程序 pages/upload。结构：上传卡片 + 表单卡片 + 历史试卷卡片（条目带细分割线）。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  FlatList,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -13,8 +13,9 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { createExam, deleteExam, listExams } from '@/api/exam';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
@@ -71,7 +72,6 @@ export default function ExamScreen() {
   }, []);
 
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadExams = useCallback(async (silent = false) => {
@@ -209,102 +209,116 @@ export default function ExamScreen() {
 
   return (
     <Screen>
-      <FlatList
-        data={exams}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 16 }}
+      {/* 页头为主蓝底：状态栏用浅色内容 */}
+      <StatusBar style="light" />
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 16 }}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={() => loadExams()} tintColor={C.primary} colors={[C.primary]} />
         }
-        ListHeaderComponent={
-          <>
-            <Card>
-              <CardTitle>上传试卷</CardTitle>
+      >
+        {/* 1. 上传卡片：白卡内虚线上传区 */}
+        <Card>
+          {!imageUri ? (
+            <TouchableOpacity activeOpacity={0.7} style={styles.uploader} onPress={chooseImage}>
+              <Feather name="plus" size={44} color={C.primary} />
+              <Text style={styles.uploaderText}>点击选择试卷照片</Text>
+              <Muted>（JPG/PNG/WebP，≤10MB，一张图=一份试卷）</Muted>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.preview}>
+              <TouchableOpacity activeOpacity={0.8} onPress={chooseImage}>
+                <Image source={{ uri: imageUri }} style={styles.previewImg} contentFit="contain" />
+              </TouchableOpacity>
+              <TextBtn danger onPress={() => setImageUri('')}>
+                移除
+              </TextBtn>
+            </View>
+          )}
+        </Card>
 
-              {!imageUri ? (
-                <TouchableOpacity activeOpacity={0.7} style={styles.uploader} onPress={chooseImage}>
-                  <Text style={styles.plus}>＋</Text>
-                  <Muted style={{ textAlign: 'center' }}>
-                    点击选择试卷照片{'\n'}（JPG/PNG/WebP，≤10MB，一张图=一份试卷）
+        {/* 2. 表单卡片 */}
+        <Card>
+          <Field label="年级">
+            <OptionPicker options={GRADE_OPTIONS} value={grade} onChange={setGrade} />
+          </Field>
+
+          <Field label="试卷名称">
+            <Input value={name} placeholder="例如：数学月考（默认取文件名）" onChangeText={setName} />
+          </Field>
+
+          <View style={styles.switchRow}>
+            <Muted style={styles.switchText}>包含插图：开=识别题目和插图（更慢更贵）</Muted>
+            {/* 外层 Pressable 提供 ≥44px 点击区域，Switch 自身关闭手势 */}
+            <TouchableOpacity
+              activeOpacity={0.6}
+              style={styles.switchBox}
+              onPress={() => setIncludeIllustrations((v) => !v)}
+            >
+              <Switch
+                value={includeIllustrations}
+                onValueChange={setIncludeIllustrations}
+                trackColor={{ true: C.primary }}
+                pointerEvents="none"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.submitRow}>
+            <Btn loading={uploading} style={styles.submitGrow} onPress={upload}>
+              上传并开始识别
+            </Btn>
+            {models.length > 0 ? (
+              <View style={styles.modelBox}>
+                <OptionPicker
+                  options={models.map((m) => m.name || m.model)}
+                  value={modelName}
+                  onChange={(v) => void switchModel(v)}
+                  placeholder="选择模型"
+                />
+              </View>
+            ) : (
+              <Btn kind="ghost" style={styles.modelBox} onPress={() => router.push('/models')}>
+                选择模型
+              </Btn>
+            )}
+          </View>
+        </Card>
+
+        {/* 3. 历史试卷卡片：条目 + 细分割线 */}
+        <Card>
+          <CardTitle>历史试卷</CardTitle>
+
+          {error ? <ErrBox message={error} onRetry={() => loadExams()} /> : null}
+          {!error && exams.length === 0 && !loading ? <Muted>暂无试卷</Muted> : null}
+
+          {exams.map((item, idx) => {
+            const st = examStatusOf(item.status);
+            const last = idx === exams.length - 1;
+            return (
+              <View key={String(item.id)} style={[styles.examRow, last && styles.examRowLast]}>
+                <TouchableOpacity activeOpacity={0.7} style={styles.examMain} onPress={() => openExam(item)}>
+                  <Text style={styles.examName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Muted>
+                    题目数 {item.questionCount} · {formatDate(item.createdAt)}
                   </Muted>
                 </TouchableOpacity>
-              ) : (
-                <View style={styles.preview}>
-                  <TouchableOpacity activeOpacity={0.8} onPress={chooseImage}>
-                    <Image source={{ uri: imageUri }} style={styles.previewImg} contentFit="contain" />
-                  </TouchableOpacity>
-                  <TextBtn danger onPress={() => setImageUri('')}>
-                    移除
-                  </TextBtn>
-                </View>
-              )}
-
-              <Field label="年级">
-                <OptionPicker options={GRADE_OPTIONS} value={grade} onChange={setGrade} />
-              </Field>
-
-              <Field label="试卷名称">
-                <Input value={name} placeholder="例如：数学月考（默认取文件名）" onChangeText={setName} />
-              </Field>
-
-              <View style={styles.switchRow}>
-                <Switch value={includeIllustrations} onValueChange={setIncludeIllustrations} trackColor={{ true: C.primary }} />
-                <Muted style={{ flex: 1, marginLeft: 8 }}>包含插图：开=识别题目和插图（更慢更贵）</Muted>
-              </View>
-
-              <View style={styles.submitRow}>
-                <Btn loading={uploading} style={styles.submitGrow} onPress={upload}>
-                  上传并开始识别
-                </Btn>
-                {models.length > 0 ? (
-                  <View style={styles.modelBox}>
-                    <OptionPicker
-                      options={models.map((m) => m.name || m.model)}
-                      value={modelName}
-                      onChange={(v) => void switchModel(v)}
-                      placeholder="选择模型"
-                    />
+                <View style={styles.examSide}>
+                  <Tag color={st.color}>{st.text}</Tag>
+                  <View style={styles.examBtns}>
+                    <TextBtn onPress={() => openExam(item)}>打开</TextBtn>
+                    <TextBtn danger onPress={() => delExam(item)}>
+                      删除
+                    </TextBtn>
                   </View>
-                ) : (
-                  <Btn kind="ghost" style={styles.modelBox} onPress={() => router.push('/models')}>
-                    选择模型
-                  </Btn>
-                )}
-              </View>
-            </Card>
-
-            <Card>
-              <CardTitle>历史试卷</CardTitle>
-              {error ? <ErrBox message={error} onRetry={() => loadExams()} /> : null}
-              {!error && exams.length === 0 && !loading ? <Muted>暂无试卷</Muted> : null}
-            </Card>
-          </>
-        }
-        renderItem={({ item }) => {
-          const st = examStatusOf(item.status);
-          return (
-            <Card style={styles.examRow}>
-              <TouchableOpacity activeOpacity={0.7} style={styles.examMain} onPress={() => openExam(item)}>
-                <Text style={styles.examName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Muted>
-                  题目数 {item.questionCount} · {formatDate(item.createdAt)}
-                </Muted>
-              </TouchableOpacity>
-              <View style={styles.examSide}>
-                <Tag color={st.color}>{st.text}</Tag>
-                <View style={styles.examBtns}>
-                  <TextBtn onPress={() => openExam(item)}>打开</TextBtn>
-                  <TextBtn danger onPress={() => delExam(item)}>
-                    删除
-                  </TextBtn>
                 </View>
               </View>
-            </Card>
-          );
-        }}
-      />
+            );
+          })}
+        </Card>
+      </ScrollView>
     </Screen>
   );
 }
@@ -313,21 +327,21 @@ const styles = StyleSheet.create({
   uploader: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#d0d3d8',
-    borderRadius: 10,
+    borderColor: '#C9D8FF',
+    borderRadius: 8,
     paddingVertical: 34,
+    paddingHorizontal: 16,
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    backgroundColor: '#fff',
   },
-  plus: {
-    fontSize: 34,
-    color: '#bbb',
-    lineHeight: 40,
+  uploaderText: {
+    fontSize: 16,
+    color: C.text,
+    fontWeight: '500',
   },
   preview: {
     alignItems: 'center',
-    marginBottom: 12,
   },
   previewImg: {
     width: '100%',
@@ -339,13 +353,23 @@ const styles = StyleSheet.create({
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  switchText: {
+    flex: 1,
+    marginRight: 8,
+  },
+  // 开关点击区域 ≥44px
+  switchBox: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 4,
   },
   submitGrow: {
     flex: 1,
@@ -357,14 +381,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.border,
+  },
+  examRowLast: {
+    borderBottomWidth: 0,
   },
   examMain: {
     flex: 1,
   },
   examName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: C.textStrong,
+    color: C.text,
     marginBottom: 3,
   },
   examSide: {

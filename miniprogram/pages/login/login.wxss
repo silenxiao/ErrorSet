@@ -1,11 +1,13 @@
+/* 登录页：深蓝实底 + 居中白卡片（与 Web 端一致，避免复杂渐变） */
 .login-page {
   min-height: 100vh;
   display: flex;
   /* 卡片靠上放置：输入用户名时键盘不会盖住密码框和登录按钮 */
   align-items: flex-start;
   justify-content: center;
-  background: linear-gradient(135deg, #10265c 0%, #1677ff 100%);
+  background: var(--primary-dark);
   padding: 120rpx 40rpx 60rpx;
+  box-sizing: border-box;
 }
 
 .login-card {
@@ -14,45 +16,63 @@
   background: #ffffff;
   border-radius: 24rpx;
   padding: 60rpx 48rpx;
-  box-shadow: 0 12rpx 40rpx rgba(16, 38, 92, 0.35);
+  box-shadow: 0 12rpx 40rpx rgba(8, 35, 96, 0.35);
+  box-sizing: border-box;
+}
+
+.login-head {
+  display: flex;
+  justify-content: center;
 }
 
 .login-title {
-  font-size: 40rpx;
+  font-size: 38rpx;
   font-weight: 600;
   text-align: center;
-  color: #10265c;
+  color: var(--text-1);
 }
 
 .login-subtitle {
   font-size: 26rpx;
-  color: #999999;
+  color: var(--text-3);
   text-align: center;
   margin: 16rpx 0 48rpx;
 }
 
 .login-input {
   height: 88rpx;
-  background: #f5f5f5;
-  border-radius: 12rpx;
+  background: var(--bg);
+  border-radius: 16rpx;
   padding: 0 24rpx;
   margin-bottom: 24rpx;
   font-size: 28rpx;
+  color: var(--text-1);
+  box-sizing: border-box;
 }
 
 .login-btn {
   margin-top: 16rpx;
-  background: #1677ff;
+  background: var(--primary);
   color: #ffffff;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   font-size: 30rpx;
+}
+.login-btn:active {
+  background: var(--primary-dark);
 }
 
 .login-switch {
   margin-top: 32rpx;
   text-align: center;
-  color: #1677ff;
+  color: var(--primary);
   font-size: 26rpx;
+}
+
+.grade-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-1);
 }
 
 /* ===== Pad / 大屏适配（数值 ≈ rpx/2，还原手机设计尺寸） ===== */
@@ -68,7 +88,7 @@
   }
 
   .login-title {
-    font-size: 20px;
+    font-size: 19px;
   }
 
   .login-subtitle {
@@ -94,15 +114,4 @@
     margin-top: 16px;
     font-size: 13px;
   }
-}
-
-
-.grade-picker {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: #333;
-}
-.grade-arrow {
-  color: #bbb;
 }

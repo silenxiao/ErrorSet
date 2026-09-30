@@ -18,12 +18,12 @@ export default function UploadPanel({ onUploaded }: Props) {
   const [name, setName] = useState("");
   const [includeIllustrations, setIncludeIllustrations] = useState(false);
   const [grade, setGrade] = useState(() => {
-    // 默认年级：上次手动选择 > 注册时选择的年级 > 一年级
+    // 默认年级：上次手动选择 > 注册时选择的年级 > 六年级（规范默认）
     const saved = window.localStorage.getItem(GRADE_STORAGE_KEY);
     if (saved && GRADE_OPTIONS.includes(saved)) return saved;
     const registered = getStoredGrade();
     if (registered && GRADE_OPTIONS.includes(registered)) return registered;
-    return GRADE_OPTIONS[0];
+    return GRADE_OPTIONS.includes("六年级") ? "六年级" : GRADE_OPTIONS[0];
   });
   const [uploading, setUploading] = useState(false);
   const [form] = Form.useForm();
@@ -46,61 +46,62 @@ export default function UploadPanel({ onUploaded }: Props) {
   };
 
   return (
-    <Form form={form} layout="vertical" style={{ maxWidth: 520 }}>
-      <Form.Item label="试卷图片（JPG/PNG/WebP，≤10MB，一张图 = 一份试卷）">
-        <Upload.Dragger
-          accept=".jpg,.jpeg,.png,.webp"
-          maxCount={1}
-          showUploadList={{ showRemoveIcon: true }}
-          beforeUpload={(f) => {
-            setFile(f);
-            return false;
-          }}
-          onRemove={() => setFile(null)}
-        >
-          <p className="ant-upload-drag-icon">
-            <InboxOutlined />
-          </p>
-          <p className="ant-upload-text">点击或拖拽图片到此处上传</p>
-        </Upload.Dragger>
-      </Form.Item>
-      <Form.Item label="年级">
-        <Select
-          value={grade}
-          options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
-          onChange={(value: string) => {
-            setGrade(value);
-            window.localStorage.setItem(GRADE_STORAGE_KEY, value);
-          }}
-        />
-      </Form.Item>
-      <Form.Item label="试卷名称（默认取文件名）">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="例如：数学月考"
-        />
-      </Form.Item>
-      <Form.Item label="是否包含插图">
-        <Radio.Group
-          value={includeIllustrations}
-          onChange={(e) => setIncludeIllustrations(e.target.value)}
-        >
-          <Radio value={false}>不包含（只识别题目，更快更省）</Radio>
-          <Radio value={true}>包含插图（识别题目和插图）</Radio>
-        </Radio.Group>
-      </Form.Item>
-      <Space wrap>
-        <Button
-          type="primary"
-          loading={uploading}
-          disabled={!file}
-          onClick={handleUpload}
-        >
-          上传并开始识别
-        </Button>
-        <ModelSelector />
-      </Space>
-    </Form>
+    <div style={{ maxWidth: 560 }}>
+      <Upload.Dragger
+        accept=".jpg,.jpeg,.png,.webp"
+        maxCount={1}
+        showUploadList={{ showRemoveIcon: true }}
+        beforeUpload={(f) => {
+          setFile(f);
+          return false;
+        }}
+        onRemove={() => setFile(null)}
+      >
+        <p className="ant-upload-drag-icon" style={{ marginBottom: 8 }}>
+          <InboxOutlined style={{ color: "var(--primary)" }} />
+        </p>
+        <p className="ant-upload-text">点击或拖拽图片到此处上传</p>
+        <p className="ant-upload-hint">试卷图片（JPG/PNG/WebP，≤10MB，一张图 = 一份试卷）</p>
+      </Upload.Dragger>
+      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form.Item label="年级" style={{ marginBottom: 16 }}>
+          <Select
+            value={grade}
+            options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
+            onChange={(value: string) => {
+              setGrade(value);
+              window.localStorage.setItem(GRADE_STORAGE_KEY, value);
+            }}
+          />
+        </Form.Item>
+        <Form.Item label="试卷名称（默认取文件名）" style={{ marginBottom: 16 }}>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="例如：数学月考"
+          />
+        </Form.Item>
+        <Form.Item label="是否包含插图" style={{ marginBottom: 16 }}>
+          <Radio.Group
+            value={includeIllustrations}
+            onChange={(e) => setIncludeIllustrations(e.target.value)}
+          >
+            <Radio value={false}>不包含插图（只识别题目，更快更省）</Radio>
+            <Radio value={true}>包含插图（识别题目和插图）</Radio>
+          </Radio.Group>
+        </Form.Item>
+        <Space wrap>
+          <Button
+            type="primary"
+            loading={uploading}
+            disabled={!file}
+            onClick={handleUpload}
+          >
+            上传并开始识别
+          </Button>
+          <ModelSelector />
+        </Space>
+      </Form>
+    </div>
   );
 }

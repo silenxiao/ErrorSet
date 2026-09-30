@@ -5,21 +5,22 @@ export interface StatusMeta {
   color: string;
 }
 
+// 状态色对齐三端统一调色板：成功 #00B42A / 危险 #F53F3F / 警示 #FF7D00 / 进行中 #165DFF
 export const EXAM_STATUS: Record<string, StatusMeta> = {
-  uploaded: { text: '排队中', color: '#999999' },
-  global_processing: { text: '整页识别中', color: '#1677ff' },
-  awaiting_review: { text: '待人工确认', color: '#fa8c16' },
-  local_processing: { text: '二次识别中', color: '#1677ff' },
-  completed: { text: '已完成', color: '#52c41a' },
-  failed: { text: '失败', color: '#ff4d4f' },
+  uploaded: { text: '排队中', color: '#86909C' },
+  global_processing: { text: '整页识别中', color: '#165DFF' },
+  awaiting_review: { text: '待人工确认', color: '#FF7D00' },
+  local_processing: { text: '二次识别中', color: '#165DFF' },
+  completed: { text: '已完成', color: '#00B42A' },
+  failed: { text: '失败', color: '#F53F3F' },
 };
 
 export const Q_STATUS: Record<string, StatusMeta> = {
-  pending_review: { text: '待确认', color: '#fa8c16' },
-  confirmed: { text: '已确认', color: '#1677ff' },
-  correcting: { text: '二次识别中', color: '#1677ff' },
-  completed: { text: '已完成', color: '#52c41a' },
-  failed: { text: '失败', color: '#ff4d4f' },
+  pending_review: { text: '待确认', color: '#FF7D00' },
+  confirmed: { text: '已确认', color: '#165DFF' },
+  correcting: { text: '二次识别中', color: '#165DFF' },
+  completed: { text: '已完成', color: '#00B42A' },
+  failed: { text: '失败', color: '#F53F3F' },
 };
 
 export const SUBJECT_OPTIONS = [
@@ -47,11 +48,11 @@ export const GRADE_OPTIONS = [
 ];
 
 export function examStatusOf(status: string): StatusMeta {
-  return EXAM_STATUS[status] || { text: status, color: '#999999' };
+  return EXAM_STATUS[status] || { text: status, color: '#86909C' };
 }
 
 export function questionStatusOf(status: string): StatusMeta {
-  return Q_STATUS[status] || { text: status, color: '#999999' };
+  return Q_STATUS[status] || { text: status, color: '#86909C' };
 }
 
 export function formatDate(s: string | null | undefined): string {

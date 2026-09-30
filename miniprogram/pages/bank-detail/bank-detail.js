@@ -1,10 +1,23 @@
 const api = require('../../utils/api');
+const { illStyle } = require('../../utils/device');
 
 Page({
   data: {
     detail: null,
     question: null,
     loadError: false,
+    // 插图实际尺寸（key: q.插图id → 行内样式），按自然大小 1:1 显示
+    illSizes: {},
+  },
+
+  // 插图加载完成：记录自然尺寸，超宽时等比缩小到卡片内
+  onIllLoad(e) {
+    const key = e.currentTarget.dataset.key;
+    const { width, height } = e.detail;
+    if (!key || !width || !height) return;
+    this.setData({
+      illSizes: Object.assign({}, this.data.illSizes, { [key]: illStyle(width, height) }),
+    });
   },
 
   onLoad(options) {

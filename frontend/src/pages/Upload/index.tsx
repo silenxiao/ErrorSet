@@ -1,20 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
+import { Alert, Button, Card, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 import { deleteExam, listExams } from "../../api/exam";
+import { STATUS_LABEL } from "../../constants/examStatus";
 import RecognitionPage from "../Recognition";
 import UploadPanel from "../../components/UploadPanel";
 import type { ExamListItem, ExamStatus } from "../../types/exam";
-
-const STATUS_LABEL: Record<ExamStatus, { text: string; color: string }> = {
-  uploaded: { text: "排队中", color: "default" },
-  global_processing: { text: "整页识别中", color: "processing" },
-  awaiting_review: { text: "待人工确认", color: "gold" },
-  local_processing: { text: "二次识别中", color: "processing" },
-  completed: { text: "已完成", color: "success" },
-  failed: { text: "失败", color: "error" },
-};
 
 /** 未到终态的状态：存在时列表需要轮询同步 */
 const ACTIVE_STATUSES: ExamStatus[] = [
@@ -28,6 +20,8 @@ const POLL_INTERVAL_MS = 3000;
 export default function UploadPage() {
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  /** 列表加载失败信息，null 表示正常 */
+  const [loadError, setLoadError] = useState<string | null>(null);
   /** "打开"浮窗中展示的试卷 id，null 表示关闭 */
   const [openedExamId, setOpenedExamId] = useState<number | null>(null);
 
@@ -35,6 +29,10 @@ export default function UploadPage() {
     if (!silent) setLoading(true);
     try {
       setExams(await listExams());
+      setLoadError(null);
+    } catch (err) {
+      // 轮询也会走到这里：不抛出，避免 unhandled rejection，并展示错误提示
+      setLoadError(err instanceof Error ? err.message : "加载试卷列表失败");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -87,7 +85,9 @@ export default function UploadPage() {
       key: "actions",
       render: (_, exam) => (
         <Space>
-          <a onClick={() => setOpenedExamId(exam.id)}>打开</a>
+          <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setOpenedExamId(exam.id)}>
+            打开
+          </Button>
           <PopconfirmDelete onConfirm={() => void handleDelete(exam)} />
         </Space>
       ),
@@ -102,12 +102,22 @@ export default function UploadPage() {
         />
       </Card>
       <Card title="历史试卷">
+        {loadError !== null && (
+          <Alert
+            type="error"
+            showIcon
+            message="试卷列表加载失败"
+            description={loadError}
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Table
           rowKey="id"
           loading={loading}
           dataSource={exams}
           columns={columns}
-          pagination={{ pageSize: 10 }}
+          pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 份试卷` }}
+          scroll={{ x: 720 }}
         />
       </Card>
       <Modal
@@ -121,13 +131,14 @@ export default function UploadPage() {
           void reload();
         }}
         footer={null}
-        width="85%"
+        width="min(1280px, 92vw)"
         style={{ top: 40 }}
-        // 弹窗体固定高度且不滚动，由内部左右两栏各自滚动（左侧图片/右侧题目列表）
-        styles={{ body: { height: "calc(100vh - 160px)", overflow: "hidden" } }}
         destroyOnClose
       >
-        {openedExamId !== null && <RecognitionPage examId={openedExamId} />}
+        {/* 高度与滚动由 .exam-modal-body 控制（窄屏自动改为整体滚动） */}
+        <div className="exam-modal-body">
+          {openedExamId !== null && <RecognitionPage examId={openedExamId} />}
+        </div>
       </Modal>
     </div>
   );
@@ -136,7 +147,9 @@ export default function UploadPage() {
 function PopconfirmDelete({ onConfirm }: { onConfirm: () => void }) {
   return (
     <Popconfirm title="确定删除该试卷？" onConfirm={onConfirm}>
-      <a style={{ color: "#ff4d4f" }}>删除</a>
+      <Button type="link" size="small" danger style={{ padding: 0 }}>
+        删除
+      </Button>
     </Popconfirm>
   );
 }

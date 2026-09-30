@@ -1,17 +1,19 @@
 import { Spin } from "antd";
 import { Button, Result } from "antd";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import AdminLayout from "./components/AdminLayout";
 import { clearSession, getToken, me } from "./api/auth";
-import Dashboard from "./pages/Dashboard";
-import Exams from "./pages/Exams";
-import Feedbacks from "./pages/Feedbacks";
 import Login from "./pages/Login";
-import Models from "./pages/Models";
-import Users from "./pages/Users";
-import WrongQuestions from "./pages/WrongQuestions";
+
+// 路由级代码分割：各管理页按需加载，登录页保持 eager 保证首屏
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Exams = lazy(() => import("./pages/Exams"));
+const Feedbacks = lazy(() => import("./pages/Feedbacks"));
+const Models = lazy(() => import("./pages/Models"));
+const Users = lazy(() => import("./pages/Users"));
+const WrongQuestions = lazy(() => import("./pages/WrongQuestions"));
 
 type GuardState = "loading" | "ok" | "denied" | "anonymous";
 
@@ -74,23 +76,38 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        element={
-          <RequireAdmin>
-            <AdminLayout />
-          </RequireAdmin>
-        }
-      >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/models" element={<Models />} />
-        <Route path="/exams" element={<Exams />} />
-        <Route path="/wrong-questions" element={<WrongQuestions />} />
-        <Route path="/feedbacks" element={<Feedbacks />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Spin size="large" />
+        </div>
+      }
+    >
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          element={
+            <RequireAdmin>
+              <AdminLayout />
+            </RequireAdmin>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/models" element={<Models />} />
+          <Route path="/exams" element={<Exams />} />
+          <Route path="/wrong-questions" element={<WrongQuestions />} />
+          <Route path="/feedbacks" element={<Feedbacks />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

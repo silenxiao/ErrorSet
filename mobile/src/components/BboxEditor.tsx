@@ -13,6 +13,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Feather } from '@expo/vector-icons';
 import type { BBox, Question } from '@/types/question';
 import { applyDrag, normalizeBBox } from '@/utils/bbox';
 
@@ -225,10 +226,10 @@ function TouchableBox({
       }}
       {...panHandlers}
     >
-      <Text style={[styles.blabel, suspicious && { color: C_ORANGE }]}>
-        {no}
-        {suspicious ? ' ⚠' : ''}
-      </Text>
+      <View style={styles.blabelBox}>
+        <Text style={[styles.blabel, suspicious && { color: C_ORANGE }]}>{no}</Text>
+        {suspicious ? <Feather name="alert-triangle" size={10} color={C_ORANGE} /> : null}
+      </View>
       {children}
     </View>
   );
@@ -268,7 +269,8 @@ function IllBox({
   );
 }
 
-const C_ORANGE = '#fa8c16';
+// 低饱和警示橙（"可疑"语义，三端统一）
+const C_ORANGE = '#FF7D00';
 
 const styles = StyleSheet.create({
   editor: {
@@ -292,27 +294,32 @@ const styles = StyleSheet.create({
   },
   bbox: {
     borderWidth: 1.5,
-    borderColor: 'rgba(22,119,255,0.55)',
+    borderColor: 'rgba(22,93,255,0.55)',
     borderRadius: 2,
     justifyContent: 'flex-start',
   },
   bboxSel: {
-    borderColor: '#1677ff',
+    borderColor: '#165DFF',
     borderWidth: 2,
-    backgroundColor: 'rgba(22,119,255,0.06)',
+    backgroundColor: 'rgba(22,93,255,0.06)',
     zIndex: 10,
   },
   bboxSusp: {
-    borderColor: 'rgba(250,140,22,0.7)',
+    borderColor: 'rgba(255,125,0,0.7)',
   },
-  blabel: {
+  blabelBox: {
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
     backgroundColor: 'rgba(255,255,255,0.85)',
-    color: '#1677ff',
-    fontSize: 10,
     paddingHorizontal: 3,
     borderRadius: 3,
     overflow: 'hidden',
+  },
+  blabel: {
+    color: '#165DFF',
+    fontSize: 10,
   },
   handle: {
     position: 'absolute',
@@ -323,7 +330,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: '#1677ff',
+    borderColor: '#165DFF',
   },
   illbox: {
     borderWidth: 1.5,

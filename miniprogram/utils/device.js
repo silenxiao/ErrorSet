@@ -45,3 +45,23 @@ function isPad() {
 }
 
 module.exports = { isPad };
+
+/**
+ * 插图按实际尺寸显示的行内样式：默认 1:1 使用自然宽高（px），
+ * 超出卡片可用宽度时才等比缩小（大屏下卡片限宽 720px，内部约 640px）。
+ * 配合 <image bindload> 的 e.detail.width/height 使用。
+ */
+function illStyle(width, height) {
+  try {
+    const win = getWindowInfo();
+    const maxW = Math.min((win.windowWidth || 375) - 56, 640);
+    const scale = width > maxW ? maxW / width : 1;
+    const w = Math.round(width * scale * 100) / 100;
+    const h = Math.round(height * scale * 100) / 100;
+    return `width:${w}px;height:${h}px;`;
+  } catch (e) {
+    return '';
+  }
+}
+
+module.exports = { isPad, illStyle };

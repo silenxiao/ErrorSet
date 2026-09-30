@@ -23,9 +23,3 @@ export function examStatusLabel(status: string): string {
 export function examStatusColor(status: string): string {
   return EXAM_STATUS[status]?.color ?? "default";
 }
-
-/** DB 存储的图片路径（如 data/originals/x.png）转 /files 静态 URL。 */
-export function fileUrl(path: string): string {
-  if (!path) return "";
-  return `/files/${path.replace(/^data\//, "")}`;
-}

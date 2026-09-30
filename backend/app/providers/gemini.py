@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from app.core.exceptions import ProviderError
-from app.providers.base import VisionProvider, VisionRequest, VisionResponse
+from app.providers.base import VisionProvider, VisionRequest, VisionResponse, serialize_user_content
 
 
 class GeminiProvider(VisionProvider):
@@ -14,7 +14,6 @@ class GeminiProvider(VisionProvider):
     ENDPOINT_TPL = (
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     )
-    PRICING: dict[str, tuple[float, float]] = {}
 
     def __init__(self, model: str, api_key: str):
         self.model = model
@@ -23,17 +22,27 @@ class GeminiProvider(VisionProvider):
     async def analyze(self, request: VisionRequest) -> VisionResponse:
         mime = mimetypes.guess_type(request.image_path)[0] or "image/jpeg"
         b64 = base64.b64encode(Path(request.image_path).read_bytes()).decode()
+        # 与 OpenAIProvider 同构：task_prompt + user_content 为新协议，
+        # 缺省时回落到传统整段 prompt（Global/Local 识别路径）
+        if request.task_prompt or request.user_content is not None:
+            user_text = request.task_prompt
+            if request.user_content is not None:
+                user_text += "\n\n" + serialize_user_content(request.user_content)
+        else:
+            user_text = request.prompt
         payload = {
             "contents": [
                 {
                     "parts": [
-                        {"text": request.prompt},
+                        {"text": user_text},
                         {"inline_data": {"mime_type": mime, "data": b64}},
                     ]
                 }
             ],
             "generationConfig": {"temperature": request.temperature},
         }
+        if request.system_prompt:
+            payload["systemInstruction"] = {"parts": [{"text": request.system_prompt}]}
         started = time.monotonic()
         data = await self._post_with_retries(
             self.ENDPOINT_TPL.format(model=self.model),
@@ -53,9 +62,3 @@ class GeminiProvider(VisionProvider):
             latency_ms=latency_ms,
             raw=data,
         )
-
-    def estimate_cost(self, input_tokens: int | None, output_tokens: int | None) -> float:
-        rates = self.PRICING.get(self.model)
-        if not rates or input_tokens is None or output_tokens is None:
-            return 0.0
-        return input_tokens / 1000 * rates[0] + output_tokens / 1000 * rates[1]

@@ -1,7 +1,7 @@
 """数据访问层：所有 DB 读写集中在这里，pipeline / service 不直接操作 Session。"""
 
-from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session, selectinload
 
 from app.database.models import (
     Exam,
@@ -119,6 +119,30 @@ def set_exam_status(db: Session, exam: Exam, status: str) -> Exam:
     return exam
 
 
+def transition_exam_status(
+    db: Session, exam: Exam, *, expected_status: str, target_status: str
+) -> bool:
+    """乐观并发：仅当状态仍为 expected_status 时原子更新为 target_status。
+
+    并发场景下（双击确认、确认与重新识别同时到达）只有第一个调用成功，
+    其余返回 False，防止同一阶段被重复认领。
+    """
+    values: dict[str, object] = {"status": target_status}
+    if target_status != "failed":
+        values["error_message"] = None
+    result = db.execute(
+        update(Exam)
+        .where(Exam.id == exam.id, Exam.status == expected_status)
+        .values(**values)
+    )
+    db.commit()
+    if result.rowcount:
+        exam.status = target_status
+        return True
+    db.refresh(exam)  # 同步其他会话写入的最新状态
+    return False
+
+
 def set_exam_failed(db: Session, exam: Exam, error_message: str) -> Exam:
     """置为 failed 并记录失败原因（模型超时/网络错误/API 错误等），供前端展示。"""
     exam.status = "failed"
@@ -199,9 +223,25 @@ def list_questions(db: Session, exam_id: int) -> list[Question]:
     stmt = (
         select(Question)
         .where(Question.exam_id == exam_id)
+        .options(selectinload(Question.illustrations))
         .order_by(Question.id)
     )
     return list(db.scalars(stmt))
+
+
+def map_questions_with_illustrations(
+    db: Session, question_ids
+) -> dict[int, Question]:
+    """按 id 批量取题并预载插图，供错题列表等批量场景避免 N+1。"""
+    ids = set(question_ids)
+    if not ids:
+        return {}
+    stmt = (
+        select(Question)
+        .where(Question.id.in_(ids))
+        .options(selectinload(Question.illustrations))
+    )
+    return {q.id: q for q in db.scalars(stmt)}
 
 
 def get_question(db: Session, question_id: int) -> Question | None:
@@ -555,20 +595,24 @@ def list_all_exams(db: Session) -> list[dict]:
 
 
 def list_all_wrong_questions(db: Session) -> list[dict]:
-    """跨用户错题列表，附所属用户名、来源试卷名与题干。"""
+    """跨用户错题列表，附所属用户名、来源试卷名与题干。
+
+    试卷/题目可能已被删除（错题按 §28 独立存活），因此用外连接，
+    并优先使用错题自带的文本快照，保证删卷后行不消失。
+    """
     rows = db.execute(
         select(WrongQuestion, User.username, Exam.name, Question.text)
         .join(User, WrongQuestion.user_id == User.id)
-        .join(Exam, WrongQuestion.exam_id == Exam.id)
-        .join(Question, WrongQuestion.question_id == Question.id)
+        .outerjoin(Exam, WrongQuestion.exam_id == Exam.id)
+        .outerjoin(Question, WrongQuestion.question_id == Question.id)
         .order_by(WrongQuestion.created_at.desc())
     ).all()
     return [
         {
             "wrong_question": row[0],
             "username": row[1],
-            "exam_name": row[2],
-            "question_text": row[3],
+            "exam_name": row[2] or "（试卷已删除）",
+            "question_text": row[0].question_text or row[3] or "",
         }
         for row in rows
     ]

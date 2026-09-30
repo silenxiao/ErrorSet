@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, PlusOutlined, SettingOutlined } from "@ant-design/icons";
 import {
   AutoComplete,
   Button,
@@ -124,9 +124,9 @@ export default function SettingsModal({ open, onClose }: Props) {
   };
 
   const handleSave = async () => {
-    const values: ModelFormValues = await form.validateFields();
     setSaving(true);
     try {
+      const values: ModelFormValues = await form.validateFields();
       const payload = {
         name: values.name ?? "",
         provider: values.provider ?? "",
@@ -143,7 +143,10 @@ export default function SettingsModal({ open, onClose }: Props) {
       closeForm();
       await refresh();
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "保存失败");
+      // 表单校验失败由 antd 在字段下方展示，不弹全局错误
+      if (!(err && typeof err === "object" && "errorFields" in err)) {
+        message.error(err instanceof Error ? err.message : "保存失败");
+      }
     } finally {
       setSaving(false);
     }
@@ -205,14 +208,27 @@ export default function SettingsModal({ open, onClose }: Props) {
 
   return (
     <Modal
-      title="⚙ 模型管理"
+      title={
+        <Space size={8}>
+          <SettingOutlined style={{ color: "var(--primary)" }} />
+          模型管理
+        </Space>
+      }
       open={open}
       onCancel={onClose}
       footer={null}
       width={640}
       destroyOnClose
     >
-      <div style={{ marginBottom: 12 }}>
+      <div
+        style={{
+          marginBottom: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -221,16 +237,19 @@ export default function SettingsModal({ open, onClose }: Props) {
         >
           添加模型
         </Button>
+        <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+          开关表示当前启用的模型，切换后下一次识别生效
+        </span>
       </div>
 
       {formOpen && (
         <div
           style={{
-            border: "1px solid #f0f0f0",
+            border: "1px solid var(--divider)",
             borderRadius: 8,
             padding: 16,
             marginBottom: 16,
-            background: "#fafafa",
+            background: "var(--bg)",
           }}
         >
           <div style={{ fontWeight: 600, marginBottom: 12 }}>
@@ -301,44 +320,33 @@ export default function SettingsModal({ open, onClose }: Props) {
           {models.map((item) => (
             <div
               key={item.id}
-              style={{
-                border: `1px solid ${item.enabled ? "#91caff" : "#f0f0f0"}`,
-                borderRadius: 10,
-                padding: "10px 12px",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                background: item.enabled ? "#f0f7ff" : "#fff",
-                transition: "box-shadow 0.2s, border-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow =
-                  "0 2px 8px rgba(15, 23, 42, 0.08)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-              }}
+              className={`model-card${item.enabled ? " model-card-active" : ""}`}
             >
               <Switch
                 checked={item.enabled}
                 onChange={(checked) => void handleEnable(item, checked)}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 600 }}>
                     {item.name || item.model}
                   </span>
-                  <Tag>{providerLabel(item.provider)}</Tag>
+                  {/* 供应商与名称相同（如自定义命名）时不再重复展示 */}
+                  {providerLabel(item.provider) !== (item.name || item.model) && (
+                    <span style={{ color: "var(--text-3)", fontSize: 12 }}>
+                      {providerLabel(item.provider)}
+                    </span>
+                  )}
                   {item.scope === "system" ? (
                     <Tag color="blue">系统</Tag>
                   ) : (
                     <Tag>独享</Tag>
                   )}
-                  {item.enabled && <Tag color="green">当前使用</Tag>}
+                  {item.enabled && <Tag color="success">当前使用</Tag>}
                 </div>
                 <div
                   style={{
-                    color: "#999",
+                    color: "var(--text-3)",
                     fontSize: 12,
                     marginTop: 2,
                     overflow: "hidden",

@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 2,
     marginBottom: 8,
-    borderRadius: 6,
+    borderRadius: 8,
     backgroundColor: '#f0f0f0',
   },
   dialogBtns: {

@@ -1,5 +1,7 @@
 """Recognition Pipeline（§29）：两段执行，以人工确认为界（§6）。"""
 
+import asyncio
+
 from app.core.config import get_settings
 from app.core.exceptions import ProviderError
 from app.core.logging import get_logger
@@ -49,10 +51,17 @@ class RecognitionPipeline:
             if exam is None:
                 logger.error("run_global: Exam %s 不存在", exam_id)
                 return
-            repo.set_exam_status(db, exam, "global_processing")
+            if not repo.transition_exam_status(
+                db, exam, expected_status="uploaded", target_status="global_processing"
+            ):
+                logger.warning(
+                    "run_global: Exam %s 状态为 %s，跳过", exam_id, exam.status
+                )
+                return
             try:
-                processed = preprocess_image(
-                    exam.original_image, self.settings.data_dir
+                # PIL 解码/缩放在线程池执行，避免阻塞事件循环上的 HTTP 请求
+                processed = await asyncio.to_thread(
+                    preprocess_image, exam.original_image, self.settings.data_dir
                 )
                 repo.set_exam_size(
                     db, exam, width=processed.width, height=processed.height
@@ -123,10 +132,18 @@ class RecognitionPipeline:
         db = SessionLocal()
         try:
             exam = repo.get_exam(db, exam_id)
-            if exam is None or exam.status != "awaiting_review":
-                logger.warning("run_local: Exam %s 状态不允许确认", exam_id)
+            if exam is None:
+                logger.warning("run_local: Exam %s 不存在", exam_id)
                 return
-            repo.set_exam_status(db, exam, "local_processing")
+            # 原子认领：双击确认等并发场景只有一个调用能进入二次识别
+            if not repo.transition_exam_status(
+                db, exam, expected_status="awaiting_review",
+                target_status="local_processing",
+            ):
+                logger.warning(
+                    "run_local: Exam %s 状态为 %s，不允许确认", exam_id, exam.status
+                )
+                return
 
             provider = get_recognition_provider(exam.user_id)
             questions = repo.list_questions(db, exam.id)
@@ -164,7 +181,8 @@ class RecognitionPipeline:
             "题目 %s 二次识别，原因: %s", question.question_no, mark.reasons
         )
         try:
-            crop_path = crop_question(
+            crop_path = await asyncio.to_thread(
+                crop_question,
                 exam.original_image,
                 list(question.bbox),
                 crops_dir=f"{self.settings.data_dir}/crops",

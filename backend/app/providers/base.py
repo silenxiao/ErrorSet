@@ -17,15 +17,44 @@ import httpx
 from app.core.config import get_settings
 from app.core.exceptions import ProviderAuthError, ProviderError, ProviderTimeoutError
 from app.core.logging import get_logger
+from typing import Any
 
 logger = get_logger(__name__)
+
+# 进程级共享的 HTTP 客户端：所有 Provider 复用同一连接池，
+# 避免每次调用（含每次重试）重新建连/TLS 握手。超时按请求单独传。
+_shared_client: httpx.AsyncClient | None = None
+
+
+def get_http_client() -> httpx.AsyncClient:
+    global _shared_client
+    if _shared_client is None:
+        _shared_client = httpx.AsyncClient()
+    return _shared_client
+
+
+async def close_http_client() -> None:
+    """应用关闭时释放连接池；下次调用会按需重建。"""
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
 
 
 @dataclass
 class VisionRequest:
-    image_path: str
-    prompt: str
+    image_path: str | None = None
+
+    # Legacy: Global / Local Recognition 继续使用
+    prompt: str = ""
     system_prompt: str = ""
+
+
+    # TeacherAgent 新协议
+    task_prompt: str = ""
+
+    user_content: dict[str, Any] | str | None = None
+
     temperature: float = 0
 
 
@@ -54,9 +83,32 @@ def usage_from_raw(provider: str, raw: dict | None) -> tuple[int | None, int | N
     usage = raw.get("usage") or {}
     return usage.get("prompt_tokens"), usage.get("completion_tokens")
 
+def serialize_user_content(
+    content: dict[str, Any] | str | None,
+) -> str:
+
+    if content is None:
+        return "<user_data />"
+
+    if isinstance(content, str):
+        payload = content
+    else:
+        payload = json.dumps(
+            content,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+
+    return (
+        "<user_data>\n"
+        f"{payload}\n"
+        "</user_data>"
+    )
 
 class VisionProvider(ABC):
     name: str = "base"
+    # USD / 1K tokens：(input, output)。未知模型不计成本；子类按需填定价表。
+    PRICING: dict[str, tuple[float, float]] = {}
 
     @abstractmethod
     async def analyze(self, request: VisionRequest) -> VisionResponse:
@@ -64,7 +116,10 @@ class VisionProvider(ABC):
 
     def estimate_cost(self, input_tokens: int | None, output_tokens: int | None) -> float:
         """按内置定价表估算成本（USD / §24），未知模型返回 0。"""
-        return 0.0
+        rates = self.PRICING.get(self.model)
+        if not rates or input_tokens is None or output_tokens is None:
+            return 0.0
+        return input_tokens / 1000 * rates[0] + output_tokens / 1000 * rates[1]
 
     async def _post_with_retries(
         self, endpoint: str, payload: dict, headers: dict
@@ -73,51 +128,56 @@ class VisionProvider(ABC):
         settings = get_settings()
         base_delay = settings.retry_base_delay_seconds
         max_retries = settings.network_max_retries
+        client = get_http_client()
 
-        async with httpx.AsyncClient(timeout=settings.provider_timeout_seconds) as client:
-            for attempt in range(max_retries + 1):
-                try:
-                    resp = await client.post(endpoint, json=payload, headers=headers)
-                except httpx.TimeoutException as exc:
-                    # 超时已耗尽整个超时预算，重试只会再等同样久，直接失败并明示原因
-                    raise ProviderTimeoutError(
-                        f"模型调用超时（{settings.provider_timeout_seconds} 秒无响应）"
-                    ) from exc
-                except httpx.TransportError as exc:
-                    # 仅网络层错误重试；LocalProtocolError（如空 key）不重试
-                    if attempt >= max_retries:
-                        raise ProviderError(
-                            f"网络错误: {type(exc).__name__}: {exc}"
-                        ) from exc
-                    delay = base_delay * (2**attempt)
-                    logger.warning(
-                        "网络错误，%.1fs 后重试: %s: %s",
-                        delay,
-                        type(exc).__name__,
-                        exc,
-                    )
-                    await asyncio.sleep(delay)
-                    continue
-
-                if resp.status_code in (401, 403):
-                    raise ProviderAuthError(f"认证失败({resp.status_code})")
-                if resp.status_code == 429:
-                    if attempt >= max_retries:
-                        raise ProviderError("429 限流，重试耗尽")
-                    delay = base_delay * (2**attempt)
-                    logger.warning("429 限流，%.1fs 后重试", delay)
-                    await asyncio.sleep(delay)
-                    continue
-                if resp.status_code >= 500:
-                    if attempt >= max_retries:
-                        raise ProviderError(f"服务端错误 {resp.status_code}")
-                    await asyncio.sleep(base_delay * (2**attempt))
-                    continue
-                if resp.status_code >= 400:
+        for attempt in range(max_retries + 1):
+            try:
+                resp = await client.post(
+                    endpoint,
+                    json=payload,
+                    headers=headers,
+                    timeout=settings.provider_timeout_seconds,
+                )
+            except httpx.TimeoutException as exc:
+                # 超时已耗尽整个超时预算，重试只会再等同样久，直接失败并明示原因
+                raise ProviderTimeoutError(
+                    f"模型调用超时（{settings.provider_timeout_seconds} 秒无响应）"
+                ) from exc
+            except httpx.TransportError as exc:
+                # 仅网络层错误重试；LocalProtocolError（如空 key）不重试
+                if attempt >= max_retries:
                     raise ProviderError(
-                        f"API 返回 {resp.status_code}: {resp.text[:500]}"
-                    )
-                return resp.json()
+                        f"网络错误: {type(exc).__name__}: {exc}"
+                    ) from exc
+                delay = base_delay * (2**attempt)
+                logger.warning(
+                    "网络错误，%.1fs 后重试: %s: %s",
+                    delay,
+                    type(exc).__name__,
+                    exc,
+                )
+                await asyncio.sleep(delay)
+                continue
+
+            if resp.status_code in (401, 403):
+                raise ProviderAuthError(f"认证失败({resp.status_code})")
+            if resp.status_code == 429:
+                if attempt >= max_retries:
+                    raise ProviderError("429 限流，重试耗尽")
+                delay = base_delay * (2**attempt)
+                logger.warning("429 限流，%.1fs 后重试", delay)
+                await asyncio.sleep(delay)
+                continue
+            if resp.status_code >= 500:
+                if attempt >= max_retries:
+                    raise ProviderError(f"服务端错误 {resp.status_code}")
+                await asyncio.sleep(base_delay * (2**attempt))
+                continue
+            if resp.status_code >= 400:
+                raise ProviderError(
+                    f"API 返回 {resp.status_code}: {resp.text[:500]}"
+                )
+            return resp.json()
 
         raise ProviderError("重试耗尽")
 
@@ -137,72 +197,76 @@ class VisionProvider(ABC):
             "stream": True,
             "stream_options": {"include_usage": True},
         }
+        client = get_http_client()
 
-        async with httpx.AsyncClient(timeout=settings.provider_timeout_seconds) as client:
-            for attempt in range(max_retries + 1):
-                try:
-                    async with client.stream(
-                        "POST", endpoint, json=stream_payload, headers=headers
-                    ) as resp:
-                        if resp.status_code in (401, 403):
-                            raise ProviderAuthError(f"认证失败({resp.status_code})")
-                        if resp.status_code == 429:
-                            if attempt >= max_retries:
-                                raise ProviderError("429 限流，重试耗尽")
-                            await asyncio.sleep(base_delay * (2**attempt))
-                            continue
-                        if resp.status_code >= 500:
-                            if attempt >= max_retries:
-                                raise ProviderError(f"服务端错误 {resp.status_code}")
-                            await asyncio.sleep(base_delay * (2**attempt))
-                            continue
-                        if resp.status_code >= 400:
-                            body = (await resp.aread()).decode(errors="replace")
-                            raise ProviderError(
-                                f"API 返回 {resp.status_code}: {body[:500]}"
-                            )
-
-                        parts: list[str] = []
-                        usage: dict | None = None
-                        async for line in resp.aiter_lines():
-                            if not line.startswith("data:"):
-                                continue
-                            data = line[5:].strip()
-                            if data == "[DONE]":
-                                break
-                            try:
-                                chunk = json.loads(data)
-                            except json.JSONDecodeError:
-                                continue
-                            if chunk.get("error"):
-                                raise ProviderError(
-                                    f"流式返回错误: {chunk['error']}"
-                                )
-                            if chunk.get("usage"):
-                                usage = chunk["usage"]
-                            for choice in chunk.get("choices") or []:
-                                content = (choice.get("delta") or {}).get("content")
-                                if content:
-                                    parts.append(content)
-                        return "".join(parts), usage
-                except httpx.TimeoutException as exc:
-                    # 超时已耗尽整个超时预算，重试只会再等同样久，直接失败并明示原因
-                    raise ProviderTimeoutError(
-                        f"模型调用超时（{settings.provider_timeout_seconds} 秒无响应）"
-                    ) from exc
-                except httpx.TransportError as exc:
-                    if attempt >= max_retries:
+        for attempt in range(max_retries + 1):
+            try:
+                async with client.stream(
+                    "POST",
+                    endpoint,
+                    json=stream_payload,
+                    headers=headers,
+                    timeout=settings.provider_timeout_seconds,
+                ) as resp:
+                    if resp.status_code in (401, 403):
+                        raise ProviderAuthError(f"认证失败({resp.status_code})")
+                    if resp.status_code == 429:
+                        if attempt >= max_retries:
+                            raise ProviderError("429 限流，重试耗尽")
+                        await asyncio.sleep(base_delay * (2**attempt))
+                        continue
+                    if resp.status_code >= 500:
+                        if attempt >= max_retries:
+                            raise ProviderError(f"服务端错误 {resp.status_code}")
+                        await asyncio.sleep(base_delay * (2**attempt))
+                        continue
+                    if resp.status_code >= 400:
+                        body = (await resp.aread()).decode(errors="replace")
                         raise ProviderError(
-                            f"网络错误: {type(exc).__name__}: {exc}"
-                        ) from exc
-                    delay = base_delay * (2**attempt)
-                    logger.warning(
-                        "网络错误，%.1fs 后重试: %s: %s",
-                        delay,
-                        type(exc).__name__,
-                        exc,
-                    )
-                    await asyncio.sleep(delay)
-                    continue
+                            f"API 返回 {resp.status_code}: {body[:500]}"
+                        )
+
+                    parts: list[str] = []
+                    usage: dict | None = None
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data)
+                        except json.JSONDecodeError:
+                            continue
+                        if chunk.get("error"):
+                            raise ProviderError(
+                                f"流式返回错误: {chunk['error']}"
+                            )
+                        if chunk.get("usage"):
+                            usage = chunk["usage"]
+                        for choice in chunk.get("choices") or []:
+                            content = (choice.get("delta") or {}).get("content")
+                            if content:
+                                parts.append(content)
+                    return "".join(parts), usage
+            except httpx.TimeoutException as exc:
+                # 超时已耗尽整个超时预算，重试只会再等同样久，直接失败并明示原因
+                raise ProviderTimeoutError(
+                    f"模型调用超时（{settings.provider_timeout_seconds} 秒无响应）"
+                ) from exc
+            except httpx.TransportError as exc:
+                if attempt >= max_retries:
+                    raise ProviderError(
+                        f"网络错误: {type(exc).__name__}: {exc}"
+                    ) from exc
+                delay = base_delay * (2**attempt)
+                logger.warning(
+                    "网络错误，%.1fs 后重试: %s: %s",
+                    delay,
+                    type(exc).__name__,
+                    exc,
+                )
+                await asyncio.sleep(delay)
+                continue
 
         raise ProviderError("重试耗尽")

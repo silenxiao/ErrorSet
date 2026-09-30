@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.database.database import SessionLocal
-from app.database.models import ModelProfile, ProviderSetting, User
+from app.database.models import ModelProfile, User
 from app.providers.base import VisionProvider, VisionRequest
 from app.providers.factory import ProviderFactory
 
@@ -198,7 +198,7 @@ def get_enabled_model_profile(db: Session, user_id: int) -> ModelProfile | None:
 def get_recognition_provider(user_id: int, count_usage: bool = True) -> VisionProvider:
     """构建该用户当前生效的识别 Provider（Global 与 Local 共用）。
 
-    优先用该用户模型列表中启用的模型；否则回落到旧的单行设置 / .env。
+    优先用该用户模型列表中启用的模型；否则回落到 .env 默认配置。
     每次识别任务开始时调用，模型切换后立即生效。
     count_usage=False 时不计入系统模型调用次数（二次识别等衍生调用不计数）。
     """
@@ -217,12 +217,6 @@ def get_recognition_provider(user_id: int, count_usage: bool = True) -> VisionPr
                 db.commit()
             return _build_provider(
                 cfg.provider, cfg.model, cfg.api_key, cfg.base_url, settings.global_model
-            )
-        legacy = db.scalars(select(ProviderSetting)).first()
-        if legacy is not None:
-            return _build_provider(
-                legacy.provider, legacy.model, legacy.api_key, legacy.base_url,
-                settings.global_model,
             )
     finally:
         db.close()

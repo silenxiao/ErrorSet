@@ -33,7 +33,8 @@ class AdminExamOut(CamelModel):
     status: str
     username: str
     question_count: int
-    original_image: str
+    # 原图 /files 静态 URL（不回传文件系统路径）
+    image_url: str = ""
     created_at: datetime
 
 
@@ -44,7 +45,8 @@ class AdminWrongQuestionOut(CamelModel):
     subject: str
     question_text: str
     wrong_reason: str
-    image: str
+    # 题图快照 /files 静态 URL（不回传文件系统路径）
+    image_url: str = ""
     created_at: datetime
 
 

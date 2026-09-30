@@ -1,5 +1,6 @@
 const api = require('../../utils/api');
 const { SUBJECT_OPTIONS } = require('../../utils/format');
+const { illStyle } = require('../../utils/device');
 
 const PAGE_SIZE = 10;
 
@@ -19,12 +20,31 @@ Page({
     editVisible: false,
     editId: null,
     editValue: '',
+    // 插图实际尺寸（key: 行id.插图id → 行内样式），按自然大小 1:1 显示
+    illSizes: {},
+  },
+
+  // 插图加载完成：记录自然尺寸，超宽时等比缩小到卡片内
+  onIllLoad(e) {
+    const key = e.currentTarget.dataset.key;
+    const { width, height } = e.detail;
+    if (!key || !width || !height) return;
+    this.setData({
+      illSizes: Object.assign({}, this.data.illSizes, { [key]: illStyle(width, height) }),
+    });
   },
 
   onShow() {
     this.setData({ backendBase: api.getBase ? api.getBase() : 'http://127.0.0.1:8000' });
     // 每次进入错题库都刷新，保证新增/修改的错题能及时显示
     this.reload(true);
+  },
+
+  // 下拉刷新：回到第一页重新拉取
+  onPullDownRefresh() {
+    this.setData({ page: 1 });
+    this.reload(true);
+    setTimeout(() => wx.stopPullDownRefresh(), 600);
   },
 
   reload(reset) {
@@ -40,7 +60,7 @@ Page({
           .slice((this.data.page - 1) * PAGE_SIZE, this.data.page * PAGE_SIZE)
           .map((w) => ({
             ...w,
-            subjectColor: w.subject ? '#1677ff' : '#999',
+            subjectColor: w.subject ? '#165DFF' : '#86909C',
             // 优先用入库时裁剪的快照（静态 /files），旧记录回退到动态裁剪接口
             illustrations: api.wrongIllustrationUrls(w).length
               ? api.wrongIllustrationUrls(w).map((imgUrl, idx) => ({ id: `s${idx}`, imgUrl }))

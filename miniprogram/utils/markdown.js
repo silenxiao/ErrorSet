@@ -41,7 +41,7 @@ function inlineHtml(text) {
       if (m) { out += '<em style="font-style:italic;">' + inlineHtml(m[1]) + '</em>'; i += m[0].length; continue; }
     } else if (ch === '[') {
       const m = /^\[([^\]]*)\]\(([^)]*)\)/.exec(s.slice(i));
-      if (m) { out += '<a style="color:#1677ff;" href="' + esc(m[2]) + '">' + inlineHtml(m[1]) + '</a>'; i += m[0].length; continue; }
+      if (m) { out += '<a style="color:#165DFF;" href="' + esc(m[2]) + '">' + inlineHtml(m[1]) + '</a>'; i += m[0].length; continue; }
     }
     if (ch === '\n') { out += '<br/>'; i++; continue; }
     out += esc(ch);

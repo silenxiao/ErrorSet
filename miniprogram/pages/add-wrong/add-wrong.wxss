@@ -1,7 +1,7 @@
 .page {
   padding: 32rpx 32rpx 48rpx;
   box-sizing: border-box;
-  background: #fff;
+  background: var(--card);
   min-height: 100vh;
 }
 
@@ -16,7 +16,7 @@
 }
 
 .req {
-  color: #ff4d4f;
+  color: var(--danger);
   font-size: 30rpx;
   margin-right: 6rpx;
   line-height: 1;
@@ -24,7 +24,7 @@
 
 .label {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text-1);
   font-weight: 500;
 }
 
@@ -33,29 +33,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1rpx solid #e2e5ea;
-  border-radius: 12rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 16rpx;
   padding: 22rpx 26rpx;
   background: #fff;
 }
 
 .select-value {
   font-size: 30rpx;
-  color: #1f2329;
-}
-
-.arrow {
-  color: #a9aeb8;
-  font-size: 30rpx;
-  transform: rotate(-45deg);
-  line-height: 1;
+  color: var(--text-1);
 }
 
 /* 答案 / 分析结果展示框 */
 .ans-box {
   position: relative;
-  border: 1rpx solid #e2e5ea;
-  border-radius: 12rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 16rpx;
   background: #fff;
   padding: 24rpx 68rpx 24rpx 24rpx;
   min-height: 160rpx;
@@ -66,8 +59,6 @@
   position: absolute;
   top: 20rpx;
   right: 22rpx;
-  font-size: 32rpx;
-  color: #4e5969;
   padding: 8rpx;
   line-height: 1;
 }
@@ -78,7 +69,7 @@
 
 .ph {
   font-size: 28rpx;
-  color: #b4bac4;
+  color: var(--text-3);
   line-height: 1.6;
 }
 
@@ -87,7 +78,7 @@
   width: 100%;
   min-height: 120rpx;
   font-size: 28rpx;
-  color: #1f2329;
+  color: var(--text-1);
   line-height: 1.6;
   box-sizing: border-box;
 }
@@ -97,13 +88,13 @@
 }
 
 .box-textarea.note {
-  border: 1rpx solid #e2e5ea;
-  border-radius: 12rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 16rpx;
   padding: 24rpx;
   height: 160rpx;
 }
 
-/* AI 分析按钮：主色描边样式，左对齐 */
+/* AI 分析按钮：主色浅底描边，左对齐 */
 .ai-row {
   display: flex;
   gap: 16rpx;
@@ -122,6 +113,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
@@ -132,12 +124,12 @@
   width: 220rpx;
   margin: 0 0 36rpx;
   padding: 18rpx 0;
-  background: #f0f6ff;
-  color: #1677ff;
+  background: var(--primary-light);
+  color: var(--primary);
   font-size: 28rpx;
   font-weight: 500;
-  border: 1rpx solid #d6e4ff;
-  border-radius: 12rpx;
+  border: 1rpx solid var(--primary);
+  border-radius: 16rpx;
   line-height: 1.4;
 }
 
@@ -146,7 +138,7 @@
 }
 
 .ai-btn:active {
-  background: #e2eeff;
+  background: rgba(22, 93, 255, 0.18);
 }
 
 /* 底部 取消 / 确定 */

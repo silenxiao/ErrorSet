@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser
+from app.core.config import get_settings
+from app.core.exceptions import UploadError
 from app.database.database import get_db
 from app.schemas.exam import ExamCreated
 from app.services import recognition_service
@@ -27,6 +29,9 @@ async def create_exam(
 
     include_illustrations：试卷是否包含插图，False 时跳过插图识别。
     """
+    # 读入内存前先按声明大小拦截，避免超大请求占满内存
+    if file.size is not None and file.size > get_settings().max_upload_bytes:
+        raise UploadError("文件超过 10MB 限制")
     file_bytes = await file.read()
     exam = recognition_service.create_exam_from_upload(
         db,

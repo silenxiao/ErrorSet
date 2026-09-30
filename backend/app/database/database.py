@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import get_settings
@@ -15,6 +15,18 @@ _connect_args = (
     {"check_same_thread": False} if _settings.database_url.startswith("sqlite") else {}
 )
 engine = create_engine(_settings.database_url, connect_args=_connect_args)
+
+if _settings.database_url.startswith("sqlite"):
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, _connection_record):
+        """识别 worker 写入与 API 读取并发，WAL 避免读写互相阻塞。"""
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
@@ -59,6 +71,12 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE model_profile ADD COLUMN origin VARCHAR(16) DEFAULT 'user'",
         "ALTER TABLE user ADD COLUMN active_model_id INTEGER",
         "ALTER TABLE user ADD COLUMN system_model_calls INTEGER NOT NULL DEFAULT 0",
+        # 同一题目在错题库只允许一条记录（并发双击加入时靠唯一索引兜底）；
+        # 存量已有重复时建索引失败，静默跳过（下次启动不再重试失败）
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_wrong_question_question_id "
+        "ON wrong_question(question_id)",
+        # 管理后台删除模型时按 active_model_id 反查引用用户
+        "CREATE INDEX IF NOT EXISTS ix_user_active_model_id ON user(active_model_id)",
         # 存量用户的当前启用模型回填到 active_model_id（之后由应用层同步维护）
         "UPDATE user SET active_model_id = "
         "(SELECT id FROM model_profile WHERE model_profile.user_id = user.id "
@@ -97,24 +115,35 @@ def _backfill_wrong_question_text() -> None:
 
 
 def _seed_default_user() -> None:
-    """存量数据划归默认用户 xiaohui（密码 123456）：无归属的行全部更新给它。"""
+    """首启播种管理员并把存量无归属数据划归给它。
+
+    仅在用户表为空时创建种子账号（账号密码见 Settings.seed_admin_*）；
+    已有数据不再自动重建/提权，避免被删除或降级的管理员在重启后复活。
+    """
     from sqlalchemy import select
 
+    from app.core.config import get_settings
     from app.core.security import hash_password
     from app.database.models import Exam, ModelProfile, User, WrongQuestion
 
     with SessionLocal() as db:
-        owner = db.scalars(select(User).where(User.username == "xiaohui")).first()
+        users = list(db.scalars(select(User).order_by(User.id.asc())))
+        owner = next((u for u in users if u.is_admin), None)
         if owner is None:
-            owner = User(
-                username="xiaohui", password_hash=hash_password("123456"), is_admin=True
-            )
-            db.add(owner)
+            if users:
+                # 无管理员的存量库：把最早的普通用户提为管理员，保证后台可达
+                owner = users[0]
+                owner.is_admin = True
+            else:
+                settings = get_settings()
+                owner = User(
+                    username=settings.seed_admin_username,
+                    password_hash=hash_password(settings.seed_admin_password),
+                    is_admin=True,
+                )
+                db.add(owner)
             db.commit()
             db.refresh(owner)
-        elif not owner.is_admin:
-            owner.is_admin = True
-            db.commit()
 
         changed = False
         for model in (Exam, WrongQuestion, ModelProfile):
