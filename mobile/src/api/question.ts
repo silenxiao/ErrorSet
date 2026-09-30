@@ -1,7 +1,13 @@
 // 题目与错题接口。移植自 frontend/src/api/question.ts。
 
 import { jsonInit, request } from './http';
-import type { BBox, Question, WrongQuestion, WrongQuestionCreate } from '../types/question';
+import type {
+  AnalysisResult,
+  BBox,
+  Question,
+  WrongQuestion,
+  WrongQuestionCreate,
+} from '../types/question';
 import { BACKEND_BASE } from './config';
 
 export function getQuestion(questionId: number): Promise<Question> {
@@ -49,7 +55,8 @@ export function updateWrongQuestion(
   return request(`/api/v1/wrong-questions/${id}`, jsonInit('PATCH', fields));
 }
 
-export function analyzeQuestion(questionId: number): Promise<string> {
+/** AI 分析题目，返回结构化结果（科目/答案/分析/知识点/置信度）。 */
+export function analyzeQuestion(questionId: number): Promise<AnalysisResult> {
   return request(`/api/v1/questions/${questionId}/analyze`);
 }
 

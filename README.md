@@ -49,6 +49,9 @@ npm run dev
 
 前端默认运行在 http://127.0.0.1:5173 ，`/api` 请求代理到后端 8000 端口。
 
+### mobile
+.\build-android.cmd' -BackendBaseUrl 'http://192.168.0.20:8000'
+
 ## 部署
 
 生产环境使用 Docker Compose 一键部署（后端 + Web 前端 + 管理后台三个容器，

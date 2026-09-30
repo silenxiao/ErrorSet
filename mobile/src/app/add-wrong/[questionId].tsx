@@ -17,10 +17,72 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { analyzeQuestion, addWrongQuestion, getQuestion } from '@/api/question';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
-import type { Question } from '@/types/question';
+import type { AnalysisResult, Question } from '@/types/question';
 import { SUBJECT_OPTIONS } from '@/utils/format';
 import { MdRender } from '@/components/MdRender';
 import { Btn, Field, Muted, OptionPicker, Screen, SubHeader, showToast, C } from '@/components/ui';
+
+/**
+ * AI 分析结果归一化。
+ *
+ * 新接口（GET /api/v1/questions/{id}/analyze）返回结构化 AnalysisResult；
+ * 旧接口返回「科目：… 正确答案：… AI分析：…」纯文本。两种都要能读，
+ * 否则后端一旦升级就整页报错。
+ */
+function normalizeAnalysis(res: unknown): {
+  correct: string;
+  analysis: string;
+  knowledgePoints: string[];
+  subject?: string;
+} {
+  if (res && typeof res === 'object') {
+    const data = res as Partial<AnalysisResult>;
+    return {
+      correct: typeof data.answer === 'string' ? data.answer : '',
+      analysis: typeof data.analysis === 'string' ? data.analysis : '',
+      knowledgePoints: Array.isArray(data.knowledgePoints)
+        ? data.knowledgePoints.filter((point): point is string => typeof point === 'string')
+        : [],
+      subject: typeof data.subject === 'string' ? data.subject : undefined,
+    };
+  }
+
+  const text = typeof res === 'string' ? res : '';
+  if (text.trim().startsWith('{')) {
+    try {
+      return normalizeAnalysis(JSON.parse(text));
+    } catch {
+      // 不是 JSON，按旧纯文本格式继续解析
+    }
+  }
+
+  // 旧格式：科目行、「正确答案：」、「AI分析：」分段；两段先后顺序不稳定，
+  // 谁在后谁的起始位置就是前一段的结束位置
+  const subjectMatch = text.match(
+    /^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m,
+  );
+  const ansMarker = /^(?:正确答案|答案)：?\s*/m.exec(text);
+  const anaMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(text);
+  const stripSubject = (s: string) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, '').trim();
+  let correct = '';
+  let analysisText = '';
+  if (ansMarker) {
+    const end = anaMarker && anaMarker.index > ansMarker.index ? anaMarker.index : text.length;
+    correct = stripSubject(text.slice(ansMarker.index + ansMarker[0].length, end));
+  } else if (!anaMarker) {
+    correct = stripSubject(text);
+  }
+  if (anaMarker) {
+    const end = ansMarker && ansMarker.index > anaMarker.index ? ansMarker.index : text.length;
+    analysisText = stripSubject(text.slice(anaMarker.index + anaMarker[0].length, end));
+  }
+  return {
+    correct,
+    analysis: analysisText,
+    knowledgePoints: [],
+    subject: subjectMatch ? subjectMatch[1] : undefined,
+  };
+}
 
 export default function AddWrongPage() {
   const { questionId, subject } = useLocalSearchParams<{
@@ -34,6 +96,8 @@ export default function AddWrongPage() {
   const [subjectValue, setSubjectValue] = useState(SUBJECT_OPTIONS[0]);
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [analysis, setAnalysis] = useState('');
+  /** AI 分析附带的知识点，随错题一起入库 */
+  const [knowledgePoints, setKnowledgePoints] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -76,35 +140,14 @@ export default function AddWrongPage() {
     setAnalyzing(true);
     try {
       const res = await analyzeQuestion(qid);
-      // 与小程序/web 端一致的解析：科目行、"正确答案："、"AI分析："分段；
-      // 两段先后顺序不稳定，谁在后谁的起始位置就是前一段的结束位置
-      const subjectMatch = res.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
-      const ansMarker = /^(?:正确答案|答案)：?\s*/m.exec(res);
-      const anaMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(res);
-      const stripSubject = (s: string) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, '').trim();
-      let correct = '';
-      let analysisText = '';
-      if (ansMarker) {
-        const end = anaMarker && anaMarker.index > ansMarker.index ? anaMarker.index : res.length;
-        correct = stripSubject(res.slice(ansMarker.index + ansMarker[0].length, end));
-      } else if (!anaMarker) {
-        correct = stripSubject(res);
+      // 与 Web 端一致的解析：结构化字段直接取用，兼容旧版纯文本返回
+      const parsed = normalizeAnalysis(res);
+      setCorrectAnswer(parsed.correct);
+      setAnalysis(parsed.analysis);
+      setKnowledgePoints(parsed.knowledgePoints);
+      if (parsed.subject && SUBJECT_OPTIONS.includes(parsed.subject)) {
+        setSubjectValue(parsed.subject);
       }
-      if (anaMarker) {
-        const end = ansMarker && ansMarker.index > anaMarker.index ? ansMarker.index : res.length;
-        analysisText = stripSubject(res.slice(anaMarker.index + anaMarker[0].length, end));
-      }
-      const patch: { correct: string; analysis: string; subject?: string } = {
-        correct,
-        analysis: analysisText,
-      };
-      if (subjectMatch) {
-        const s = subjectMatch[1];
-        if (SUBJECT_OPTIONS.includes(s)) patch.subject = s;
-      }
-      setCorrectAnswer(patch.correct);
-      setAnalysis(patch.analysis);
-      if (patch.subject) setSubjectValue(patch.subject);
       setEditCorrect(false);
       showToast('AI 分析完成');
     } catch (e) {
@@ -124,7 +167,7 @@ export default function AddWrongPage() {
         correctAnswer,
         subject: subjectValue,
         analysis,
-        knowledgePoints: [],
+        knowledgePoints,
         note,
       });
       showToast('已加入错题库');

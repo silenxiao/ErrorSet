@@ -33,6 +33,16 @@ export interface Question {
   illustrations: Illustration[];
 }
 
+/** GET /api/v1/questions/{id}/analyze 的结构化结果（与 Web 端 AnalysisResult 一致）。 */
+export interface AnalysisResult {
+  subject: string;
+  answer: string;
+  analysis: string;
+  knowledgePoints: string[];
+  outOfScope: boolean;
+  confidence: "high" | "medium" | "low";
+}
+
 export interface WrongQuestionCreate {
   questionId: number;
   answer: string;
