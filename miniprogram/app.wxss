@@ -181,6 +181,9 @@ button::after {
   line-height: 80rpx;
   height: 80rpx;
   font-size: 28rpx;
+  /* 三个按钮平分宽度时，四字文案（如「开始识别」）+ 默认内边距会放不下导致折行溢出 */
+  padding: 0 16rpx;
+  white-space: nowrap;
 }
 
 /* ===== 共享表单（field / label / input / picker） ===== */
@@ -549,6 +552,8 @@ button::after {
     line-height: 40px;
     height: 40px;
     font-size: 14px;
+    padding: 0 8px;
+    white-space: nowrap;
   }
 
   .field {

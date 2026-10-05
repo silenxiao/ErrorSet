@@ -1,6 +1,47 @@
 const api = require('../../utils/api');
 const { SUBJECT_OPTIONS } = require('../../utils/format');
 
+// AI 分析结果归一化。新接口返回结构化 JSON（subject/answer/analysis/knowledgePoints），
+// 旧接口返回「科目：… 正确答案：… AI分析：…」纯文本，两种都要能读，
+// 否则后端一旦升级就整页报错（与 RN 端 normalizeAnalysis 保持一致）。
+function normalizeAnalysis(res) {
+  if (res && typeof res === 'object') {
+    return {
+      correct: typeof res.answer === 'string' ? res.answer : '',
+      analysis: typeof res.analysis === 'string' ? res.analysis : '',
+      subject: typeof res.subject === 'string' ? res.subject : '',
+    };
+  }
+
+  const text = typeof res === 'string' ? res : '';
+  if (text.trim().startsWith('{')) {
+    try {
+      return normalizeAnalysis(JSON.parse(text));
+    } catch (e) {
+      // 不是 JSON，按旧纯文本格式继续解析
+    }
+  }
+
+  const subjectMatch = text.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
+  const ansMarker = /^(?:正确答案|答案)：?\s*/m.exec(text);
+  const anaMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(text);
+  // 「正确答案」「AI分析」两段的先后顺序不稳定，谁在后谁是前一段的结束
+  const stripSubject = (s) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, '').trim();
+  let correct = '';
+  let analysis = '';
+  if (ansMarker) {
+    const end = anaMarker && anaMarker.index > ansMarker.index ? anaMarker.index : text.length;
+    correct = stripSubject(text.slice(ansMarker.index + ansMarker[0].length, end));
+  } else if (!anaMarker) {
+    correct = stripSubject(text);
+  }
+  if (anaMarker) {
+    const end = ansMarker && ansMarker.index > anaMarker.index ? anaMarker.index : text.length;
+    analysis = stripSubject(text.slice(anaMarker.index + anaMarker[0].length, end));
+  }
+  return { correct, analysis, subject: subjectMatch ? subjectMatch[1] : '' };
+}
+
 Page({
   data: {
     questionId: null,
@@ -108,26 +149,10 @@ Page({
     api
       .analyzeQuestion(this.data.questionId)
       .then((res) => {
-        const subjectMatch = res.match(/^(?:科目|学科)：\s*(语文|数学|英语|物理|化学|生物|历史|政治|地理)/m);
-        const ansMarker = /^(?:正确答案|答案)：?\s*/m.exec(res);
-        const anaMarker = /^(?:AI分析|分析|解析|解题过程)：?\s*/m.exec(res);
-        // 「正确答案」「AI分析」两段的先后顺序不稳定，谁在后谁是前一段的结束
-        const stripSubject = (s) => s.replace(/^(?:科目|学科)：.*\r?\n/gm, '').trim();
-        let correct = '';
-        let analysis = '';
-        if (ansMarker) {
-          const end = anaMarker && anaMarker.index > ansMarker.index ? anaMarker.index : res.length;
-          correct = stripSubject(res.slice(ansMarker.index + ansMarker[0].length, end));
-        } else if (!anaMarker) {
-          correct = stripSubject(res);
-        }
-        if (anaMarker) {
-          const end = ansMarker && ansMarker.index > anaMarker.index ? ansMarker.index : res.length;
-          analysis = stripSubject(res.slice(anaMarker.index + anaMarker[0].length, end));
-        }
-        const patch = { correctAnswer: correct, analysis };
-        if (subjectMatch) {
-          const i = SUBJECT_OPTIONS.indexOf(subjectMatch[1]);
+        const parsed = normalizeAnalysis(res);
+        const patch = { correctAnswer: parsed.correct, analysis: parsed.analysis };
+        if (parsed.subject) {
+          const i = SUBJECT_OPTIONS.indexOf(parsed.subject);
           if (i >= 0) patch.subjectIndex = i;
         }
         // 分析完成后回到 Markdown 预览态

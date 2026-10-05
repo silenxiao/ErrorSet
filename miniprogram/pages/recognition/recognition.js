@@ -12,6 +12,8 @@ Page({
     error: null,
     selectedId: null,
     saving: false,
+    questionCount: 0,
+    illCount: 0,
     rerecogVisible: false,
     rerecogInclude: true,
     rerecogExtra: '',
@@ -58,6 +60,10 @@ Page({
           statusText: s.text,
           dateText: formatDate(ex.createdAt),
           questionCount: (ex.questions || []).length,
+          illCount: (ex.questions || []).reduce(
+            (n, q) => n + (q.illustrations || []).length,
+            0
+          ),
         });
         if (POLLING.includes(ex.status)) this.startPolling();
         else this.stopPolling();
@@ -146,6 +152,26 @@ Page({
       .then((q) => {
         this._updateQuestion(id, { bbox: q.bbox, bboxSource: q.bboxSource });
         wx.showToast({ title: '已保存', icon: 'success' });
+      })
+      .catch((err) => wx.showToast({ title: err.message || '保存失败', icon: 'none' }))
+      .then(() => this.setData({ saving: false }));
+  },
+
+  // 插图框拖拽结束：保存插图自己的 bbox（区别于题目 bbox）
+  onUpdateIllBbox(e) {
+    const { id, bbox } = e.detail;
+    this.setData({ saving: true });
+    api
+      .updateIllustrationBbox(id, bbox)
+      .then((ill) => {
+        const exam = Object.assign({}, this.data.exam);
+        exam.questions = exam.questions.map((q) =>
+          Object.assign({}, q, {
+            illustrations: (q.illustrations || []).map((x) => (x.id === id ? ill : x)),
+          })
+        );
+        this.setData({ exam });
+        wx.showToast({ title: '插图位置已保存', icon: 'success' });
       })
       .catch((err) => wx.showToast({ title: err.message || '保存失败', icon: 'none' }))
       .then(() => this.setData({ saving: false }));

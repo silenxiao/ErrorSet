@@ -34,16 +34,18 @@
 
   <view class="card">
     <view class="card-title title-row">
-      <text>试卷原图与题目框</text>
-      <text class="count muted">{{questionCount}} 个框</text>
+      <text>试卷原图与插图框</text>
+      <text class="count muted">{{illCount}} 个插图框</text>
     </view>
-    <view class="tip muted">点选题目可高亮对应框；选中后拖动框体或八向手柄可调整边界，松手自动保存。</view>
+    <view class="tip muted">点选虚线插图框后，拖动框体或八向手柄可调整插图区域，松手自动保存。</view>
     <bbox-editor
       imageUrl="{{exam.imageUrl}}"
       questions="{{exam.questions}}"
       selectedId="{{selectedId}}"
+      onlyIllustrations="{{true}}"
       bind:select="onSelect"
       bind:updatebbox="onUpdateBbox"
+      bind:updateillbbox="onUpdateIllBbox"
     />
   </view>
 

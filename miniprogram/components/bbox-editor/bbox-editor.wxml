@@ -1,3 +1,4 @@
+<!-- touchmove 必须在框上 catch：bind 会被页面原生滚动抢走垂直手势，导致无法上下调整大小 -->
 <view class="editor" id="editor" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
   <image wx:if="{{imageUrl}}" class="paper" src="{{imageUrl}}" mode="widthFix" bindload="onImgLoad" binderror="onImgError"></image>
   <view wx:if="{{imageUrl && !imgLoaded}}" class="paper-skeleton">
@@ -5,33 +6,36 @@
     <text class="sk-text">原图加载中…</text>
   </view>
 
-  <!-- 题目 bbox 叠加层 -->
-  <view
-    wx:for="{{boxes}}"
-    wx:key="id"
-    class="bbox {{item.selected ? 'sel' : ''}} {{item.suspicious ? 'susp' : ''}}"
-    style="{{item.style}}"
-    data-id="{{item.id}}"
-    data-mode="move"
-    bindtouchstart="onHandleStart"
-    bindtap="onTapBox"
-  >
-    <text class="blabel">{{item.no}}</text>
+  <!-- 题目 bbox 叠加层（onlyIllustrations 模式下不显示，只保留插图框） -->
+  <block wx:if="{{!onlyIllustrations}}">
+    <view
+      wx:for="{{boxes}}"
+      wx:key="id"
+      class="bbox {{item.selected ? 'sel' : ''}} {{item.suspicious ? 'susp' : ''}}"
+      style="{{item.style}}"
+      data-id="{{item.id}}"
+      data-mode="move"
+      catchtouchstart="onHandleStart"
+      catchtouchmove="onTouchMove"
+      bindtap="onTapBox"
+    >
+      <text class="blabel">{{item.no}}</text>
 
-    <block wx:if="{{item.selected}}">
-      <view
-        wx:for="{{handles}}"
-        wx:for-item="h"
-        wx:key="mode"
-        class="handle"
-        style="left:{{h.fx}}%;top:{{h.fy}}%;"
-        data-mode="{{h.mode}}"
-        catchtouchstart="onHandleStart"
-      ></view>
-    </block>
-  </view>
+      <block wx:if="{{item.selected}}">
+        <view
+          wx:for="{{handles}}"
+          wx:for-item="h"
+          wx:key="mode"
+          class="handle"
+          style="left:{{h.fx}}%;top:{{h.fy}}%;"
+          data-mode="{{h.mode}}"
+          catchtouchstart="onHandleStart"
+        ></view>
+      </block>
+    </view>
+  </block>
 
-  <!-- 插图 bbox（展示用，点击选中所属题目） -->
+  <!-- 插图 bbox（点击选中后可拖动/八向手柄调整，松手保存插图 bbox） -->
   <view
     wx:for="{{boxes}}"
     wx:for-item="b"
@@ -41,12 +45,28 @@
       wx:for="{{b.ills}}"
       wx:for-item="ill"
       wx:key="id"
-      class="illbox {{ill.selected ? 'illsel' : ''}}"
+      class="illbox {{ill.illSelected || ill.selected ? 'illsel' : ''}}"
       style="{{ill.style}}"
       data-pid="{{b.id}}"
+      data-iid="{{ill.id}}"
+      data-mode="move"
+      catchtouchstart="onIllHandleStart"
+      catchtouchmove="onTouchMove"
       bindtap="onTapIll"
     >
       <text class="illlabel">{{ill.type}}</text>
+      <block wx:if="{{ill.illSelected}}">
+        <view
+          wx:for="{{handles}}"
+          wx:for-item="h"
+          wx:key="mode"
+          class="handle"
+          style="left:{{h.fx}}%;top:{{h.fy}}%;"
+          data-mode="{{h.mode}}"
+          data-iid="{{ill.id}}"
+          catchtouchstart="onIllHandleStart"
+        ></view>
+      </block>
     </view>
   </view>
 

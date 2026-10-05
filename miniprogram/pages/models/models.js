@@ -46,6 +46,8 @@ Page({
   },
 
   onShow() {
+    // 未登录时不发请求，等 app.onLaunch 跳转登录页
+    if (!api.isLoggedIn()) return;
     this.refresh();
   },
 

@@ -34,3 +34,6 @@ backend/data/**
 
 # 工具
 tool/
+
+# test
+tests/

@@ -82,6 +82,7 @@ bash deploy/setup_server.sh
 | `QWEN_API_KEY` 等 5 个 KEY | 各家 AI 服务密钥，至少填识别所用的一家 | **必填** |
 | `JWT_SECRET` | 登录令牌签名密钥 | 脚本已自动生成随机值，**不要用默认值** |
 | `JWT_EXPIRE_DAYS` | 登录有效期（天），默认 30 | 按需 |
+| `WEB_PUBLISH` / `ADMIN_PUBLISH` | 容器端口发布方式（默认 `80:80` / `8081:80`） | **无需修改**（`--with-domain` 域名模式自动改为回环监听） |
 | `CORS_ORIGINS` | 跨域白名单 | **无需修改**（nginx 同源反代，浏览器请求不跨域） |
 | `DATABASE_URL` / `DATA_DIR` | 数据库与图片路径 | **不要修改**（docker-compose 已固定为容器内 `/data`） |
 
@@ -94,8 +95,8 @@ bash deploy/setup_server.sh
 所有命令都在仓库根目录执行：
 
 ```bash
-# 更新部署（拉新代码后重新构建并滚动重启，数据不受影响）
-git pull && bash deploy/setup_server.sh
+# 更新部署（一键：先自动备份 → 拉新代码 → 重新构建并滚动重启）
+bash deploy/update.sh
 
 # 查看日志
 docker compose logs -f backend   # 后端
@@ -110,44 +111,69 @@ docker compose down              # 停止并移除容器（./data 数据保留�
 bash deploy/backup.sh
 ```
 
+**为什么更新不影响数据**：所有持久化数据（SQLite `app.db` + 全部图片）都在宿主机 `./data/` 目录，经 bind mount 进入容器——重新构建镜像、删除/重建容器、`docker compose down` 都不触碰它；`.env` 已存在时脚本也不会覆盖。数据库结构变更（新表/新列）由后端启动时自动建表 + 轻量列迁移完成，存量数据自动兼容。`update.sh` 在此基础上先自动备份一份，若新版本迁移逻辑异常，可用 `backups/` 里最新一份回滚：
+
+```bash
+docker compose down
+tar xzf backups/errorset-<时间戳>.tar.gz   # 在仓库根目录解包，覆盖 data/ 与 .env
+bash deploy/setup_server.sh
+```
+
 **数据迁移到新服务器**：旧服务器执行 `bash deploy/backup.sh` → 把 `backups/*.tar.gz` 传到新服务器 → 新服务器按"快速部署"装好代码和 `.env` → 停服解包覆盖 `data/` → `docker compose up -d`。
 
 **数据库说明**：SQLite，位于 `./data/app.db`，启动时自动建表并做轻量列迁移，无需手工迁移。首次启动会创建默认管理员 `xiaohui / 123456`（is_admin）。
 
 ## 六、HTTPS 与域名（小程序/App 上线前置条件）
 
-微信小程序的 request/uploadFile/downloadFile 合法域名**必须是 HTTPS**，App 虽无强制但生产也建议 HTTPS。推荐用宿主机 nginx + certbot 做入口：
+微信小程序的 request/uploadFile/downloadFile 合法域名**必须是 HTTPS**，App 虽无强制但生产也建议 HTTPS。
+
+### 一键配置（推荐）
+
+前置条件：域名 A 记录已指向服务器公网 IP（`dig 域名` 能解析到），云厂商安全组放行 **80 和 443**。然后在服务器仓库根目录执行：
+
+```bash
+# Web 前端 + API 共用一个域名（推荐，前端同源反代，无需改 CORS）
+bash deploy/setup_server.sh --with-domain example.com
+
+# 如需管理后台也走域名：
+bash deploy/setup_server.sh --with-domain example.com --admin-domain admin.example.com
+```
+
+脚本会自动完成：安装 nginx + certbot → 把容器端口收回回环监听（写入 `.env` 的 `WEB_PUBLISH=127.0.0.1:8080`、`ADMIN_PUBLISH=127.0.0.1:8081`，不进 git，`update.sh` 拉新代码不影响）→ 渲染 [deploy/nginx-errorset.conf.template](deploy/nginx-errorset.conf.template) 为宿主机 nginx 站点配置 → certbot 签发证书并配置 443 跳转。完成后访问 `https://example.com/`。
+
+说明：
+
+- **幂等**，可重复执行；站点配置文件只在首次生成（certbot 之后追加的证书段不会被覆盖），已有证书不会重复签发，续期由 certbot 的 systemd timer 自动完成（`sudo certbot renew --dry-run` 可验证）。
+- 证书签发失败（DNS 未生效 / 80 端口未放行）时脚本会提示原因并继续以 HTTP 运行，排除后手动重试：`sudo certbot --nginx -d example.com --redirect`
+- 证书注册邮箱默认跳过（Let's Encrypt 到期前无法邮件提醒），如需要：`CERTBOT_EMAIL=you@example.com bash deploy/setup_server.sh --with-domain example.com`
+- **IP 仍然可以访问**：站点配置里有一个 `default_server` 兜底块，`http://服务器IP/`（Web + API）和 `http://服务器IP:8081/`（管理后台）走 HTTP 照常可用——IP 签发不了 Let's Encrypt 证书，HTTPS 只有域名能走。若不希望 IP:8081 暴露公网，删除站点文件里 `listen 8081 default_server` 那个 server 块即可。
+- 站点配置文件只在**首次生成**（避免覆盖 certbot 追加的证书段）。若服务器上已生成过旧版配置、想套用模板的新改动：`sudo rm /etc/nginx/sites-available/errorset /etc/nginx/sites-enabled/errorset` 后重跑脚本（certbot 已签的证书会自动复用）。
+- 管理后台也可以**仅走域名**：传 `--admin-domain` 后可用 `https://admin.example.com`；需要彻底不暴露时，用 SSH 隧道 `ssh -L 8081:127.0.0.1:8081 服务器`。
+
+### 手动配置（了解原理 / 特殊环境）
 
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
-
-# /etc/nginx/sites-available/errorset（新建，指向容器的两个端口）
-#   server_name api.example.com;   → proxy_pass http://127.0.0.1:80;    # API 域名（经 web 容器反代到后端）
-#   server_name app.example.com;   → proxy_pass http://127.0.0.1:80;    # Web 前端域名（可选）
-#   server_name admin.example.com; → proxy_pass http://127.0.0.1:8081;  # 管理后台（可选，建议加 IP 白名单）
-# 建好软链到 sites-enabled 并 nginx -s reload
-
-# 一条命令签发并自动配置证书
-sudo certbot --nginx -d api.example.com -d app.example.com -d admin.example.com
+# 站点配置可参考 deploy/nginx-errorset.conf.template：
+#   example.com      → proxy_pass http://127.0.0.1:8080;   # Web + API（经 web 容器同源反代）
+#   admin.example.com → proxy_pass http://127.0.0.1:8081;  # 管理后台（可选）
+# 同时把 .env 里 WEB_PUBLISH/ADMIN_PUBLISH 设为回环监听（见上），docker compose up -d 生效
+sudo certbot --nginx -d example.com -d admin.example.com
 ```
-
-域名解析到服务器 IP，并在云厂商安全组放行 443。
-
-- 已有占用 80 端口的宿主 nginx？把容器的 `80:80` 改成 `127.0.0.1:8080:80`（改 [docker-compose.yml](docker-compose.yml)），再由宿主 nginx 反代过去。
 
 ## 七、客户端发布
 
 ### 微信小程序（miniprogram/）
 
-1. **改后端地址**：`miniprogram/config.js` 的 `BACKEND_BASE` 改为 `https://api.example.com`。注意 `utils/api.js`、`utils/request.js`、`utils/upload.js`、`pages/bank/bank.js`、`pages/upload/upload.js` 里还有同值的 `127.0.0.1:8000` 兜底，需一并全局搜索替换。
-2. **小程序后台配置合法域名**：微信公众平台 → 开发管理 → 开发设置 → 服务器域名，把 `https://api.example.com` 同时配到 **request / uploadFile / downloadFile** 合法域名（图片经 `/files` 下载）。
+1. **改后端地址**：`miniprogram/config.js` 的 `BACKEND_BASE` 改为 `https://example.com`（第六章一键域名模式配好的 HTTPS 域名，Web 和 API 同源共用）。注意 `utils/api.js`、`utils/request.js`、`utils/upload.js`、`pages/bank/bank.js`、`pages/upload/upload.js` 里还有同值的 `127.0.0.1:8000` 兜底，需一并全局搜索替换。
+2. **小程序后台配置合法域名**：微信公众平台 → 开发管理 → 开发设置 → 服务器域名，把 `https://example.com` 同时配到 **request / uploadFile / downloadFile** 合法域名（图片经 `/files` 下载）。
 3. **appid**：在 `miniprogram/project.config.json`，换成自己的。
 4. **上传发布**：微信开发者工具打开 `miniprogram/` → 上传 → 公众平台提交审核 → 发布。
 5. 开发调试期可在开发者工具勾选「不校验合法域名」用 `http://` 局域网 IP 联调，但**真机预览和正式版必须 HTTPS 合法域名**。
 
 ### App（mobile/，React Native + Expo）
 
-1. **改后端地址**：`mobile/src/api/config.ts` 的 `FALLBACK_BASE`，或打包前设置环境变量 `EXPO_PUBLIC_BACKEND_BASE=https://api.example.com`。
+1. **改后端地址**：`mobile/src/api/config.ts` 的 `FALLBACK_BASE`，或打包前设置环境变量 `EXPO_PUBLIC_BACKEND_BASE=https://example.com`。
 2. **打 Android APK**：
    ```bash
    cd mobile

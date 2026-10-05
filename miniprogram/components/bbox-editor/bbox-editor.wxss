@@ -85,13 +85,29 @@
 
 .handle {
   position: absolute;
-  width: 22rpx;
-  height: 22rpx;
-  background: #fff;
-  border: 3rpx solid var(--primary);
+  /* 命中区域 48rpx：手指才能按准；可见圆点由 ::after 画，保持 22rpx 视觉大小 */
+  width: 48rpx;
+  height: 48rpx;
+  background: transparent;
+  border: none;
   border-radius: 50%;
   transform: translate(-50%, -50%);
   z-index: 5;
+}
+
+.handle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22rpx;
+  height: 22rpx;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: 3rpx solid var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 2rpx 6rpx rgba(22, 93, 255, 0.35);
 }
 
 .illbox {
@@ -99,11 +115,14 @@
   border: 2rpx dashed var(--text-3);
   border-radius: 6rpx;
   box-sizing: border-box;
+  /* 插图框位于题目框上层，点按/拖动优先作用于插图 */
+  z-index: 3;
 }
 
 .illbox.illsel {
   border-color: var(--primary);
   background: rgba(22, 93, 255, 0.1);
+  z-index: 4;
 }
 
 .illlabel {

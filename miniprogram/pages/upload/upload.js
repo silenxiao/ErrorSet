@@ -29,6 +29,8 @@ Page({
 
   onShow() {
     this.setData({ backendBase: api.getBase ? api.getBase() : 'http://127.0.0.1:8000' });
+    // 未登录时不发请求，等 app.onLaunch 跳转登录页
+    if (!api.isLoggedIn()) return;
     this.loadExams();
     this.loadModels();
   },
@@ -43,7 +45,7 @@ Page({
 
   // 下拉刷新：重新拉取试卷列表后收起刷新动画
   onPullDownRefresh() {
-    this.loadExams(true);
+    if (api.isLoggedIn()) this.loadExams(true);
     setTimeout(() => wx.stopPullDownRefresh(), 600);
   },
 

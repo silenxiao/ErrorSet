@@ -46,6 +46,7 @@ const api = {
   // 账号登录
   login: login,
   register: register,
+  isLoggedIn: () => !!wx.getStorageSync('errorset_token'),
 
   // 当前用户信息与年级修改（「我的」页）
   getMe: () => request('/api/v1/auth/me'),
@@ -85,6 +86,12 @@ const api = {
 
   resetBbox: (qid) =>
     request(`/api/v1/questions/${qid}/bbox/reset`, { method: 'POST' }),
+
+  updateIllustrationBbox: (id, bbox) =>
+    request(`/api/v1/illustrations/${id}/bbox`, { method: 'PATCH', data: { bbox } }),
+
+  resetIllustrationBbox: (id) =>
+    request(`/api/v1/illustrations/${id}/bbox/reset`, { method: 'POST' }),
 
   addWrongQuestion: (payload) =>
     request('/api/v1/wrong-questions', { method: 'POST', data: payload }),

@@ -11,9 +11,9 @@
     "pages/feedback/feedback"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#0E42B8",
+    "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTitleText": "AI 错题本",
-    "navigationBarTextStyle": "white",
+    "navigationBarTextStyle": "black",
     "backgroundColor": "#F7F8FA"
   },
   "tabBar": {

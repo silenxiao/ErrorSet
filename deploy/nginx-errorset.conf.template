@@ -1,0 +1,65 @@
+# ErrorSet 宿主机入口反代 —— 由 deploy/setup_server.sh --with-domain 渲染生成
+# 说明：容器只监听 127.0.0.1（见 .env 的 WEB_PUBLISH / ADMIN_PUBLISH），
+#       TLS 由本层终止；certbot 首次签发后会自动在本文件追加 443 server 块
+#       和 HTTP→HTTPS 跳转，重跑脚本不会覆盖这些改动。
+
+server {
+    listen 80;
+    server_name __WEB_DOMAIN__;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50m;   # 试卷图片上传（nginx 默认 1m 会 413）
+        proxy_read_timeout 300s;    # AI 识别耗时较长
+    }
+}
+
+# BEGIN ADMIN（未指定 --admin-domain 时此段被删除）
+server {
+    listen 80;
+    server_name __ADMIN_DOMAIN__;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+# END ADMIN
+
+# ---------- IP 直连兜底（default_server，接住所有未匹配域名的请求，含 http://服务器IP/） ----------
+# IP 签发不了 Let's Encrypt 证书，IP 访问只有 HTTP；HTTPS 请走上面的域名
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50m;
+        proxy_read_timeout 300s;
+    }
+}
+
+# 管理后台保留旧地址 http://服务器IP:8081/（不想暴露公网可删除此段，仅用域名或 SSH 隧道访问）
+server {
+    listen 8081 default_server;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

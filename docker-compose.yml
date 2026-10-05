@@ -27,7 +27,9 @@ services:
     container_name: errorset-web
     restart: unless-stopped
     ports:
-      - "80:80"
+      # 默认直接占宿主 80；HTTPS 域名模式（setup_server.sh --with-domain）会在 .env
+      # 写入 WEB_PUBLISH=127.0.0.1:8080，把 80/443 让给宿主机 nginx
+      - "${WEB_PUBLISH:-80:80}"
     depends_on:
       backend:
         condition: service_healthy
@@ -37,7 +39,7 @@ services:
     container_name: errorset-admin
     restart: unless-stopped
     ports:
-      - "8081:80"
+      - "${ADMIN_PUBLISH:-8081:80}"
     depends_on:
       backend:
         condition: service_healthy
