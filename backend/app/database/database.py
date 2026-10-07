@@ -49,6 +49,7 @@ def _sqlite_lightweight_migrations() -> None:
         "ALTER TABLE exam ADD COLUMN extra_prompt TEXT",
         "ALTER TABLE exam ADD COLUMN error_message TEXT",
         "ALTER TABLE question ADD COLUMN subject VARCHAR(32) NOT NULL DEFAULT ''",
+        "ALTER TABLE question ADD COLUMN last_analysis JSON",
         "ALTER TABLE wrong_question ADD COLUMN subject VARCHAR(32) NOT NULL DEFAULT ''",
         "ALTER TABLE wrong_question ADD COLUMN analysis TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE wrong_question ADD COLUMN correct_count INTEGER NOT NULL DEFAULT 0",

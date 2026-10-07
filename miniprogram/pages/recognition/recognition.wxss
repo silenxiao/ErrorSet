@@ -90,6 +90,57 @@
   line-height: 1.5;
 }
 
+/* 预览/调整插图入口按钮（卡片标题右侧） */
+.ill-preview-btn {
+  font-size: 24rpx;
+  color: var(--primary);
+  border: 1rpx solid var(--primary);
+  border-radius: 10rpx;
+  padding: 6rpx 18rpx;
+}
+
+/* 插图预览与调整：全屏浮层 */
+.ill-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.ill-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid var(--border);
+  background: #fff;
+}
+
+.ill-preview-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.ill-preview-close {
+  font-size: 26rpx;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 10rpx;
+  padding: 8rpx 28rpx;
+}
+
+.ill-preview-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.ill-preview-inner {
+  padding: 24rpx;
+}
+
 .field-col {
   display: flex;
   flex-direction: column;

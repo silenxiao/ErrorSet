@@ -19,6 +19,8 @@ Component({
     selectedId: { type: Number, value: null },
     // true 时隐藏题目框，只显示/编辑插图框
     onlyIllustrations: { type: Boolean, value: false },
+    // false 时纯展示（点击仅选中，不出现手柄、不可拖动）；编辑在预览弹窗内进行
+    editable: { type: Boolean, value: true },
   },
 
   data: {
@@ -122,6 +124,7 @@ Component({
     },
 
     onHandleStart(e) {
+      if (!this.properties.editable) return;
       // 新手势开始即清除上一次拖拽的 tap 屏蔽标记，防止误吞下一次点选
       this._justDragged = false;
       const mode = e.currentTarget.dataset.mode;
@@ -146,6 +149,7 @@ Component({
     },
 
     onIllHandleStart(e) {
+      if (!this.properties.editable) return;
       // 新手势开始即清除上一次拖拽的 tap 屏蔽标记，防止误吞下一次点选
       this._justDragged = false;
       const mode = e.currentTarget.dataset.mode;

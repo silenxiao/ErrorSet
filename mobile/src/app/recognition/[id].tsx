@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Switch,
@@ -15,7 +16,13 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { confirmExam, getExam, reRecognizeExam } from '@/api/exam';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
-import { resetBbox, updateBbox, updateQuestion, illustrationImageUrl } from '@/api/question';
+import {
+  resetBbox,
+  updateBbox,
+  updateIllustrationBbox,
+  updateQuestion,
+  illustrationImageUrl,
+} from '@/api/question';
 import type { BBox, Question } from '@/types/question';
 import type { ExamDetail } from '@/types/exam';
 import { examStatusOf, formatDate } from '@/utils/format';
@@ -73,6 +80,8 @@ export default function RecognitionPage() {
 
   // 编辑题目弹窗
   const [editQ, setEditQ] = useState<Question | null>(null);
+  // 插图预览与调整弹窗（页面内插图框只读，弹窗内可编辑）
+  const [illPreviewVisible, setIllPreviewVisible] = useState(false);
   const [editText, setEditText] = useState('');
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -119,6 +128,32 @@ export default function RecognitionPage() {
     setExam((ex) =>
       ex ? { ...ex, questions: ex.questions.map((q) => (q.id === qid ? { ...q, ...patch } : q)) } : ex,
     );
+  };
+
+  // 插图框拖拽保存（预览弹窗内）
+  const onUpdateIllBbox = async (illId: number, bbox: BBox) => {
+    setSaving(true);
+    try {
+      const ill = await updateIllustrationBbox(illId, bbox);
+      setExam((ex) =>
+        ex
+          ? {
+              ...ex,
+              questions: ex.questions.map((q) => ({
+                ...q,
+                illustrations: (q.illustrations || []).map((x) =>
+                  x.id === illId ? { ...x, bbox: ill.bbox, bboxSource: ill.bboxSource } : x,
+                ),
+              })),
+            }
+          : ex,
+      );
+    } catch (e) {
+      Alert.alert('保存失败', e instanceof Error ? e.message : String(e));
+      void refresh();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const onSelect = (qid: number, source: 'list' | 'image') => {
@@ -230,6 +265,8 @@ export default function RecognitionPage() {
 
   const st = exam ? examStatusOf(exam.status) : null;
   const questionCount = exam?.questions?.length ?? 0;
+  const illCount =
+    exam?.questions?.reduce((n, q) => n + (q.illustrations || []).length, 0) ?? 0;
 
   return (
     <Screen>
@@ -279,17 +316,22 @@ export default function RecognitionPage() {
           </Card>
 
           <Card>
-            <CardTitle extra={<Muted>{questionCount} 个框</Muted>}>试卷原图与题目框</CardTitle>
+            <CardTitle extra={<Muted>{illCount} 个插图框</Muted>}>试卷原图与插图框</CardTitle>
             <Muted style={{ marginBottom: 8 }}>
-              点选题目可高亮对应框；选中后拖动框体或八向手柄可调整边界，松手自动保存。
+              页面内仅展示插图位置信息；点击下方按钮后可拖动框体或八向手柄调整插图区域，松手自动保存。
             </Muted>
             <BboxEditor
               imageUrl={exam.imageUrl}
               questions={exam.questions}
               selectedId={selectedId}
+              onlyIllustrations
+              editable={false}
               onSelect={(qid) => onSelect(qid, 'image')}
               onUpdateBbox={onUpdateBbox}
             />
+            <Btn kind="ghost" onPress={() => setIllPreviewVisible(true)}>
+              预览 / 调整插图
+            </Btn>
           </Card>
 
           <Card>
@@ -309,6 +351,33 @@ export default function RecognitionPage() {
           </Card>
         </ScrollView>
       ) : null}
+
+      {/* 插图预览与调整：全屏弹窗，大图上直接拖动框体/手柄，松手自动保存 */}
+      <Modal
+        visible={illPreviewVisible}
+        animationType="fade"
+        onRequestClose={() => setIllPreviewVisible(false)}
+      >
+        <View style={styles.illPreview}>
+          <View style={styles.illPreviewBar}>
+            <Text style={styles.illPreviewTitle}>预览与调整插图</Text>
+            <TextBtn onPress={() => setIllPreviewVisible(false)}>完成</TextBtn>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 12 }}>
+            {exam ? (
+              <BboxEditor
+                imageUrl={exam.imageUrl}
+                questions={exam.questions}
+                selectedId={selectedId}
+                onlyIllustrations
+                onSelect={(qid) => onSelect(qid, 'image')}
+                onUpdateBbox={onUpdateBbox}
+                onUpdateIllBbox={onUpdateIllBbox}
+              />
+            ) : null}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* 编辑题目弹窗 */}
       <Mask visible={!!editQ} onClose={() => setEditQ(null)}>
@@ -401,6 +470,26 @@ export default function RecognitionPage() {
 }
 
 const styles = StyleSheet.create({
+  // 插图预览与调整：全屏弹窗
+  illPreview: {
+    flex: 1,
+    backgroundColor: C.bg,
+  },
+  illPreviewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: C.border,
+    backgroundColor: '#fff',
+  },
+  illPreviewTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: C.textStrong,
+  },
   examHead: {
     flexDirection: 'row',
     alignItems: 'center',

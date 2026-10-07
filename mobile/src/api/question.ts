@@ -29,6 +29,17 @@ export function resetBbox(questionId: number): Promise<Question> {
   return request(`/api/v1/questions/${questionId}/bbox/reset`, { method: 'POST' });
 }
 
+/** 修改插图 bbox（0~1000 归一化坐标），保存后 bbox_source = manual。 */
+export function updateIllustrationBbox(
+  illustrationId: number,
+  bbox: BBox,
+): Promise<{ id: number; bbox: BBox; bboxSource: 'ai' | 'manual' }> {
+  return request(
+    `/api/v1/illustrations/${illustrationId}/bbox`,
+    jsonInit('PATCH', { bbox }),
+  );
+}
+
 export function addWrongQuestion(payload: WrongQuestionCreate): Promise<WrongQuestion> {
   return request('/api/v1/wrong-questions', jsonInit('POST', payload));
 }

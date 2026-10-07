@@ -20,6 +20,13 @@ class InvalidStateError(AppError):
     detail = "当前状态不允许该操作"
 
 
+class AlreadyExistsError(AppError):
+    """重复创建已存在的资源（如题目已在错题库），需要用户确认覆盖。"""
+
+    status_code = 409
+    detail = "该资源已存在"
+
+
 class ValidationError(AppError):
     status_code = 422
     detail = "参数校验失败"

@@ -170,7 +170,7 @@ export default function RecognitionPage({
         <Input.TextArea
           value={rerecogExtra}
           onChange={(e) => setRerecogExtra(e.target.value)}
-          rows={3}
+          rows={7}
           maxLength={800}
           showCount
           placeholder={

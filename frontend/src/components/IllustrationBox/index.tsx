@@ -8,6 +8,8 @@ import { applyDrag, type DragMode } from "../../utils/bbox";
 interface Props {
   illustration: Illustration;
   parentSelected: boolean;
+  /** true 时可拖动移动/八向手柄缩放（预览弹窗内）；false 只展示 bbox 信息 */
+  editable?: boolean;
   onSelectParent: () => void;
   onUpdated: () => void;
 }
@@ -33,10 +35,12 @@ function pointInSvg(svg: SVGSVGElement, clientX: number, clientY: number) {
   };
 }
 
-/** 可编辑插图框：拖动移动 + 八向手柄缩放，松手即保存（bbox_source = manual）。 */
+/** 插图框：editable 时拖动移动 + 八向手柄缩放，松手即保存（bbox_source = manual）；
+ * 否则为纯展示（预览弹窗外只显示 bbox 信息，不可编辑）。 */
 export default function IllustrationBox({
   illustration,
   parentSelected,
+  editable = false,
   onSelectParent,
   onUpdated,
 }: Props) {
@@ -52,10 +56,12 @@ export default function IllustrationBox({
   const bbox = preview ?? illustration.bbox;
   const [x1, y1, x2, y2] = bbox;
   const manual = illustration.bboxSource === "manual";
-  const color = parentSelected ? "#165DFF" : "#86909C";
+  // 仅预览弹窗内选中高亮（提示可拖动的是哪题的框）；展示页面恒为灰色不变色
+  const active = editable && parentSelected;
+  const color = active ? "#165DFF" : "#86909C";
 
   const startDrag = (mode: DragMode) => (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (!editable || e.button !== 0) return;
     e.stopPropagation();
     onSelectParent();
     const svg = (e.currentTarget as SVGElement).ownerSVGElement;
@@ -85,7 +91,6 @@ export default function IllustrationBox({
       if (next.every((v, i) => v === illustration.bbox[i])) return;
       try {
         await updateIllustrationBbox(illustration.id, next);
-        message.success("插图框已保存");
         onUpdated();
       } catch (err) {
         message.error(err instanceof Error ? err.message : "保存插图框失败");
@@ -104,13 +109,17 @@ export default function IllustrationBox({
         y={y1}
         width={x2 - x1}
         height={y2 - y1}
-        fill={parentSelected ? "rgba(22, 93, 255, 0.10)" : "transparent"}
+        fill={active ? "rgba(22, 93, 255, 0.10)" : "transparent"}
         stroke={color}
         strokeDasharray={manual ? undefined : "10 6"}
-        strokeWidth={parentSelected ? 3 : 1.5}
+        strokeWidth={active ? 3 : 1.5}
         vectorEffect="non-scaling-stroke"
         rx={4}
-        style={{ cursor: "move" }}
+        style={{
+          cursor: editable ? "move" : undefined,
+          // 展示模式下不响应点击，事件穿透到下层（如点空白处打开预览）
+          pointerEvents: editable ? undefined : "none",
+        }}
         onPointerDown={startDrag("move")}
       />
       <text
@@ -123,7 +132,8 @@ export default function IllustrationBox({
         {illustration.type}
         {manual ? "（已调整）" : ""}
       </text>
-      {parentSelected &&
+      {editable &&
+        parentSelected &&
         HANDLES.map((h) => (
           <rect
             key={h.mode}

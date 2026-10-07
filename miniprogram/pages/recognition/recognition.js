@@ -14,6 +14,8 @@ Page({
     saving: false,
     questionCount: 0,
     illCount: 0,
+    // 插图预览与调整浮层（页面内只读，浮层内可编辑）
+    illPreviewVisible: false,
     rerecogVisible: false,
     rerecogInclude: true,
     rerecogExtra: '',
@@ -92,6 +94,15 @@ Page({
     const exam = Object.assign({}, this.data.exam);
     exam.questions = exam.questions.map((q) => (q.id === id ? Object.assign({}, q, patch) : q));
     this.setData({ exam });
+  },
+
+  // 插图预览浮层：页面内插图框只读，浮层内才可拖动/缩放
+  openIllPreview() {
+    this.setData({ illPreviewVisible: true });
+  },
+
+  closeIllPreview() {
+    this.setData({ illPreviewVisible: false });
   },
 
   onSelect(e) {

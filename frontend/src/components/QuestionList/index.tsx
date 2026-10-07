@@ -11,9 +11,10 @@ import {
   Tag,
   message,
 } from "antd";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQuestion } from "../../api/question";
+import { ApiError } from "../../api/http";
 import ModelSelector from "../ModelSelector";
 import type { AnalysisResult, Question, QuestionStatus } from "../../types/question";
 import { renderMathText } from "../../utils/math";
@@ -217,6 +218,9 @@ function WrongQuestionModal({
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   /** 最近一次 AI 分析结果，知识点随表单一并入库 */
   const [aiResult, setAiResult] = useState<AnalysisResult | null>(null);
+  /** 本会话内每道题最近一次分析结果：分析后未入库就关掉弹窗再打开时，
+   * 接口里的 question.lastAnalysis 还是旧的，优先用内存里这份 */
+  const analyzedRef = useRef<Map<number, AnalysisResult>>(new Map());
 
   // 每次换题打开时重置表单：destroyOnClose 只销毁 DOM，
   // form store 里上一次的 AI 分析结果会串到下一题
@@ -227,6 +231,29 @@ function WrongQuestionModal({
     form.setFieldsValue({ subject: defaultSubject || "语文" });
     setEditingAnswer(false);
     setAiResult(null);
+    // 该题分析过但还没入库时，回显最近一次 AI 分析结果（后端持久化；
+    // 本会话刚分析过的以内存为准，接口数据可能还没刷新）
+    const last = analyzedRef.current.get(questionId) ?? question?.lastAnalysis ?? null;
+    if (last && (last.answer || last.analysis)) {
+      const subjects = [
+        "语文",
+        "数学",
+        "英语",
+        "物理",
+        "化学",
+        "生物",
+        "历史",
+        "政治",
+        "地理",
+      ];
+      setAiResult(last);
+      form.setFieldsValue({
+        ...(subjects.includes(last.subject) ? { subject: last.subject } : {}),
+        correctAnswer: last.answer,
+        analysis: last.analysis,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionId, form, defaultSubject]);
 
   const handleAiAnalyze = async (questionId: number) => {
@@ -234,6 +261,7 @@ function WrongQuestionModal({
     try {
       const result = await analyzeQuestion(questionId);
       setAiResult(result);
+      analyzedRef.current.set(questionId, result);
       const subjects = [
         "语文",
         "数学",
@@ -258,7 +286,7 @@ function WrongQuestionModal({
     }
   };
 
-  const handleOk = async () => {
+  const handleOk = async (overwrite = false) => {
     if (!question) return;
     let values;
     try {
@@ -276,10 +304,22 @@ function WrongQuestionModal({
         analysis: values.analysis ?? "",
         knowledgePoints: aiResult?.knowledgePoints ?? [],
         note: values.note ?? "",
+        overwrite,
       });
       onSaved();
     } catch (err) {
-      message.error(err instanceof Error ? err.message : "加入错题库失败");
+      if (err instanceof ApiError && err.status === 409) {
+        // 已在错题库：询问是否以本次填写的内容覆盖旧错题
+        Modal.confirm({
+          title: "该题已加入错题库",
+          content: "是否以最新的解答覆盖以前的错题？",
+          okText: "覆盖",
+          cancelText: "取消",
+          onOk: () => handleOk(true),
+        });
+      } else {
+        message.error(err instanceof Error ? err.message : "加入错题库失败");
+      }
     } finally {
       setSaving(false);
     }
@@ -289,7 +329,7 @@ function WrongQuestionModal({
     <Modal
       title={`加入错题库：第 ${question?.questionNo ?? ""} 题`}
       open={question !== null}
-      onOk={handleOk}
+      onOk={() => void handleOk()}
       onCancel={onClose}
       confirmLoading={saving}
       destroyOnClose

@@ -3,7 +3,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import AlreadyExistsError, NotFoundError, ValidationError
 from app.database import repository as repo
 from app.database.models import Question, WrongQuestion
 from app.schemas.question import AnalysisOut
@@ -240,6 +240,20 @@ async def analyze_question(db: Session, question_id: int, user_id: int) -> Analy
     finally:
         if question_input.image_path:
             Path(question_input.image_path).unlink(missing_ok=True)
+
+    # 持久化最近一次分析：未加入错题库时打开加入页也能找回（只保留最新一次，
+    # 与错题库入库时复制的 analysis 相互独立）
+    question = get_question_or_404(db, question_id, user_id)
+    question.last_analysis = {
+        "subject": answer.subject,
+        "answer": answer.answer,
+        "analysis": answer.analysis,
+        "knowledge_points": answer.knowledge_points,
+        "out_of_scope": answer.out_of_scope,
+        "confidence": answer.confidence,
+    }
+    db.commit()
+
     return AnalysisOut(
         subject=answer.subject,
         answer=answer.answer,
@@ -276,13 +290,20 @@ def _snapshot_illustrations(
     return paths
 
 
-def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
+def create_wrong_question(
+    db: Session, user_id: int, overwrite: bool = False, **kwargs
+) -> WrongQuestion:
     """加入错题库：插图按当前 bbox 裁剪为快照保留（§28）。
 
-    同一题目重复加入时，先删除上次的插图快照文件，再就地更新记录
-    （保留打卡计数与手动排序），不产生重复行。
+    同一题目重复加入时须显式 overwrite=True 才就地更新（保留打卡计数与
+    手动排序、替换插图快照），否则返回 409 交由前端确认是否覆盖。
     """
     question = get_question_or_404(db, kwargs["question_id"], user_id)
+
+    # 先做覆盖校验再裁快照：409 / 用户取消时不留无主的快照文件
+    existing = repo.get_wrong_question_by_question(db, question.id)
+    if existing is not None and not overwrite:
+        raise AlreadyExistsError("该题目已加入错题库")
 
     fields = dict(
         answer=kwargs.get("answer", ""),
@@ -295,9 +316,9 @@ def create_wrong_question(db: Session, user_id: int, **kwargs) -> WrongQuestion:
         question_no=question.question_no,
         question_text=question.text,
     )
+    # 插图按当前 bbox 重新裁剪，覆盖时旧快照文件一并清理
     illustration_images = _snapshot_illustrations(db, question, user_id)
 
-    existing = repo.get_wrong_question_by_question(db, question.id)
     if existing is not None:
         _delete_wrong_question_files(existing)
         return repo.update_wrong_question(

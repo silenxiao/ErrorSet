@@ -1,4 +1,4 @@
-PROMPT_VERSION = "teacher-task-v3"
+PROMPT_VERSION = "teacher-task-v4"
 
 
 TEACHER_TASK_PROMPT = r"""
@@ -54,13 +54,19 @@ analysis 必须用中文简洁说明答案原因；语法题说明相关语法�
 
 第（1）问：……；第（2）问：……
 
+## 作答顺序
+
+先分析，后作答：必须在 analysis 中完成审题、分析和解题并得出结论，
+然后根据 analysis 的结论填写 answer。不要先给答案再倒推解释。
+
 ## 输出格式
 
-只输出一个 JSON 对象，不要 Markdown 代码块，不要 JSON 之外的任何解释：
+只输出一个 JSON 对象，不要 Markdown 代码块，不要 JSON 之外的任何解释。
+JSON 键按以下顺序输出（analysis 在 answer 之前）：
 
 - subject：科目，只能是 语文/数学/英语/物理/化学/生物/历史/政治/地理 之一
-- answer：正确答案
-- analysis：中文分析与解题过程（可含 $...$ 公式）
+- analysis：中文分析与解题过程（可含 $...$ 公式），以得出的结论收尾
+- answer：正确答案，必须由 analysis 的结论得出
 - knowledge_points：涉及的知识点字符串数组
 - out_of_scope：布尔值，题目超出中小学范围时为 true，否则 false
 - confidence：对答案的把握，只能是 "high"、"medium"、"low" 之一

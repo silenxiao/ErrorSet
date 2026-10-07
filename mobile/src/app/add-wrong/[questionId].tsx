@@ -16,6 +16,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { analyzeQuestion, addWrongQuestion, getQuestion } from '@/api/question';
+import { ApiError } from '@/api/http';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { AnalysisResult, Question } from '@/types/question';
 import { SUBJECT_OPTIONS } from '@/utils/format';
@@ -115,6 +116,16 @@ export default function AddWrongPage() {
         setQuestion(q);
         if (q.subject && SUBJECT_OPTIONS.includes(q.subject)) setSubjectValue(q.subject);
         else if (subject && SUBJECT_OPTIONS.includes(subject)) setSubjectValue(subject);
+        // 该题分析过但还没入库时，回显最近一次 AI 分析结果（后端持久化）
+        const last = q.lastAnalysis;
+        if (last && (last.answer || last.analysis)) {
+          setCorrectAnswer(last.answer);
+          setAnalysis(last.analysis);
+          setKnowledgePoints(last.knowledgePoints || []);
+          if (last.subject && SUBJECT_OPTIONS.includes(last.subject)) {
+            setSubjectValue(last.subject);
+          }
+        }
       })
       .catch(() => {});
     listModels()
@@ -157,7 +168,7 @@ export default function AddWrongPage() {
     }
   };
 
-  const save = async () => {
+  const save = async (overwrite?: boolean) => {
     if (saving) return;
     setSaving(true);
     try {
@@ -169,11 +180,20 @@ export default function AddWrongPage() {
         analysis,
         knowledgePoints,
         note,
+        overwrite: overwrite === true,
       });
       showToast('已加入错题库');
       setTimeout(() => router.back(), 600);
     } catch (e) {
-      Alert.alert('加入失败', e instanceof Error ? e.message : String(e));
+      if (e instanceof ApiError && e.status === 409) {
+        // 已在错题库：询问是否以本次填写的内容覆盖旧错题
+        Alert.alert('该题已加入错题库', '是否以最新的解答覆盖以前的错题？', [
+          { text: '取消', style: 'cancel' },
+          { text: '覆盖', onPress: () => void save(true) },
+        ]);
+      } else {
+        Alert.alert('加入失败', e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setSaving(false);
     }

@@ -66,6 +66,9 @@ class Question(Base):
     bbox_source: Mapped[str] = mapped_column(String(16), default="ai")
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="pending_review", index=True)
+    # 最近一次 AI 分析结果（未加入错题库时也能找回，只保留最新一次）。
+    # 与错题库的 analysis 相互独立：入库时复制一份，之后各改各的。
+    last_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 

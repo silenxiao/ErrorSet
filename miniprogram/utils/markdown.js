@@ -13,6 +13,20 @@ function esc(s) {
     .replace(/>/g, '&gt;');
 }
 
+// 裸 LaTeX 自动补 $...$ 定界符（仅用于渲染预览，不改原始数据）。
+// AI 返回的"正确答案"常是 \dfrac{3}{10} 这类没包 $ 的公式源码，
+// md-render 只认 $...$，这里在渲染前补上：
+// - 已含 $ 定位符的不动
+// - 没有公式特征（LaTeX 命令、^、_）的纯文本不动
+// - 含中文的混合文本不整体包裹，避免被数学排版误伤
+function ensureMath(text) {
+  const s = String(text == null ? '' : text).trim();
+  if (!s || s.indexOf('$') !== -1) return s;
+  if (!/\\[a-zA-Z]+|[\^_]/.test(s)) return s;
+  if (/[\u4e00-\u9fff]/.test(s)) return s;
+  return '$' + s + '$';
+}
+
 // 行内：处理 **粗体** *斜体* `代码` $公式$ [链接](url)
 function inlineHtml(text) {
   const s = String(text);
@@ -132,5 +146,5 @@ function mdHtml(md) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { mdHtml, inlineHtml, esc };
+  module.exports = { mdHtml, inlineHtml, esc, ensureMath };
 }

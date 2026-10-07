@@ -14,32 +14,6 @@ class IllustrationOut(CamelModel):
     type: str
 
 
-class QuestionOut(CamelModel):
-    id: int
-    exam_id: int
-    parent_id: int | None = None
-    question_no: str
-    text: str
-    subject: str = ""
-    bbox: list[int]
-    ai_bbox: list[int]
-    bbox_source: str
-    confidence: float | None = None
-    status: str
-    illustrations: list[IllustrationOut] = []
-
-
-class BBoxUpdate(BaseModel):
-    bbox: list[int]
-
-    @field_validator("bbox")
-    @classmethod
-    def four_numbers(cls, v: list) -> list:
-        if len(v) != 4:
-            raise ValueError("bbox 必须是四个数字")
-        return v
-
-
 class AnalysisOut(CamelModel):
     """GET /api/v1/questions/{id}/analyze 的结构化 AI 分析结果。
 
@@ -47,9 +21,9 @@ class AnalysisOut(CamelModel):
     前端不再需要正则拆分。
     """
 
-    subject: str
-    answer: str
-    analysis: str
+    subject: str = ""
+    answer: str = ""
+    analysis: str = ""
     knowledge_points: list[str] = []
     out_of_scope: bool = False
     confidence: Literal["high", "medium", "low"] = "medium"
@@ -69,6 +43,36 @@ class WrongQuestionCreate(CamelModel):
     analysis: str = ""
     knowledge_points: list[str] = []
     note: str = ""
+    # 题目已在错题库时须由用户确认覆盖；不带 overwrite 重复加入返回 409
+    overwrite: bool = False
+
+
+class QuestionOut(CamelModel):
+    id: int
+    exam_id: int
+    parent_id: int | None = None
+    question_no: str
+    text: str
+    subject: str = ""
+    bbox: list[int]
+    ai_bbox: list[int]
+    bbox_source: str
+    confidence: float | None = None
+    status: str
+    # 最近一次 AI 分析（未加入错题库也可找回；与错题库的 analysis 相互独立）
+    last_analysis: AnalysisOut | None = None
+    illustrations: list[IllustrationOut] = []
+
+
+class BBoxUpdate(BaseModel):
+    bbox: list[int]
+
+    @field_validator("bbox")
+    @classmethod
+    def four_numbers(cls, v: list) -> list:
+        if len(v) != 4:
+            raise ValueError("bbox 必须是四个数字")
+        return v
 
 
 class WrongQuestionOut(CamelModel):

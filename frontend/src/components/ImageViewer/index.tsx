@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Image } from "antd";
+import { Modal, Switch } from "antd";
 import { EyeOutlined } from "@ant-design/icons";
 import IllustrationBox from "../IllustrationBox";
 import type { Question } from "../../types/question";
@@ -15,9 +15,8 @@ interface Props {
 /** 原始试卷图片 + SVG overlay（§14）。
  * bbox 为 0～1000 归一化坐标，overlay 用 viewBox 0 0 1000 1000 +
  * preserveAspectRatio="none" 精确铺在图片上方，坐标一一对应。
- * 只画插图调整框：题目框已按需求移除，题目改由右侧列表选中。
- * 鼠标悬停图片时浮现"预览"遮罩（与错题库插图同款交互），
- * 点击图片空白处打开大图；遮罩不拦截鼠标，不影响插图框拖拽。 */
+ * 页面上只展示插图 bbox 信息（不可编辑、不响应点击，点击穿透到下层打开预览）；
+ * 悬停浮现「预览」遮罩，点击图片打开大图预览弹窗，弹窗内才可拖动/缩放插图框。 */
 export default function ImageViewer({
   imageUrl,
   questions,
@@ -27,6 +26,8 @@ export default function ImageViewer({
 }: Props) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  // 预览弹窗内可隐藏插图框，查看干净原图
+  const [showBoxes, setShowBoxes] = useState(true);
 
   if (!imageUrl) {
     return (
@@ -35,6 +36,21 @@ export default function ImageViewer({
       </div>
     );
   }
+
+  const boxes = (editable: boolean) =>
+    questions.flatMap((q) =>
+      q.illustrations.map((ill) => (
+        <IllustrationBox
+          key={`ill-${editable ? "edit" : "view"}-${ill.id}`}
+          illustration={ill}
+          parentSelected={q.id === selectedId}
+          editable={editable}
+          onSelectParent={() => onSelect(q.id)}
+          onUpdated={onUpdated}
+        />
+      )),
+    );
+
   return (
     <div
       style={{ position: "relative", display: "inline-block", width: "100%" }}
@@ -64,11 +80,10 @@ export default function ImageViewer({
           }}
         >
           <EyeOutlined />
-          <span>预览</span>
+          <span>预览 / 调整插图</span>
         </div>
       )}
-      {/* 点击落在空白图片区域（target 是 svg 根）时打开预览；
-          插图框/手柄上的点击 target 是子元素，不会误触 */}
+      {/* 点击图片任意位置（含插图框，框体不响应点击）打开预览弹窗 */}
       <svg
         viewBox="0 0 1000 1000"
         preserveAspectRatio="none"
@@ -83,28 +98,65 @@ export default function ImageViewer({
           cursor: "zoom-in",
         }}
       >
-        {questions.flatMap((q) =>
-          q.illustrations.map((ill) => (
-            <IllustrationBox
-              key={`ill-${ill.id}`}
-              illustration={ill}
-              parentSelected={q.id === selectedId}
-              onSelectParent={() => onSelect(q.id)}
-              onUpdated={onUpdated}
-            />
-          )),
-        )}
+        {boxes(false)}
       </svg>
-      {/* 受控预览：lightbox 里展示不带框的原图，可缩放/旋转 */}
-      <Image
-        src={imageUrl}
-        preview={{
-          visible: previewOpen,
-          src: imageUrl,
-          onVisibleChange: (value) => setPreviewOpen(value),
-        }}
-        style={{ display: "none" }}
-      />
+
+      {/* 预览弹窗：大图上直接拖动框体/手柄调整插图位置与大小，松手自动保存 */}
+      <Modal
+        title="预览与调整插图"
+        open={previewOpen}
+        onCancel={() => setPreviewOpen(false)}
+        footer={null}
+        width="90vw"
+        centered
+        styles={{ body: { textAlign: "center" } }}
+        destroyOnClose
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          <span style={{ color: "var(--text-3)", fontSize: 13 }}>显示插图框</span>
+          <Switch size="small" checked={showBoxes} onChange={setShowBoxes} />
+        </div>
+        <div
+          style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}
+        >
+          <img
+            src={imageUrl}
+            alt="试卷原图"
+            style={{
+              display: "block",
+              maxWidth: "100%",
+              maxHeight: "74vh",
+              width: "auto",
+              height: "auto",
+            }}
+          />
+          {showBoxes && (
+            <svg
+              viewBox="0 0 1000 1000"
+              preserveAspectRatio="none"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              {boxes(true)}
+            </svg>
+          )}
+        </div>
+        <div style={{ color: "var(--text-3)", fontSize: 13, marginTop: 8 }}>
+          选中题目后拖动框体或八向手柄可调整插图位置与大小，松手自动保存
+        </div>
+      </Modal>
     </div>
   );
 }

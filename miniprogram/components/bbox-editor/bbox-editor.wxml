@@ -21,7 +21,7 @@
     >
       <text class="blabel">{{item.no}}</text>
 
-      <block wx:if="{{item.selected}}">
+      <block wx:if="{{editable && item.selected}}">
         <view
           wx:for="{{handles}}"
           wx:for-item="h"
@@ -55,7 +55,7 @@
       bindtap="onTapIll"
     >
       <text class="illlabel">{{ill.type}}</text>
-      <block wx:if="{{ill.illSelected}}">
+      <block wx:if="{{editable && ill.illSelected}}">
         <view
           wx:for="{{handles}}"
           wx:for-item="h"

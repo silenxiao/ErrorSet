@@ -1,6 +1,8 @@
-// 试卷原图 + 题目 bbox 叠加编辑器。移植自小程序 components/bbox-editor：
+// 试卷原图 + bbox 叠加编辑器。移植自小程序 components/bbox-editor：
 // 点击框选中，拖动框体或八向手柄调整边界，松手回调保存。
 // bbox 为 0~1000 归一化坐标（工具见 utils/bbox.js）。
+// onlyIllustrations 时隐藏题目框只显示插图框；editable=false 时纯展示
+// （点击仅选中，不可拖动），编辑在预览弹窗内进行。
 
 import { useCallback, useRef, useState } from 'react';
 import {
@@ -14,7 +16,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
-import type { BBox, Question } from '@/types/question';
+import type { BBox, Illustration, Question } from '@/types/question';
 import { applyDrag, normalizeBBox } from '@/utils/bbox';
 
 // 八向手柄：fx/fy 为相对所选框的百分比位置（0~100）
@@ -43,22 +45,42 @@ interface Props {
   imageUrl: string;
   questions: Question[];
   selectedId: number | null;
+  /** true 时隐藏题目框，只显示插图框 */
+  onlyIllustrations?: boolean;
+  /** false 时纯展示（不可拖动/缩放）；编辑在预览弹窗内进行 */
+  editable?: boolean;
   onSelect: (id: number) => void;
   onUpdateBbox: (id: number, bbox: BBox) => void;
+  /** 插图框拖拽结束（editable 时）；id 为插图 id */
+  onUpdateIllBbox?: (id: number, bbox: BBox) => void;
 }
 
-export function BboxEditor({ imageUrl, questions, selectedId, onSelect, onUpdateBbox }: Props) {
+export function BboxEditor({
+  imageUrl,
+  questions,
+  selectedId,
+  onlyIllustrations = false,
+  editable = true,
+  onSelect,
+  onUpdateBbox,
+  onUpdateIllBbox,
+}: Props) {
   const [aspect, setAspect] = useState<number | null>(null);
   const [previews, setPreviews] = useState<Record<number, BBox>>({});
+  // 插图框拖拽预览（key: 插图 id）
+  const [illPreviews, setIllPreviews] = useState<Record<number, BBox>>({});
 
   const questionsRef = useRef(questions);
   questionsRef.current = questions;
   const previewsRef = useRef(previews);
   previewsRef.current = previews;
-  const cbRef = useRef({ onSelect, onUpdateBbox });
-  cbRef.current = { onSelect, onUpdateBbox };
+  const illPreviewsRef = useRef(illPreviews);
+  illPreviewsRef.current = illPreviews;
+  const cbRef = useRef({ onSelect, onUpdateBbox, onUpdateIllBbox });
+  cbRef.current = { onSelect, onUpdateBbox, onUpdateIllBbox };
   const sizeRef = useRef({ w: 0, h: 0 });
   const dragRef = useRef<{ qid: number; mode: string; start: BBox; x0: number; y0: number } | null>(null);
+  const illDragRef = useRef<{ iid: number; mode: string; start: BBox; x0: number; y0: number } | null>(null);
   // 触摸期间发生过移动（拖拽/滚动）则不触发点击选择
   const movedRef = useRef(false);
 
@@ -102,6 +124,52 @@ export function BboxEditor({ imageUrl, questions, selectedId, onSelect, onUpdate
     });
   }, []);
 
+  // 插图框拖拽：与题目框同款，但数据源是 illustrations（key 用插图 id）
+  const makeIllPan = useCallback((iid: number, mode: string, immediate: boolean) => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => immediate,
+      onMoveShouldSetPanResponder: (_e: GestureResponderEvent, g: PanResponderGestureState) =>
+        Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+      onPanResponderGrant: (_e: GestureResponderEvent, g: PanResponderGestureState) => {
+        const found = findIll(questionsRef.current, iid);
+        if (!found) return;
+        illDragRef.current = {
+          iid,
+          mode,
+          start: [...found.bbox] as BBox,
+          x0: g.moveX,
+          y0: g.moveY,
+        };
+      },
+      onPanResponderMove: (_e: GestureResponderEvent, g: PanResponderGestureState) => {
+        const d = illDragRef.current;
+        const { w, h } = sizeRef.current;
+        movedRef.current = true;
+        if (!d || !w || !h) return;
+        const dx = ((g.moveX - d.x0) / w) * 1000;
+        const dy = ((g.moveY - d.y0) / h) * 1000;
+        const next = applyDrag(d.start, dx, dy, d.mode) as BBox;
+        setIllPreviews((p) => ({ ...p, [iid]: next }));
+      },
+      onPanResponderRelease: () => {
+        const d = illDragRef.current;
+        illDragRef.current = null;
+        if (!d) return;
+        const finalB = illPreviewsRef.current[d.iid] || d.start;
+        const changed = finalB.some((v, i) => v !== d.start[i]);
+        setIllPreviews((p) => {
+          const c = { ...p };
+          delete c[d.iid];
+          return c;
+        });
+        if (changed) cbRef.current.onUpdateIllBbox?.(d.iid, finalB);
+      },
+      onPanResponderTerminate: () => {
+        illDragRef.current = null;
+      },
+    });
+  }, []);
+
   // 缓存 PanResponder 实例，避免每帧拖拽重建
   const pansRef = useRef(new Map<string, ReturnType<typeof PanResponder.create>>());
   const panFor = (qid: number, mode: string, immediate: boolean) => {
@@ -109,6 +177,15 @@ export function BboxEditor({ imageUrl, questions, selectedId, onSelect, onUpdate
     let p = pansRef.current.get(key);
     if (!p) {
       p = makePan(qid, mode, immediate);
+      pansRef.current.set(key, p);
+    }
+    return p;
+  };
+  const illPanFor = (iid: number, mode: string, immediate: boolean) => {
+    const key = `ill-${iid}:${mode}:${immediate ? 1 : 0}`;
+    let p = pansRef.current.get(key);
+    if (!p) {
+      p = makeIllPan(iid, mode, immediate);
       pansRef.current.set(key, p);
     }
     return p;
@@ -153,31 +230,54 @@ export function BboxEditor({ imageUrl, questions, selectedId, onSelect, onUpdate
             const b = previews[q.id] || ((normalizeBBox(q.bbox) || [0, 0, 0, 0]) as BBox);
             return (
               <View key={q.id}>
-                <TouchableBox
-                  qid={q.id}
-                  no={q.questionNo}
-                  bbox={b}
-                  selected={selected}
-                  suspicious={suspicious}
-                  movedRef={movedRef}
-                  panHandlers={panFor(q.id, 'move', false).panHandlers}
-                  onSelect={onSelect}
-                >
-                  {selected
-                    ? HANDLES.map((h) => (
-                        <View
-                          key={h.mode}
-                          style={[styles.handle, { left: `${h.fx}%`, top: `${h.fy}%` }]}
-                          {...panFor(q.id, h.mode, true).panHandlers}
-                        />
-                      ))
-                    : null}
-                </TouchableBox>
+                {!onlyIllustrations ? (
+                  <TouchableBox
+                    qid={q.id}
+                    no={q.questionNo}
+                    bbox={b}
+                    selected={selected}
+                    suspicious={suspicious}
+                    movedRef={movedRef}
+                    panHandlers={panFor(q.id, 'move', false).panHandlers}
+                    onSelect={onSelect}
+                  >
+                    {editable && selected
+                      ? HANDLES.map((h) => (
+                          <View
+                            key={h.mode}
+                            style={[styles.handle, { left: `${h.fx}%`, top: `${h.fy}%` }]}
+                            {...panFor(q.id, h.mode, true).panHandlers}
+                          />
+                        ))
+                      : null}
+                  </TouchableBox>
+                ) : null}
 
                 {(q.illustrations || []).map((il) => {
-                  const ib = (normalizeBBox(il.bbox) || [0, 0, 0, 0]) as BBox;
+                  const ib =
+                    illPreviews[il.id] || ((normalizeBBox(il.bbox) || [0, 0, 0, 0]) as BBox);
                   return (
-                    <IllBox key={`ill-${il.id}`} pid={q.id} bbox={ib} selected={selected} movedRef={movedRef} onSelect={onSelect} />
+                    <IllBox
+                      key={`ill-${il.id}`}
+                      pid={q.id}
+                      ill={il}
+                      bbox={ib}
+                      selected={selected}
+                      editable={editable}
+                      movedRef={movedRef}
+                      panHandlers={editable ? illPanFor(il.id, 'move', false).panHandlers : undefined}
+                      onSelect={onSelect}
+                    >
+                      {editable && selected
+                        ? HANDLES.map((h) => (
+                            <View
+                              key={h.mode}
+                              style={[styles.illHandle, { left: `${h.fx}%`, top: `${h.fy}%` }]}
+                              {...illPanFor(il.id, h.mode, true).panHandlers}
+                            />
+                          ))
+                        : null}
+                    </IllBox>
                   );
                 })}
               </View>
@@ -186,6 +286,15 @@ export function BboxEditor({ imageUrl, questions, selectedId, onSelect, onUpdate
         : null}
     </View>
   );
+}
+
+/** 按插图 id 找插图及其 bbox。 */
+function findIll(questions: Question[], iid: number): Illustration | null {
+  for (const q of questions) {
+    const ill = (q.illustrations || []).find((x) => x.id === iid);
+    if (ill) return ill;
+  }
+  return null;
 }
 
 /** 单个题目框：点击选中（无移动时）、拖动调整边界。 */
@@ -235,19 +344,27 @@ function TouchableBox({
   );
 }
 
-/** 插图框（虚线）：点击选中所属题目。 */
+/** 插图框（虚线）：点击选中所属题目；editable 时可拖动移动 + 八向手柄缩放。 */
 function IllBox({
   pid,
+  ill,
   bbox,
   selected,
+  editable,
   movedRef,
+  panHandlers,
   onSelect,
+  children,
 }: {
   pid: number;
+  ill: Illustration;
   bbox: BBox;
   selected: boolean;
+  editable: boolean;
   movedRef: { current: boolean };
+  panHandlers?: object;
   onSelect: (id: number) => void;
+  children?: React.ReactNode;
 }) {
   const startY = useRef(0);
   return (
@@ -263,8 +380,10 @@ function IllBox({
       onTouchEnd={() => {
         if (!movedRef.current) onSelect(pid);
       }}
+      {...panHandlers}
     >
-      <Text style={styles.illLabel}>插图</Text>
+      <Text style={styles.illLabel}>{ill.type || '插图'}</Text>
+      {children}
     </View>
   );
 }
@@ -331,6 +450,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 2,
     borderColor: '#165DFF',
+  },
+  // 插图框手柄：紫色描边与插图框一致
+  illHandle: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    marginLeft: -8,
+    marginTop: -8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#722ed1',
   },
   illbox: {
     borderWidth: 1.5,

@@ -35,16 +35,16 @@
   <view class="card">
     <view class="card-title title-row">
       <text>试卷原图与插图框</text>
-      <text class="count muted">{{illCount}} 个插图框</text>
+      <view class="ill-preview-btn" bindtap="openIllPreview">预览 / 调整插图</view>
     </view>
-    <view class="tip muted">点选虚线插图框后，拖动框体或八向手柄可调整插图区域，松手自动保存。</view>
+    <view class="tip muted">页面内仅展示插图位置信息；点击「预览 / 调整插图」后可拖动框体或八向手柄调整插图区域，松手自动保存。</view>
     <bbox-editor
       imageUrl="{{exam.imageUrl}}"
       questions="{{exam.questions}}"
       selectedId="{{selectedId}}"
       onlyIllustrations="{{true}}"
+      editable="{{false}}"
       bind:select="onSelect"
-      bind:updatebbox="onUpdateBbox"
       bind:updateillbbox="onUpdateIllBbox"
     />
   </view>
@@ -103,6 +103,27 @@
       <button class="btn-primary dlg-btn" hover-class="none" loading="{{saving}}" bindtap="saveEdit">保存</button>
     </view>
   </view>
+</view>
+
+<!-- 插图预览与调整：全屏浮层，大图上直接拖动框体/手柄，松手自动保存 -->
+<view wx:if="{{illPreviewVisible}}" class="ill-preview">
+  <view class="ill-preview-bar">
+    <text class="ill-preview-title">预览与调整插图</text>
+    <view class="ill-preview-close" bindtap="closeIllPreview">完成</view>
+  </view>
+  <scroll-view scroll-y class="ill-preview-body">
+    <view class="ill-preview-inner">
+      <bbox-editor
+        imageUrl="{{exam.imageUrl}}"
+        questions="{{exam.questions}}"
+        selectedId="{{selectedId}}"
+        onlyIllustrations="{{true}}"
+        editable="{{true}}"
+        bind:select="onSelect"
+        bind:updateillbbox="onUpdateIllBbox"
+      />
+    </view>
+  </scroll-view>
 </view>
 
 <!-- 重新识别弹窗 -->

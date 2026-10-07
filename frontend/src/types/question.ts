@@ -40,6 +40,8 @@ export interface Question {
   bboxSource: "ai" | "manual";
   confidence?: number;
   status: QuestionStatus;
+  /** 最近一次 AI 分析（后端随分析持久化；与错题库的 analysis 相互独立） */
+  lastAnalysis?: AnalysisResult | null;
   illustrations: Illustration[];
 }
 
@@ -51,6 +53,8 @@ export interface WrongQuestionCreate {
   analysis: string;
   knowledgePoints: string[];
   note: string;
+  /** 题目已在错题库时须为 true 才覆盖；否则后端返回 409 */
+  overwrite?: boolean;
 }
 
 export interface WrongQuestion {

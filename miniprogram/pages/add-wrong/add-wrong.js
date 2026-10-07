@@ -1,5 +1,16 @@
 const api = require('../../utils/api');
 const { SUBJECT_OPTIONS } = require('../../utils/format');
+// 裸 LaTeX（\dfrac{3}{10} 这类没包 $ 的公式源码）渲染前自动补 $...$
+const { ensureMath } = require('../../utils/markdown');
+
+// correctAnswer 的所有写入点都要同步刷新 correctAnswerView（预览渲染用），
+// 原始 correctAnswer 保留给编辑框与保存
+function withAnswerView(patch) {
+  if (patch.correctAnswer !== undefined) {
+    patch.correctAnswerView = ensureMath(patch.correctAnswer);
+  }
+  return patch;
+}
 
 // AI 分析结果归一化。新接口返回结构化 JSON（subject/answer/analysis/knowledgePoints），
 // 旧接口返回「科目：… 正确答案：… AI分析：…」纯文本，两种都要能读，
@@ -49,6 +60,7 @@ Page({
     subjectIndex: 0,
     questionNo: '',
     correctAnswer: '',
+    correctAnswerView: '',
     analysis: '',
     note: '',
     analyzing: false,
@@ -74,7 +86,16 @@ Page({
         if (!q) return;
         const patch = { questionNo: q.questionNo || '' };
         if (q.subject) patch.subjectIndex = Math.max(0, SUBJECT_OPTIONS.indexOf(q.subject));
-        this.setData(patch);
+        // 该题分析过但还没入库时，回显最近一次 AI 分析结果（后端持久化）
+        const last = q.lastAnalysis;
+        if (last && (last.answer || last.analysis)) {
+          patch.correctAnswer = last.answer || '';
+          patch.analysis = last.analysis || '';
+          if (last.subject && SUBJECT_OPTIONS.indexOf(last.subject) >= 0) {
+            patch.subjectIndex = SUBJECT_OPTIONS.indexOf(last.subject);
+          }
+        }
+        this.setData(withAnswerView(patch));
         wx.setNavigationBarTitle({ title: `加入错题库：第 ${q.questionNo || ''} 题` });
       })
       .catch(() => {});
@@ -136,7 +157,7 @@ Page({
   },
 
   onCorrect(e) {
-    this.setData({ correctAnswer: e.detail.value });
+    this.setData(withAnswerView({ correctAnswer: e.detail.value }));
   },
 
   onNote(e) {
@@ -150,7 +171,7 @@ Page({
       .analyzeQuestion(this.data.questionId)
       .then((res) => {
         const parsed = normalizeAnalysis(res);
-        const patch = { correctAnswer: parsed.correct, analysis: parsed.analysis };
+        const patch = withAnswerView({ correctAnswer: parsed.correct, analysis: parsed.analysis });
         if (parsed.subject) {
           const i = SUBJECT_OPTIONS.indexOf(parsed.subject);
           if (i >= 0) patch.subjectIndex = i;
@@ -168,7 +189,8 @@ Page({
     wx.navigateBack();
   },
 
-  save() {
+  // overwrite 只认布尔 true：bindtap 会把事件对象当首参传入，不能按真值判断
+  save(overwrite) {
     if (this.data.saving) return;
     const subject = SUBJECT_OPTIONS[this.data.subjectIndex];
     this.setData({ saving: true });
@@ -181,12 +203,27 @@ Page({
         analysis: this.data.analysis,
         knowledgePoints: [],
         note: this.data.note,
+        overwrite: overwrite === true,
       })
       .then(() => {
         wx.showToast({ title: '已加入错题库', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 600);
       })
-      .catch((err) => wx.showToast({ title: err.message || '加入失败', icon: 'none' }))
+      .catch((err) => {
+        if (err && err.status === 409) {
+          // 已在错题库：询问是否以本次填写的内容覆盖旧错题
+          wx.showModal({
+            title: '该题已加入错题库',
+            content: '是否以最新的解答覆盖以前的错题？',
+            confirmText: '覆盖',
+            success: (r) => {
+              if (r.confirm) this.save(true);
+            },
+          });
+        } else {
+          wx.showToast({ title: err.message || '加入失败', icon: 'none' });
+        }
+      })
       .then(() => this.setData({ saving: false }));
   },
 });
