@@ -1,7 +1,7 @@
 // 错题库 Tab：科目筛选 + 错题列表（分页）+ 做对/做错打卡 + 置顶/置底/删除。
 // 对齐小程序 pages/bank。
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -12,13 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
+import { IllustrationImage } from '@/components/IllustrationImage';
+import { illustrationUris } from '@/utils/illustrations';
 import { Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   deleteWrongQuestion,
-  illustrationImageUrl,
   listWrongQuestions,
   recordWrongResult,
   sortWrongQuestion,
@@ -210,14 +210,12 @@ export default function BankScreen() {
               <MdRender content={item.questionText || '—'} />
             </View>
 
-            {(item.illustrations || []).length > 0 ? (
+            {illustrationUris(item).length > 0 ? (
               <View style={styles.ills}>
-                {item.illustrations.map((ill) => (
-                  <Image
-                    key={ill.id}
-                    source={{ uri: illustrationImageUrl(ill.id) }}
-                    style={styles.illImg}
-                    contentFit="contain"
+                {illustrationUris(item).map((uri) => (
+                  <IllustrationImage
+                    key={uri}
+                    uri={uri}
                   />
                 ))}
               </View>

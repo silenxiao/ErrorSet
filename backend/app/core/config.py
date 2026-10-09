@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 项目根目录的 .env（cwd 无论在哪都能读到；backend/.env 可作本地覆盖）
+# __file__ = backend/app/core/config.py -> parents[0]=core, [1]=app, [2]=backend, [3]=项目根(ErrorSet)
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 

@@ -1,4 +1,4 @@
-import { EditOutlined } from "@ant-design/icons";
+import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
   Empty,
@@ -11,7 +11,7 @@ import {
   Tag,
   message,
 } from "antd";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQuestion } from "../../api/question";
 import { ApiError } from "../../api/http";
@@ -80,7 +80,7 @@ export default function QuestionList({
 
   return (
     <>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="recognition-question-list">
         {roots.reduce<ReactNode[]>((acc, root) => renderQuestion(root, 0, acc), [])}
       </div>
 
@@ -129,46 +129,36 @@ function QuestionItem({
 
   return (
     <div
-      onClick={() => {
-        onSelect(question.id);
-        // 二次识别完成后，点击题目打开编辑浮窗
-        if (question.status === "completed") {
-          onEdit(question);
+      className={`recognition-question${selectedId === question.id ? " is-selected" : ""}`}
+      role="group"
+      aria-label={`第 ${question.questionNo} 题`}
+      tabIndex={0}
+      onClick={() => onSelect(question.id)}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onSelect(question.id);
         }
       }}
-      style={{
-        marginLeft: depth * 24,
-        padding: "8px 12px",
-        border: `1px solid ${selectedId === question.id ? "var(--primary)" : "var(--divider)"}`,
-        borderRadius: 8,
-        cursor: "pointer",
-        background: selectedId === question.id ? "var(--primary-light)" : "#fff",
-        transition: "border-color 0.2s, background 0.2s",
-      }}
+      style={{ "--question-depth": Math.min(depth, 3) } as CSSProperties}
     >
-      <Space size={8} wrap style={{ marginBottom: 4 }}>
+      <div className="recognition-question-heading">
         <strong>第 {question.questionNo} 题</strong>
-        <Tag color={status.color}>{status.text}</Tag>
-        {question.bboxSource === "manual" && <Tag>已手动调整</Tag>}
-        {suspicious && <Tag color="warning">可疑</Tag>}
-        {question.illustrations.length > 0 && (
-          <Tag color="purple">含插图 ×{question.illustrations.length}</Tag>
-        )}
-      </Space>
-      <div style={{ whiteSpace: "pre-wrap" }}>{renderMathText(question.text)}</div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 8,
-          flexWrap: "wrap",
-        }}
-      >
-        <Space size={8}>
+        <Space size={[4, 4]} wrap>
+          <Tag color={status.color}>{status.text}</Tag>
+          {question.bboxSource === "manual" && <Tag>已手动调整</Tag>}
+          {suspicious && <Tag color="warning">可疑</Tag>}
+          {question.illustrations.length > 0 && (
+            <Tag color="purple">含插图 ×{question.illustrations.length}</Tag>
+          )}
+        </Space>
+      </div>
+      <div className="recognition-question-text">{renderMathText(question.text)}</div>
+      <div className="recognition-question-actions">
+        <Space size={[8, 8]} wrap>
           <Button
             size="small"
+            icon={<PlusOutlined />}
             onClick={(e) => {
               e.stopPropagation();
               onAddWrong(question, question.subject ?? "");
@@ -188,11 +178,20 @@ function QuestionItem({
             </Button>
           )}
         </Space>
-        <span style={{ color: "var(--text-3)", whiteSpace: "nowrap" }}>
-          {question.status === "completed"
-            ? "单击可编辑试题"
-            : "二次识别后可编辑试题"}
-        </span>
+        {question.status === "completed" ? (
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect(question.id);
+              onEdit(question);
+            }}
+          >
+            编辑题目
+          </Button>
+        ) : <span className="recognition-question-hint">二次识别后可编辑</span>}
       </div>
     </div>
   );

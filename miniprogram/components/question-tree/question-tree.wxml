@@ -5,18 +5,19 @@
     wx:for="{{items}}"
     wx:key="id"
     class="qitem {{item.selected ? 'sel' : ''}}"
-    style="margin-left: {{item.depth * 28}}rpx;"
+    style="margin-left: {{item.indent}}rpx;"
     data-id="{{item.id}}"
     bindtap="onSelect"
   >
-    <view class="qbadge {{item.selected ? 'sel' : ''}}">{{item.no}}</view>
-
     <view class="qbody">
+      <view class="qheading">
+      <view class="qnumber">第 {{item.no}} 题</view>
       <view class="qhead">
-        <text class="tag" style="background:{{item.statusColor}}1a;color:{{item.statusColor}};">{{item.statusText}}</text>
+        <text class="tag" style="background:{{item.statusColor}}1a;color:{{item.statusColor}};border-color:{{item.statusColor}};">{{item.statusText}}</text>
         <text wx:if="{{item.suspicious}}" class="tag" style="background:rgba(255,125,0,0.1);color:#FF7D00;">可疑</text>
         <text wx:if="{{item.manual}}" class="tag" style="background:#8c8c8c1a;color:#666;">已手动调整</text>
         <text wx:if="{{item.illCount > 0}}" class="tag" style="background:#722ed11a;color:#722ed1;">含插图 ×{{item.illCount}}</text>
+      </view>
       </view>
 
       <view class="qtext">
@@ -25,10 +26,11 @@
 
       <view class="qactions" catchtap="noop">
         <view class="qacts-l">
-          <view class="act-btn primary" data-id="{{item.id}}" catchtap="onAddWrong">加入错题库</view>
+          <view class="act-btn primary" data-id="{{item.id}}" catchtap="onAddWrong"><text class="plus-icon">＋</text>加入错题库</view>
           <view wx:if="{{item.illCount > 0}}" class="act-btn" data-id="{{item.id}}" catchtap="onReset">重置插图位置</view>
         </view>
-        <text class="edit-hint">{{item.canEdit ? '单击可编辑试题' : '二次识别后可编辑试题'}}</text>
+        <view wx:if="{{item.canEdit}}" class="edit-btn" data-id="{{item.id}}" catchtap="onSelect"><view class="edit-icon"></view>编辑题目</view>
+        <text wx:else class="edit-hint">二次识别后可编辑</text>
       </view>
     </view>
   </view>

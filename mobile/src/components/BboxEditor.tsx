@@ -4,7 +4,7 @@
 // onlyIllustrations 时隐藏题目框只显示插图框；editable=false 时纯展示
 // （点击仅选中，不可拖动），编辑在预览弹窗内进行。
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PanResponder,
   StyleSheet,
@@ -45,6 +45,7 @@ interface Props {
   imageUrl: string;
   questions: Question[];
   selectedId: number | null;
+  selectedIllustrationId?: number | null;
   /** true 时隐藏题目框，只显示插图框 */
   onlyIllustrations?: boolean;
   /** false 时纯展示（不可拖动/缩放）；编辑在预览弹窗内进行 */
@@ -53,31 +54,40 @@ interface Props {
   onUpdateBbox: (id: number, bbox: BBox) => void;
   /** 插图框拖拽结束（editable 时）；id 为插图 id */
   onUpdateIllBbox?: (id: number, bbox: BBox) => void;
+  onInteractionChange?: (active: boolean) => void;
+  onSelectIllustration?: (id: number) => void;
 }
 
 export function BboxEditor({
   imageUrl,
   questions,
   selectedId,
+  selectedIllustrationId,
   onlyIllustrations = false,
   editable = true,
   onSelect,
   onUpdateBbox,
   onUpdateIllBbox,
+  onInteractionChange,
+  onSelectIllustration,
 }: Props) {
   const [aspect, setAspect] = useState<number | null>(null);
   const [previews, setPreviews] = useState<Record<number, BBox>>({});
   // 插图框拖拽预览（key: 插图 id）
   const [illPreviews, setIllPreviews] = useState<Record<number, BBox>>({});
+  const [selectedIllId, setSelectedIllId] = useState<number | null>(null);
+  const activeSelectedIllId = selectedIllustrationId ?? selectedIllId;
 
   const questionsRef = useRef(questions);
-  questionsRef.current = questions;
   const previewsRef = useRef(previews);
-  previewsRef.current = previews;
   const illPreviewsRef = useRef(illPreviews);
-  illPreviewsRef.current = illPreviews;
-  const cbRef = useRef({ onSelect, onUpdateBbox, onUpdateIllBbox });
-  cbRef.current = { onSelect, onUpdateBbox, onUpdateIllBbox };
+  const cbRef = useRef({ onSelect, onUpdateBbox, onUpdateIllBbox, onInteractionChange, onSelectIllustration });
+  useEffect(() => {
+    questionsRef.current = questions;
+    previewsRef.current = previews;
+    illPreviewsRef.current = illPreviews;
+    cbRef.current = { onSelect, onUpdateBbox, onUpdateIllBbox, onInteractionChange, onSelectIllustration };
+  }, [questions, previews, illPreviews, onSelect, onUpdateBbox, onUpdateIllBbox, onInteractionChange, onSelectIllustration]);
   const sizeRef = useRef({ w: 0, h: 0 });
   const dragRef = useRef<{ qid: number; mode: string; start: BBox; x0: number; y0: number } | null>(null);
   const illDragRef = useRef<{ iid: number; mode: string; start: BBox; x0: number; y0: number } | null>(null);
@@ -130,15 +140,19 @@ export function BboxEditor({
       onStartShouldSetPanResponder: () => immediate,
       onMoveShouldSetPanResponder: (_e: GestureResponderEvent, g: PanResponderGestureState) =>
         Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
-      onPanResponderGrant: (_e: GestureResponderEvent, g: PanResponderGestureState) => {
+      onPanResponderGrant: (e: GestureResponderEvent) => {
         const found = findIll(questionsRef.current, iid);
         if (!found) return;
+        movedRef.current = false;
+        setSelectedIllId(iid);
+        cbRef.current.onSelectIllustration?.(iid);
+        cbRef.current.onInteractionChange?.(true);
         illDragRef.current = {
           iid,
           mode,
           start: [...found.bbox] as BBox,
-          x0: g.moveX,
-          y0: g.moveY,
+          x0: e.nativeEvent.pageX,
+          y0: e.nativeEvent.pageY,
         };
       },
       onPanResponderMove: (_e: GestureResponderEvent, g: PanResponderGestureState) => {
@@ -149,49 +163,60 @@ export function BboxEditor({
         const dx = ((g.moveX - d.x0) / w) * 1000;
         const dy = ((g.moveY - d.y0) / h) * 1000;
         const next = applyDrag(d.start, dx, dy, d.mode) as BBox;
+        illPreviewsRef.current = { ...illPreviewsRef.current, [iid]: next };
         setIllPreviews((p) => ({ ...p, [iid]: next }));
       },
       onPanResponderRelease: () => {
         const d = illDragRef.current;
         illDragRef.current = null;
+        cbRef.current.onInteractionChange?.(false);
         if (!d) return;
         const finalB = illPreviewsRef.current[d.iid] || d.start;
         const changed = finalB.some((v, i) => v !== d.start[i]);
-        setIllPreviews((p) => {
-          const c = { ...p };
-          delete c[d.iid];
-          return c;
-        });
+        const remaining = { ...illPreviewsRef.current };
+        delete remaining[d.iid];
+        illPreviewsRef.current = remaining;
+        setIllPreviews(remaining);
         if (changed) cbRef.current.onUpdateIllBbox?.(d.iid, finalB);
       },
+      onPanResponderTerminationRequest: () => false,
       onPanResponderTerminate: () => {
+        const d = illDragRef.current;
         illDragRef.current = null;
+        cbRef.current.onInteractionChange?.(false);
+        if (d) setIllPreviews((p) => {
+          const next = { ...p };
+          delete next[d.iid];
+          illPreviewsRef.current = next;
+          return next;
+        });
       },
     });
   }, []);
 
-  // 缓存 PanResponder 实例，避免每帧拖拽重建
-  const pansRef = useRef(new Map<string, ReturnType<typeof PanResponder.create>>());
+  // 仅在题目数据变化时构造手势，拖拽预览更新不重建 responder。
+  const pans = useMemo(() => {
+    const result = new Map<string, ReturnType<typeof PanResponder.create>>();
+    // 工厂只创建事件回调；其中的 ref.current 在触摸事件发生时才读取。
+    // eslint-disable-next-line react-hooks/refs
+    questions.forEach((q) => {
+      result.set(`${q.id}:move:0`, makePan(q.id, 'move', false));
+      HANDLES.forEach((h) => result.set(`${q.id}:${h.mode}:1`, makePan(q.id, h.mode, true)));
+      (q.illustrations || []).forEach((ill) => {
+        result.set(`ill-${ill.id}:move:1`, makeIllPan(ill.id, 'move', true));
+        HANDLES.forEach((h) => result.set(`ill-${ill.id}:${h.mode}:1`, makeIllPan(ill.id, h.mode, true)));
+      });
+    });
+    return result;
+  }, [questions, makePan, makeIllPan]);
   const panFor = (qid: number, mode: string, immediate: boolean) => {
     const key = `${qid}:${mode}:${immediate ? 1 : 0}`;
-    let p = pansRef.current.get(key);
-    if (!p) {
-      p = makePan(qid, mode, immediate);
-      pansRef.current.set(key, p);
-    }
-    return p;
+    return pans.get(key)!;
   };
   const illPanFor = (iid: number, mode: string, immediate: boolean) => {
     const key = `ill-${iid}:${mode}:${immediate ? 1 : 0}`;
-    let p = pansRef.current.get(key);
-    if (!p) {
-      p = makeIllPan(iid, mode, immediate);
-      pansRef.current.set(key, p);
-    }
-    return p;
+    return pans.get(key)!;
   };
-
-  const containerH = aspect ? 1 / aspect : 4 / 3;
 
   return (
     <View
@@ -229,7 +254,7 @@ export function BboxEditor({
             const suspicious = q.confidence != null && q.confidence < 0.7;
             const b = previews[q.id] || ((normalizeBBox(q.bbox) || [0, 0, 0, 0]) as BBox);
             return (
-              <View key={q.id}>
+              <View key={q.id} style={StyleSheet.absoluteFill} pointerEvents="box-none">
                 {!onlyIllustrations ? (
                   <TouchableBox
                     qid={q.id}
@@ -254,30 +279,37 @@ export function BboxEditor({
                 ) : null}
 
                 {(q.illustrations || []).map((il) => {
+                  const illSelected = il.id === activeSelectedIllId ||
+                    (selected && !(q.illustrations || []).some((item) => item.id === activeSelectedIllId) && il.id === q.illustrations[0]?.id);
                   const ib =
                     illPreviews[il.id] || ((normalizeBBox(il.bbox) || [0, 0, 0, 0]) as BBox);
                   return (
+                    <View key={`ill-layer-${il.id}`} style={StyleSheet.absoluteFill} pointerEvents="box-none">
                     <IllBox
                       key={`ill-${il.id}`}
                       pid={q.id}
                       ill={il}
                       bbox={ib}
-                      selected={selected}
+                      selected={illSelected}
                       editable={editable}
                       movedRef={movedRef}
-                      panHandlers={editable ? illPanFor(il.id, 'move', false).panHandlers : undefined}
-                      onSelect={onSelect}
-                    >
-                      {editable && selected
+                      panHandlers={editable ? illPanFor(il.id, 'move', true).panHandlers : undefined}
+                      onSelect={(qid) => { setSelectedIllId(il.id); onSelectIllustration?.(il.id); onSelect(qid); }}
+                    />
+                      {editable && illSelected
                         ? HANDLES.map((h) => (
                             <View
                               key={h.mode}
-                              style={[styles.illHandle, { left: `${h.fx}%`, top: `${h.fy}%` }]}
+                              collapsable={false}
+                              style={[styles.illHandle, {
+                                left: `${(ib[0] + (ib[2] - ib[0]) * h.fx / 100) / 10}%`,
+                                top: `${(ib[1] + (ib[3] - ib[1]) * h.fy / 100) / 10}%`,
+                              }]}
                               {...illPanFor(il.id, h.mode, true).panHandlers}
-                            />
+                            ><View pointerEvents="none" style={styles.illHandleDot} /></View>
                           ))
                         : null}
-                    </IllBox>
+                    </View>
                   );
                 })}
               </View>
@@ -382,7 +414,6 @@ function IllBox({
       }}
       {...panHandlers}
     >
-      <Text style={styles.illLabel}>{ill.type || '插图'}</Text>
       {children}
     </View>
   );
@@ -454,10 +485,17 @@ const styles = StyleSheet.create({
   // 插图框手柄：紫色描边与插图框一致
   illHandle: {
     position: 'absolute',
+    width: 32,
+    height: 32,
+    marginLeft: -16,
+    marginTop: -16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+  },
+  illHandleDot: {
     width: 16,
     height: 16,
-    marginLeft: -8,
-    marginTop: -8,
     borderRadius: 8,
     backgroundColor: '#fff',
     borderWidth: 2,

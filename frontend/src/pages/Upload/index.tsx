@@ -121,18 +121,15 @@ export default function UploadPage() {
         />
       </Card>
       <Modal
-        title={
-          exams.find((exam) => exam.id === openedExamId)?.name ??
-          (openedExamId !== null ? `试卷 #${openedExamId}` : "")
-        }
+        className="exam-detail-modal"
+        aria-label="试卷详情"
         open={openedExamId !== null}
         onCancel={() => {
           setOpenedExamId(null);
           void reload();
         }}
         footer={null}
-        width="min(1280px, 92vw)"
-        style={{ top: 40 }}
+        width="min(1360px, calc(100vw - 24px))"
         destroyOnClose
       >
         {/* 高度与滚动由 .exam-modal-body 控制（窄屏自动改为整体滚动） */}

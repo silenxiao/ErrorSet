@@ -13,7 +13,7 @@
       4. NDK / build-tools 版本按 Expo SDK 57 模板实际要求（27.1.12297006、36.0.0）
 
 .PARAMETER Arch
-    目标 ABI，默认 arm64-v8a（现代真机）。多架构可传 "arm64-v8a,armeabi-v7a"，构建更慢、包更大。
+    目标 ABI，默认 arm64-v8a,x86_64（真机及 64 位模拟器）。可传单个架构以减小包体。
 
 .PARAMETER Variant
     Release（默认）或 Debug。两者都用 Android Debug 证书签名，均可直接安装；
@@ -41,7 +41,7 @@
 
 .EXAMPLE
     .\build-android.cmd
-    按默认设置打包 release arm64 APK。
+    按默认设置打包 release arm64 + x86_64 APK。
 
 .EXAMPLE
     .\build-android.cmd -BackendBaseUrl http://192.168.1.50:8000 -SkipPrebuild
@@ -50,7 +50,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$Arch = 'arm64-v8a',
+    [string]$Arch = 'arm64-v8a,x86_64',
     [ValidateSet('Release', 'Debug')]
     [string]$Variant = 'Release',
     [string]$BackendBaseUrl = '',
@@ -66,6 +66,16 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if (-not [string]::IsNullOrWhiteSpace($BackendBaseUrl)) {
+    $serverUri = $null
+    if (-not [Uri]::TryCreate($BackendBaseUrl.Trim(), [UriKind]::Absolute, [ref]$serverUri) -or
+        $serverUri.Scheme -notin @('http', 'https') -or -not $serverUri.Host -or
+        $serverUri.UserInfo -or $serverUri.Query -or $serverUri.Fragment -or $serverUri.AbsolutePath -ne '/') {
+        throw 'BackendBaseUrl must be an HTTP(S) origin without /api/v1, query, or credentials.'
+    }
+    $BackendBaseUrl = $serverUri.GetLeftPart([UriPartial]::Authority)
+}
 
 function Write-Step([string]$Text) { Write-Host ''; Write-Host "=== $Text ===" -ForegroundColor Cyan }
 function Write-Ok([string]$Text)   { Write-Host "  [OK]   $Text" -ForegroundColor Green }
@@ -147,7 +157,15 @@ if (-not [string]::IsNullOrWhiteSpace($BackendBaseUrl)) {
         '# 恢复 React Native 内置 fetch（见上方脚本注释），勿删',
         'EXPO_PUBLIC_USE_RN_FETCH=1'
     ) -join [Environment]::NewLine
-    Set-Content -LiteralPath $envFile -Value $content -Encoding UTF8
+    # 保留其他本地配置，使用无 BOM UTF-8，避免 dotenv 将 BOM 后的注释误解析为变量。
+    $otherLines = @()
+    if (Test-Path -LiteralPath $envFile) {
+        $otherLines = @(Get-Content -LiteralPath $envFile | Where-Object {
+            $_ -match '^\s*[^#\s][^=]*=' -and $_ -notmatch '^\s*EXPO_PUBLIC_(BACKEND_BASE|USE_RN_FETCH)\s*='
+        })
+    }
+    if ($otherLines.Count) { $content += [Environment]::NewLine + ($otherLines -join [Environment]::NewLine) }
+    [IO.File]::WriteAllText($envFile, $content + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
     Write-Ok "已写入 $envFile -> $BackendBaseUrl （含 EXPO_PUBLIC_USE_RN_FETCH=1）"
 }
 

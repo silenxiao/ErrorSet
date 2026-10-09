@@ -28,6 +28,7 @@ export default function ImageViewer({
   const [hovered, setHovered] = useState(false);
   // 预览弹窗内可隐藏插图框，查看干净原图
   const [showBoxes, setShowBoxes] = useState(true);
+  const [imageRatio, setImageRatio] = useState<number | null>(null);
 
   if (!imageUrl) {
     return (
@@ -60,6 +61,10 @@ export default function ImageViewer({
       <img
         src={imageUrl}
         alt="试卷原图"
+        onLoad={(event) => {
+          const image = event.currentTarget;
+          if (image.naturalHeight) setImageRatio(image.naturalWidth / image.naturalHeight);
+        }}
         style={{ display: "block", width: "100%", height: "auto" }}
       />
       {/* 悬停遮罩：纯视觉层（pointer-events: none），层级在插图框之下 */}
@@ -107,7 +112,9 @@ export default function ImageViewer({
         open={previewOpen}
         onCancel={() => setPreviewOpen(false)}
         footer={null}
-        width="90vw"
+        width={imageRatio
+          ? `min(1000px, calc(100vw - 32px), max(360px, calc(${74 * imageRatio}vh + 48px)))`
+          : "min(900px, calc(100vw - 32px))"}
         centered
         styles={{ body: { textAlign: "center" } }}
         destroyOnClose

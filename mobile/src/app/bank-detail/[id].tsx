@@ -3,18 +3,17 @@
 
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Image } from 'expo-image';
+import { IllustrationImage } from '@/components/IllustrationImage';
+import { illustrationUris as resolveIllustrationUris } from '@/utils/illustrations';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   deleteWrongQuestion,
   getQuestion,
   getWrongQuestion,
-  illustrationImageUrl,
   recordWrongResult,
 } from '@/api/question';
 import type { Question, WrongQuestion } from '@/types/question';
-import { absUrl } from '@/api/config';
 import { MdRender } from '@/components/MdRender';
 import {
   Card,
@@ -49,7 +48,7 @@ export default function BankDetailPage() {
           // §28：未保存原文快照的旧记录才回退实时题目；
           // 入库快照齐全时无需再拉一次注定用不上的请求
           setQuestionMissing(false);
-          if (!w.questionText && w.questionId) {
+          if (w.questionId && (!w.questionText || (!(w.illustrationImages || []).length && !(w.illustrations || []).length))) {
             getQuestion(w.questionId)
               .then(setQuestion)
               .catch(() => setQuestionMissing(true));
@@ -91,11 +90,10 @@ export default function BankDetailPage() {
   // §28：原文快照优先——试卷/题目删除后原题仍完整可读；旧记录快照为空才用实时题目
   const originalText = detail?.questionText || question?.text || '';
   // 插图快照优先（入库时裁剪的静态 /files 图，无需鉴权），旧记录回退动态裁剪接口
-  const snapshotIlls = detail?.illustrationImages ?? [];
-  const illustrationUris: string[] =
-    snapshotIlls.length > 0
-      ? snapshotIlls.map((src) => absUrl(src)).filter((url): url is string => !!url)
-      : (question?.illustrations || []).map((ill) => illustrationImageUrl(ill.id));
+  const illustrationUris = resolveIllustrationUris({
+    illustrationImages: detail?.illustrationImages,
+    illustrations: detail?.illustrations?.length ? detail.illustrations : question?.illustrations,
+  });
   // 原文与插图都无从取得时才提示（对应小程序 / Web 的同名分支）
   const showMissing = !originalText && questionMissing;
 
@@ -113,17 +111,15 @@ export default function BankDetailPage() {
         <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
           <Card>
             <SectionTitle>题目原文</SectionTitle>
-            {originalText ? (
+            {originalText || illustrationUris.length ? (
               <View>
                 <MdRender content={originalText} />
                 {illustrationUris.length > 0 ? (
                   <View style={styles.ills}>
                     {illustrationUris.map((uri) => (
-                      <Image
+                      <IllustrationImage
                         key={uri}
-                        source={{ uri }}
-                        style={styles.illImg}
-                        contentFit="contain"
+                        uri={uri}
                       />
                     ))}
                   </View>

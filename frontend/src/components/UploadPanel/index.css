@@ -1,0 +1,75 @@
+.upload-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+
+.upload-panel-heading {
+  margin-bottom: 16px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.upload-panel-description {
+  margin: -8px 0 16px;
+  color: #86909c;
+  font-size: 14px;
+}
+
+.upload-panel-file .ant-upload.ant-upload-drag {
+  min-height: 220px;
+  background: #f7f9ff;
+  border-color: #d5dfff;
+}
+
+.upload-panel-file .ant-upload-drag .ant-upload-btn {
+  padding: 32px 20px;
+}
+
+.upload-panel-fields {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr);
+  gap: 16px;
+}
+
+.upload-panel-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.upload-panel-options .ant-radio-wrapper {
+  margin: 0;
+  padding: 12px;
+  align-items: flex-start;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+}
+
+.upload-panel-options .ant-radio-wrapper-checked {
+  border-color: #165dff;
+  background: #f0f5ff;
+}
+
+.upload-panel-options small {
+  display: block;
+  margin-top: 4px;
+  color: #86909c;
+  font-size: 12px;
+}
+
+.upload-panel-actions {
+  margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .upload-panel { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .upload-panel-file .ant-upload.ant-upload-drag { min-height: 180px; }
+}
+
+@media (max-width: 480px) {
+  .upload-panel-fields, .upload-panel-options { grid-template-columns: minmax(0, 1fr); }
+}

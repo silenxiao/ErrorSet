@@ -122,16 +122,6 @@ export default function IllustrationBox({
         }}
         onPointerDown={startDrag("move")}
       />
-      <text
-        x={x1 + 4}
-        y={Math.max(14, y1 - 4)}
-        fill={color}
-        fontSize={20}
-        style={{ userSelect: "none", pointerEvents: "none" }}
-      >
-        {illustration.type}
-        {manual ? "（已调整）" : ""}
-      </text>
       {editable &&
         parentSelected &&
         HANDLES.map((h) => (

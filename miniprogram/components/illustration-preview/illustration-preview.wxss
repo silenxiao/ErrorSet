@@ -1,0 +1,7 @@
+.preview-mask { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
+.preview-dialog { background: #fff; border-radius: 24rpx; overflow: hidden; }
+.preview-header { display: flex; align-items: center; justify-content: space-between; padding: 24rpx; font-size: 30rpx; font-weight: 600; }
+.close { color: #165dff; font-size: 26rpx; font-weight: 400; padding: 8rpx; }
+.preview-area { overflow: hidden; }
+.preview-image { width: 100%; height: 100%; }
+.preview-hint { text-align: center; padding: 20rpx; color: #86909c; font-size: 24rpx; }

@@ -10,7 +10,7 @@
 const FALLBACK_BASE = 'http://127.0.0.1:8000';
 
 export const BACKEND_BASE: string =
-  process.env.EXPO_PUBLIC_BACKEND_BASE || FALLBACK_BASE;
+  (process.env.EXPO_PUBLIC_BACKEND_BASE || FALLBACK_BASE).replace(/\/+$/, '');
 
 /** 相对路径（/files/... 等）拼接为完整 URL。 */
 export function absUrl(p: string | null | undefined): string | null {

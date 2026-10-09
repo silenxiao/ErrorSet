@@ -10,6 +10,6 @@
 // 注意：若后端部署在其他机器，请改为该机器的局域网 IP，例如 http://192.168.1.100:8000。
 // const BACKEND_BASE = 'http://106.55.168.134:8081';
 //const BACKEND_BASE = 'https://cuoti-ai.cn';
-const BACKEND_BASE = "http://127.0.0.1:8000";
+const BACKEND_BASE = "http://192.168.0.20:8000";
 
 module.exports = { BACKEND_BASE };

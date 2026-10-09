@@ -6,7 +6,10 @@ const POLLING = ['uploaded', 'global_processing', 'local_processing'];
 const POLL_INTERVAL = 1500;
 
 Page({
+  onPreviewIllustration(e) { this.setData({ illustrationPreviewUrl: e.currentTarget.dataset.url }); },
+  closeIllustrationPreview() { this.setData({ illustrationPreviewUrl: '' }); },
   data: {
+    illustrationPreviewUrl: '',
     id: null,
     exam: null,
     error: null,
@@ -182,7 +185,7 @@ Page({
           })
         );
         this.setData({ exam });
-        wx.showToast({ title: '插图位置已保存', icon: 'success' });
+        //wx.showToast({ title: '插图位置已保存', icon: 'success' });
       })
       .catch((err) => wx.showToast({ title: err.message || '保存失败', icon: 'none' }))
       .then(() => this.setData({ saving: false }));
@@ -306,5 +309,5 @@ Page({
 
   formatDate,
 
-  noop() {},
+  noop() { },
 });

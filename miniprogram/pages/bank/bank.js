@@ -5,7 +5,10 @@ const { illStyle } = require('../../utils/device');
 const PAGE_SIZE = 10;
 
 Page({
+  onPreviewIllustration(e) { this.setData({ illustrationPreviewUrl: e.currentTarget.dataset.url }); },
+  closeIllustrationPreview() { this.setData({ illustrationPreviewUrl: '' }); },
   data: {
+    illustrationPreviewUrl: '',
     rows: [],
     visibleRows: [],
     totalAll: 0,

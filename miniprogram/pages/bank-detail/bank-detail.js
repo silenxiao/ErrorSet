@@ -2,7 +2,10 @@ const api = require('../../utils/api');
 const { illStyle } = require('../../utils/device');
 
 Page({
+  onPreviewIllustration(e) { this.setData({ illustrationPreviewUrl: e.currentTarget.dataset.url }); },
+  closeIllustrationPreview() { this.setData({ illustrationPreviewUrl: '' }); },
   data: {
+    illustrationPreviewUrl: '',
     detail: null,
     question: null,
     loadError: false,

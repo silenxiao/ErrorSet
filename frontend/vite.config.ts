@@ -4,12 +4,13 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true,
     proxy: {
       "/api": "http://127.0.0.1:8000",
       "/files": "http://127.0.0.1:8000",
     },
   },
   test: {
-    include: ["../tests/frontend/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "../tests/frontend/**/*.test.ts"],
   },
 });

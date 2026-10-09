@@ -1,3 +1,4 @@
+<page-meta page-style="{{illustrationPreviewUrl ? 'overflow: hidden;' : ''}}" />
 <view wx:if="{{loadError}}" class="card">
   <view class="muted" style="padding:30rpx 0;">错题不存在或已被删除</view>
 </view>
@@ -12,7 +13,7 @@
     <view wx:if="{{origText}}" class="answer">
       <md-render content="{{origText}}"></md-render>
       <view wx:if="{{origIlls.length > 0}}" class="ills">
-        <image wx:for="{{origIlls}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" mode="aspectFit" style="{{illSizes['q.' + ill.id]}}" data-key="q.{{ill.id}}" bindload="onIllLoad"></image>
+        <image wx:for="{{origIlls}}" wx:for-item="ill" wx:key="id" class="ill-img" src="{{ill.imgUrl}}" data-url="{{ill.imgUrl}}" catchtap="onPreviewIllustration" mode="aspectFit" style="{{illSizes['q.' + ill.id]}}" data-key="q.{{ill.id}}" bindload="onIllLoad"></image>
       </view>
     </view>
     <view wx:elif="{{questionMissing}}" class="answer muted">原题已删除，且该错题未保存原文快照</view>
@@ -45,3 +46,5 @@
   </view>
 </block>
 
+
+<illustration-preview src="{{illustrationPreviewUrl}}" bind:close="closeIllustrationPreview" />

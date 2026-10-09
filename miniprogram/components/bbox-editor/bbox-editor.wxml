@@ -52,9 +52,10 @@
       data-mode="move"
       catchtouchstart="onIllHandleStart"
       catchtouchmove="onTouchMove"
+      catchtouchend="onTouchEnd"
+      catchtouchcancel="onTouchCancel"
       bindtap="onTapIll"
     >
-      <text class="illlabel">{{ill.type}}</text>
       <block wx:if="{{editable && ill.illSelected}}">
         <view
           wx:for="{{handles}}"
@@ -65,6 +66,10 @@
           data-mode="{{h.mode}}"
           data-iid="{{ill.id}}"
           catchtouchstart="onIllHandleStart"
+          catchtouchmove="onTouchMove"
+          catchtouchend="onTouchEnd"
+          catchtouchcancel="onTouchCancel"
+          catchtap="noop"
         ></view>
       </block>
     </view>

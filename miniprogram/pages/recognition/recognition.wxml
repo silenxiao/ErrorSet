@@ -1,5 +1,5 @@
 <!-- 弹窗打开期间锁定页面滚动，防止底层界面跟着滚动（滚动穿透） -->
-<page-meta page-style="{{(editQuestion || rerecogVisible) ? 'overflow: hidden;' : ''}}" />
+<page-meta page-style="{{(editQuestion || rerecogVisible || illPreviewVisible || illustrationPreviewUrl) ? 'overflow: hidden;' : ''}}" />
 
 <view wx:if="{{error}}" class="card">
   <view class="danger" style="padding:20rpx 0;">{{error}}</view>
@@ -24,20 +24,14 @@
         <text class="meta-item">上传于 {{dateText}}</text>
       </view>
 
-      <view class="bar">
-        <button wx:if="{{exam.status === 'awaiting_review'}}" class="btn-primary bar-btn" hover-class="none" loading="{{saving}}" bindtap="confirm">二次识别</button>
-        <button wx:if="{{exam.status === 'failed' || exam.status === 'completed'}}" class="btn-ghost bar-btn" hover-class="none" loading="{{saving}}" bindtap="openRerecog">重新识别</button>
+      <view wx:if="{{polling}}" class="bar">
         <button wx:if="{{polling}}" class="btn-ghost bar-btn" hover-class="none" bindtap="refresh">刷新</button>
       </view>
     </view>
   </view>
 
-  <view class="card">
-    <view class="card-title title-row">
-      <text>试卷原图与插图框</text>
-      <view class="ill-preview-btn" bindtap="openIllPreview">预览 / 调整插图</view>
-    </view>
-    <view class="tip muted">页面内仅展示插图位置信息；点击「预览 / 调整插图」后可拖动框体或八向手柄调整插图区域，松手自动保存。</view>
+  <view class="card image-card">
+    <view bindtap="openIllPreview">
     <bbox-editor
       imageUrl="{{exam.imageUrl}}"
       questions="{{exam.questions}}"
@@ -47,10 +41,19 @@
       bind:select="onSelect"
       bind:updateillbbox="onUpdateIllBbox"
     />
+    </view>
+    <view class="image-hint" bindtap="openIllPreview">点击原图可放大查看、调整插图位置</view>
   </view>
 
-  <view class="card">
-    <view class="card-title">题目列表</view>
+  <view class="card questions-card">
+    <view class="questions-header">
+      <view class="questions-heading">题目列表 <text class="question-count">{{questionCount}}</text></view>
+      <view class="questions-tools">
+        <button wx:if="{{exam.status === 'awaiting_review'}}" class="btn-primary bar-btn" hover-class="none" loading="{{saving}}" bindtap="confirm">二次识别</button>
+        <button wx:if="{{exam.status === 'failed' || exam.status === 'completed'}}" class="btn-ghost bar-btn" hover-class="none" loading="{{saving}}" bindtap="openRerecog"><text class="reload-icon">↻</text>重新识别</button>
+      </view>
+    </view>
+    <view class="questions-content">
     <question-tree
       questions="{{exam.questions}}"
       selectedId="{{selectedId}}"
@@ -59,6 +62,7 @@
       bind:addwrong="onAddWrong"
       bind:reset="onReset"
     />
+    </view>
   </view>
   </view>
 </block>
@@ -89,7 +93,7 @@
           wx:for="{{editIlls}}"
           wx:key="id"
           class="edit-ill"
-          src="{{item.url}}"
+          src="{{item.url}}" data-url="{{item.url}}" catchtap="onPreviewIllustration"
           mode="aspectFit"
           style="{{illSizes['e.' + item.id]}}"
           data-key="e.{{item.id}}"
@@ -105,12 +109,14 @@
   </view>
 </view>
 
-<!-- 插图预览与调整：全屏浮层，大图上直接拖动框体/手柄，松手自动保存 -->
-<view wx:if="{{illPreviewVisible}}" class="ill-preview">
+<!-- 原图浮窗：点击遮罩关闭，窗内操作不冒泡，调整插图后自动保存 -->
+<view wx:if="{{illPreviewVisible}}" class="ill-preview" bindtap="closeIllPreview" catchtouchmove="noop">
+  <view class="ill-preview-dialog" catchtap="noop">
   <view class="ill-preview-bar">
     <text class="ill-preview-title">预览与调整插图</text>
     <view class="ill-preview-close" bindtap="closeIllPreview">完成</view>
   </view>
+  <view class="ill-preview-tip">点击插图框选中，拖动四角或边缘圆点调整大小；拖动框内调整位置，松手自动保存。</view>
   <scroll-view scroll-y class="ill-preview-body">
     <view class="ill-preview-inner">
       <bbox-editor
@@ -124,6 +130,7 @@
       />
     </view>
   </scroll-view>
+  </view>
 </view>
 
 <!-- 重新识别弹窗 -->
@@ -149,3 +156,5 @@
     </view>
   </view>
 </view>
+
+<illustration-preview src="{{illustrationPreviewUrl}}" bind:close="closeIllustrationPreview" />

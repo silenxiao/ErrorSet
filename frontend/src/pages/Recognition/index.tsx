@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DownOutlined, ReloadOutlined, UpOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
 import {
   Alert,
@@ -35,6 +36,7 @@ export default function RecognitionPage({
   const [rerecogOpen, setRerecogOpen] = useState(false);
   const [rerecogIncludeIllus, setRerecogIncludeIllus] = useState(true);
   const [rerecogExtra, setRerecogExtra] = useState("");
+  const [imageCollapsed, setImageCollapsed] = useState(false);
 
   if (error) {
     return <Alert type="error" message={error} showIcon />;
@@ -82,17 +84,32 @@ export default function RecognitionPage({
     }
   };
 
-  // 父级（如"打开试卷"浮窗）有固定高度时，两栏等高填满、各自内部滚动；
-  // 作为路由页面时父级高度自动，退化为原有的整页滚动。
-  const cardBodyStyle = { flex: 1, minHeight: 0, overflowY: "auto" } as const;
   // 布局类 .recognition-split / .recognition-pane 见 index.css（窄屏自动堆叠）
   return (
     <div className="recognition-split">
       <Card
-        title={exam.name || `试卷 #${exam.id}`}
-        extra={<Tag color={label.color}>{label.text}</Tag>}
-        className="recognition-pane"
-        styles={{ header: { flexShrink: 0 }, body: cardBodyStyle }}
+        title={
+          <div className="recognition-heading">
+            <span className="recognition-exam-name" title={exam.name || `试卷 #${exam.id}`}>
+              {exam.name || `试卷 #${exam.id}`}
+            </span>
+            <Tag color={label.color}>{label.text}</Tag>
+          </div>
+        }
+        extra={
+          exam.status !== "failed" &&
+          <Button
+            type="text"
+            size="small"
+            className="recognition-image-toggle"
+            icon={imageCollapsed ? <DownOutlined /> : <UpOutlined />}
+            aria-expanded={!imageCollapsed}
+            onClick={() => setImageCollapsed(!imageCollapsed)}
+          >
+            {imageCollapsed ? "展开原图" : "收起原图"}
+          </Button>
+        }
+        className={`recognition-pane recognition-image-pane${imageCollapsed && exam.status !== "failed" ? " is-collapsed" : ""}`}
       >
         <ImageViewer
           imageUrl={exam.imageUrl}
@@ -101,6 +118,7 @@ export default function RecognitionPage({
           onSelect={setSelectedId}
           onUpdated={() => void refresh()}
         />
+        <p className="recognition-image-hint">点击原图可放大查看、调整插图位置</p>
         {exam.status === "failed" && (
           <Alert
             type="error"
@@ -115,9 +133,8 @@ export default function RecognitionPage({
         )}
       </Card>
       <Card
-        title="题目列表"
-        className="recognition-pane"
-        styles={{ header: { flexShrink: 0 }, body: cardBodyStyle }}
+        title={<div className="recognition-heading">题目列表 <span className="recognition-count">{exam.questions.length}</span></div>}
+        className="recognition-pane recognition-questions-pane"
         extra={
           <Space>
             {canConfirm && (
@@ -126,7 +143,7 @@ export default function RecognitionPage({
               </Button>
             )}
             {(exam.status === "failed" || exam.status === "completed") && (
-              <Button loading={acting} onClick={openRerecognize}>
+              <Button icon={<ReloadOutlined />} loading={acting} onClick={openRerecognize}>
                 重新识别
               </Button>
             )}

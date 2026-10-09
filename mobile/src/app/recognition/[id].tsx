@@ -5,14 +5,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { Image } from 'expo-image';
+import { IllustrationImage } from '@/components/IllustrationImage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { confirmExam, getExam, reRecognizeExam } from '@/api/exam';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
@@ -32,7 +34,6 @@ import { MdRender } from '@/components/MdRender';
 import {
   Btn,
   Card,
-  CardTitle,
   CenterMuted,
   Field,
   Mask,
@@ -51,6 +52,7 @@ const POLLING = ['uploaded', 'global_processing', 'local_processing'];
 const POLL_INTERVAL = 1500;
 
 export default function RecognitionPage() {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
   const examId = Number(id);
   const router = useRouter();
@@ -82,11 +84,20 @@ export default function RecognitionPage() {
   const [editQ, setEditQ] = useState<Question | null>(null);
   // 插图预览与调整弹窗（页面内插图框只读，弹窗内可编辑）
   const [illPreviewVisible, setIllPreviewVisible] = useState(false);
+  const [illDragging, setIllDragging] = useState(false);
+  const [selectedIllId, setSelectedIllId] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const savingRef = useRef(saving);
-  savingRef.current = saving;
+  useEffect(() => { savingRef.current = saving; }, [saving]);
+
+  const stopPolling = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!examId) return;
@@ -98,15 +109,7 @@ export default function RecognitionPage() {
       setError(e instanceof Error ? e.message : String(e));
       stopPolling();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [examId]);
-
-  const stopPolling = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
+  }, [examId, stopPolling]);
 
   useFocusEffect(
     useCallback(() => {
@@ -265,8 +268,8 @@ export default function RecognitionPage() {
 
   const st = exam ? examStatusOf(exam.status) : null;
   const questionCount = exam?.questions?.length ?? 0;
-  const illCount =
-    exam?.questions?.reduce((n, q) => n + (q.illustrations || []).length, 0) ?? 0;
+  const illustrations = exam?.questions.flatMap((q) => q.illustrations || []) || [];
+  const activeIll = illustrations.find((ill) => ill.id === selectedIllId) || illustrations[0];
 
   return (
     <Screen>
@@ -297,17 +300,7 @@ export default function RecognitionPage() {
             </Muted>
 
             <View style={styles.bar}>
-              {exam.status === 'awaiting_review' ? (
-                <Btn loading={saving} onPress={doConfirm}>
-                  二次识别
-                </Btn>
-              ) : null}
-              {exam.status === 'failed' || exam.status === 'completed' ? (
-                <Btn kind="ghost" loading={saving} onPress={openRerecog}>
-                  重新识别
-                </Btn>
-              ) : null}
-              {timerRef.current ? (
+              {POLLING.includes(exam.status) ? (
                 <Btn kind="ghost" onPress={refresh}>
                   刷新
                 </Btn>
@@ -316,10 +309,7 @@ export default function RecognitionPage() {
           </Card>
 
           <Card>
-            <CardTitle extra={<Muted>{illCount} 个插图框</Muted>}>试卷原图与插图框</CardTitle>
-            <Muted style={{ marginBottom: 8 }}>
-              页面内仅展示插图位置信息；点击下方按钮后可拖动框体或八向手柄调整插图区域，松手自动保存。
-            </Muted>
+            <Pressable accessibilityRole="button" accessibilityLabel="放大原图并调整插图" onPress={() => setIllPreviewVisible(true)}>
             <BboxEditor
               imageUrl={exam.imageUrl}
               questions={exam.questions}
@@ -329,13 +319,24 @@ export default function RecognitionPage() {
               onSelect={(qid) => onSelect(qid, 'image')}
               onUpdateBbox={onUpdateBbox}
             />
-            <Btn kind="ghost" onPress={() => setIllPreviewVisible(true)}>
-              预览 / 调整插图
-            </Btn>
+            <Muted style={styles.imageHint}>点击原图可放大查看、调整插图位置</Muted>
+            </Pressable>
           </Card>
 
-          <Card>
-            <CardTitle>题目列表</CardTitle>
+          <Card style={styles.questionsCard}>
+            <View style={styles.questionsHeader}>
+              <View style={styles.questionsHeading}>
+                <Text style={styles.questionsTitle}>题目列表</Text>
+                <Text style={styles.questionCount}>{questionCount}</Text>
+              </View>
+              {exam.status === 'awaiting_review' ? (
+                <Btn small loading={saving} onPress={doConfirm}>二次识别</Btn>
+              ) : null}
+              {exam.status === 'failed' || exam.status === 'completed' ? (
+                <Btn small kind="ghost" loading={saving} onPress={openRerecog}>↻ 重新识别</Btn>
+              ) : null}
+            </View>
+            <View style={styles.questionsContent}>
             <QuestionTree
               questions={exam.questions}
               selectedId={selectedId}
@@ -348,22 +349,27 @@ export default function RecognitionPage() {
               }}
               onReset={onReset}
             />
+            </View>
           </Card>
         </ScrollView>
       ) : null}
 
-      {/* 插图预览与调整：全屏弹窗，大图上直接拖动框体/手柄，松手自动保存 */}
+      {/* 居中浮窗：遮罩独立响应点击，窗内滚动和拖拽不会关闭 */}
       <Modal
         visible={illPreviewVisible}
+        transparent
         animationType="fade"
         onRequestClose={() => setIllPreviewVisible(false)}
       >
+        <View style={styles.illPreviewMask}>
+          <Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel="关闭原图预览" onPress={() => setIllPreviewVisible(false)} />
         <View style={styles.illPreview}>
           <View style={styles.illPreviewBar}>
             <Text style={styles.illPreviewTitle}>预览与调整插图</Text>
             <TextBtn onPress={() => setIllPreviewVisible(false)}>完成</TextBtn>
           </View>
-          <ScrollView contentContainerStyle={{ padding: 12 }}>
+          <Muted style={styles.illPreviewTip}>点击插图框选中，拖动四角或边缘圆点调整大小；拖动框内调整位置，松手自动保存。</Muted>
+          <ScrollView scrollEnabled={!illDragging} contentContainerStyle={{ padding: 12 }}>
             {exam ? (
               <BboxEditor
                 imageUrl={exam.imageUrl}
@@ -373,14 +379,18 @@ export default function RecognitionPage() {
                 onSelect={(qid) => onSelect(qid, 'image')}
                 onUpdateBbox={onUpdateBbox}
                 onUpdateIllBbox={onUpdateIllBbox}
+                onInteractionChange={setIllDragging}
+                onSelectIllustration={setSelectedIllId}
+                selectedIllustrationId={activeIll?.id}
               />
             ) : null}
           </ScrollView>
         </View>
+        </View>
       </Modal>
 
       {/* 编辑题目弹窗 */}
-      <Mask visible={!!editQ} onClose={() => setEditQ(null)}>
+      <Mask visible={!!editQ} onClose={() => setEditQ(null)} dialogStyle={{ width: windowWidth * 0.8, maxWidth: windowWidth * 0.8, height: windowHeight * 0.8 }}>
         <Text style={styles.dialogTitle}>
           {editQ ? `编辑题目：第 ${editQ.questionNo} 题` : '编辑题目'}
         </Text>
@@ -403,11 +413,10 @@ export default function RecognitionPage() {
                 插图（{editQ.illustrations.length} 张，按当前 bbox 裁剪）：
               </Muted>
               {editQ.illustrations.map((ill) => (
-                <Image
+                <IllustrationImage
                   key={ill.id}
-                  source={{ uri: illustrationImageUrl(ill.id) }}
-                  style={styles.editIll}
-                  contentFit="contain"
+                  uri={illustrationImageUrl(ill.id)}
+                  maxHeight={Math.max(80, windowHeight * 0.8 - 160)}
                 />
               ))}
             </>
@@ -470,10 +479,22 @@ export default function RecognitionPage() {
 }
 
 const styles = StyleSheet.create({
-  // 插图预览与调整：全屏弹窗
+  imageHint: { textAlign: 'center', marginTop: 12 },
+  questionsCard: { padding: 0, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: C.border },
+  questionsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
+  questionsHeading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  questionsTitle: { fontSize: 18, fontWeight: '600', color: C.textStrong },
+  questionCount: { fontSize: 13, color: C.text, backgroundColor: C.bg, borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2 },
+  questionsContent: { padding: 14 },
+  illPreviewMask: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: 'rgba(0,0,0,0.45)' },
+  illPreviewTip: { padding: 12, backgroundColor: C.bg },
   illPreview: {
-    flex: 1,
-    backgroundColor: C.bg,
+    width: '100%',
+    maxWidth: 960,
+    height: '80%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
   },
   illPreviewBar: {
     flexDirection: 'row',
@@ -516,7 +537,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   editScroll: {
-    maxHeight: 420,
+    flex: 1,
   },
   textarea: {
     borderWidth: StyleSheet.hairlineWidth,

@@ -21,6 +21,32 @@ npx expo start        # 扫码或按平台启动
 
 ## 构建
 
+### 指定服务器地址打包（Windows）
+
+在仓库根目录运行，地址只填写服务器域名/IP 和端口，不要附加 `/api/v1`：
+
+```powershell
+# EAS 云构建 Android APK，首次使用需登录 Expo 账号并关联项目
+.\mobile\scripts\build-mobile.cmd -BackendBaseUrl https://api.example.com
+
+# 本地构建 Android Release APK，需已有 Java / Android SDK
+.\mobile\scripts\build-mobile.cmd -Mode Local -BackendBaseUrl http://192.168.0.20:8000
+
+# iOS 云构建（需要相应的 Apple 签名凭据）
+.\mobile\scripts\build-mobile.cmd -Platform ios -BackendBaseUrl https://api.example.com
+
+# 只校验参数，不启动构建
+.\mobile\scripts\build-mobile.cmd -BackendBaseUrl https://api.example.com -DryRun
+```
+
+默认 `preview` 为内部安装包，Android 输出 APK；`-Profile production` 用于商店构建。
+云构建的服务器地址通过 EAS 构建 profile 注入，构建结束后恢复 `eas.json`。
+本地构建复用 `build-android.ps1`，APK 输出在 `mobile/dist`，服务器地址保存至 `.env.local`。
+服务器地址会编译进安装包，更换地址后需重新打包。真机地址应使用可访问的域名或局域网 IP。
+本地 Release 当前使用调试证书签名，适合内部安装；商店发布请使用正式签名。
+本地 APK 默认包含 `arm64-v8a` 和 `x86_64`，兼容 ARM64 真机及 x86_64 模拟器。
+可使用 `-Mode Local -Arch arm64-v8a` 仅打包真机架构以减小包体；`-Arch` 仅用于本地构建。
+
 - **Android APK（自用，免签名）**：
 
   ```bash

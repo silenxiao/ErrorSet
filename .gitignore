@@ -37,3 +37,6 @@ tool/
 
 # test
 tests/
+
+# logs
+.agents/dev-logs/

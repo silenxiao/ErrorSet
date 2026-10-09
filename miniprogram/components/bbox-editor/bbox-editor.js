@@ -156,6 +156,9 @@ Component({
       const iid = Number(e.currentTarget.dataset.iid);
       const found = this._findIll(iid);
       if (!found) return;
+      // 按下插图即显示缩放手柄，不必先完成一次点击。
+      this.setData({ selIllId: iid });
+      this.build();
       const t = e.touches[0];
       // 同 onHandleStart：drag 必须同步建立，rect 异步补齐
       this.drag = {
@@ -207,6 +210,15 @@ Component({
           : b
       );
       this.setData({ boxes });
+    },
+
+    noop() {},
+
+    onTouchCancel() {
+      // 系统中断手势时恢复已保存的框，避免残留拖拽状态。
+      this.drag = null;
+      this._justDragged = false;
+      this.build();
     },
 
     onTouchEnd() {

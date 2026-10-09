@@ -218,6 +218,23 @@ body {
 }
 
 /* ===== 识别页双栏：桌面双栏各自滚动，窄屏堆叠整体滚动 ===== */
+.exam-detail-modal {
+  top: 24px;
+  padding-bottom: 24px;
+}
+
+.exam-detail-modal .ant-modal-content {
+  padding: 16px 48px 16px 16px;
+  background: var(--bg);
+}
+
+.exam-detail-modal .ant-modal-close {
+  top: 16px;
+  right: 8px;
+  background: var(--card);
+  border-radius: 50%;
+}
+
 .recognition-split {
   display: flex;
   gap: 16px;
@@ -232,15 +249,182 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.recognition-pane > .ant-card-head {
+  flex-shrink: 0;
+  min-height: 60px;
+  padding: 0 18px;
+}
+
+.recognition-pane > .ant-card-body {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.recognition-questions-pane {
+  flex: 1.15;
+}
+
+.recognition-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.recognition-exam-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recognition-heading .ant-tag {
+  flex-shrink: 0;
+  margin: 0;
+  font-weight: 400;
+}
+
+.recognition-count {
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.recognition-image-toggle {
+  display: none;
+}
+
+.recognition-image-hint {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.recognition-question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recognition-question {
+  min-width: 0;
+  margin-left: calc(var(--question-depth) * 16px);
+  padding: 16px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.recognition-question:hover {
+  border-color: #a6bfff;
+}
+
+.recognition-question.is-selected {
+  border-color: var(--primary);
+  background: #f5f9ff;
+}
+
+.recognition-question:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.recognition-question-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.recognition-question-heading .ant-tag {
+  margin: 0;
+  font-size: 11px;
+}
+
+.recognition-question-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.9;
+  font-size: 14px;
+}
+
+.recognition-question-text .katex {
+  font-size: 1.08em;
+  white-space: normal;
+}
+
+.recognition-question-text .katex-display {
+  margin: 0.65em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+
+.recognition-question-text > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  vertical-align: middle;
+}
+
+.recognition-question-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f1f4;
+}
+
+.recognition-question-actions .ant-btn {
+  height: 30px;
+  padding-inline: 8px;
+  font-size: 12px;
+}
+
+.recognition-question-hint {
+  color: var(--text-3);
+  font-size: 12px;
 }
 
 /* "打开试卷"浮窗内容：固定高度两栏各自滚动；窄屏改为整体滚动 */
 .exam-modal-body {
-  height: calc(100vh - 160px);
+  height: calc(100dvh - 80px);
   overflow: hidden;
 }
 
 @media (max-width: 860px) {
+  .exam-detail-modal {
+    top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .exam-detail-modal .ant-modal-content {
+    padding: 12px 42px 12px 12px;
+  }
+
+  .exam-detail-modal .ant-modal-close {
+    top: 12px;
+    right: 4px;
+  }
+
   .recognition-split {
     flex-direction: column;
     height: auto;
@@ -248,12 +432,68 @@ body {
 
   .recognition-pane {
     height: auto;
+    flex: none;
+    overflow: visible;
+  }
+
+  .recognition-pane > .ant-card-head {
+    min-height: 56px;
+    padding: 0 12px;
+  }
+
+  .recognition-pane > .ant-card-body {
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .recognition-questions-pane > .ant-card-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--card);
+    border-radius: 12px 12px 0 0;
+  }
+
+  .recognition-image-toggle {
+    display: inline-flex;
+    font-size: 12px;
+  }
+
+  .recognition-image-pane.is-collapsed > .ant-card-body {
+    display: none;
+  }
+
+  .recognition-image-pane.is-collapsed > .ant-card-head {
+    border-bottom: none;
+  }
+
+  .recognition-question {
+    padding: 12px;
+    margin-left: calc(var(--question-depth) * 8px);
   }
 
   .exam-modal-body {
     height: auto;
-    max-height: calc(100vh - 120px);
+    max-height: calc(100dvh - 48px);
     overflow: auto;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 440px) {
+  .recognition-pane > .ant-card-head .ant-card-head-wrapper {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0;
+  }
+
+  .recognition-pane > .ant-card-head .ant-card-head-title {
+    flex-basis: 100%;
+  }
+
+  .recognition-pane > .ant-card-head .ant-card-extra {
+    margin-inline-start: 0;
   }
 }
 

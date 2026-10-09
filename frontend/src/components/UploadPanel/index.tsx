@@ -7,6 +7,7 @@ import { getStoredGrade } from "../../api/auth";
 import { GRADE_OPTIONS, GRADE_STORAGE_KEY } from "../../utils/grade";
 import type { ExamCreated } from "../../types/exam";
 import ModelSelector from "../ModelSelector";
+import "./index.css";
 
 interface Props {
   onUploaded: (exam: ExamCreated) => void;
@@ -46,51 +47,59 @@ export default function UploadPanel({ onUploaded }: Props) {
   };
 
   return (
-    <div style={{ maxWidth: 560 }}>
-      <Upload.Dragger
-        accept=".jpg,.jpeg,.png,.webp"
-        maxCount={1}
-        showUploadList={{ showRemoveIcon: true }}
-        beforeUpload={(f) => {
-          setFile(f);
-          return false;
-        }}
-        onRemove={() => setFile(null)}
-      >
-        <p className="ant-upload-drag-icon" style={{ marginBottom: 8 }}>
-          <InboxOutlined style={{ color: "var(--primary)" }} />
-        </p>
-        <p className="ant-upload-text">点击或拖拽图片到此处上传</p>
-        <p className="ant-upload-hint">试卷图片（JPG/PNG/WebP，≤10MB，一张图 = 一份试卷）</p>
-      </Upload.Dragger>
-      <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-        <Form.Item label="年级" style={{ marginBottom: 16 }}>
-          <Select
-            value={grade}
-            options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
-            onChange={(value: string) => {
-              setGrade(value);
-              window.localStorage.setItem(GRADE_STORAGE_KEY, value);
-            }}
-          />
-        </Form.Item>
-        <Form.Item label="试卷名称（默认取文件名）" style={{ marginBottom: 16 }}>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="例如：数学月考"
-          />
-        </Form.Item>
+    <div className="upload-panel">
+      <div className="upload-panel-file">
+        <div className="upload-panel-heading">上传试卷</div>
+        <p className="upload-panel-description">选择一张试卷图片，开始识别题目</p>
+        <Upload.Dragger
+          accept=".jpg,.jpeg,.png,.webp"
+          maxCount={1}
+          showUploadList={{ showRemoveIcon: true }}
+          beforeUpload={(f) => {
+            setFile(f);
+            return false;
+          }}
+          onRemove={() => setFile(null)}
+        >
+          <p className="ant-upload-drag-icon" style={{ marginBottom: 8 }}>
+            <InboxOutlined style={{ color: "var(--primary)" }} />
+          </p>
+          <p className="ant-upload-text">点击或拖拽图片到此处上传</p>
+          <p className="ant-upload-hint">试卷图片（JPG/PNG/WebP，≤10MB，一张图 = 一份试卷）</p>
+        </Upload.Dragger>
+      </div>
+      <Form form={form} layout="vertical" className="upload-panel-settings">
+        <div className="upload-panel-heading">识别设置</div>
+        <div className="upload-panel-fields">
+          <Form.Item label="年级" style={{ marginBottom: 16 }}>
+            <Select
+              value={grade}
+              options={GRADE_OPTIONS.map((value) => ({ value, label: value }))}
+              onChange={(value: string) => {
+                setGrade(value);
+                window.localStorage.setItem(GRADE_STORAGE_KEY, value);
+              }}
+            />
+          </Form.Item>
+          <Form.Item label="试卷名称（默认取文件名）" style={{ marginBottom: 16 }}>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例如：数学月考"
+            />
+          </Form.Item>
+        </div>
         <Form.Item label="是否包含插图" style={{ marginBottom: 16 }}>
           <Radio.Group
+            className="upload-panel-options"
             value={includeIllustrations}
             onChange={(e) => setIncludeIllustrations(e.target.value)}
           >
-            <Radio value={false}>不包含插图（只识别题目，更快更省）</Radio>
-            <Radio value={true}>包含插图（识别题目和插图）</Radio>
+            <Radio value={false}><span>不包含插图</span><small>只识别题目，更快更省</small></Radio>
+            <Radio value={true}><span>包含插图</span><small>同时识别题目和插图</small></Radio>
           </Radio.Group>
         </Form.Item>
-        <Space wrap>
+        <Space wrap className="upload-panel-actions">
           <Button
             type="primary"
             loading={uploading}

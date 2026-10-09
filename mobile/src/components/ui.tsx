@@ -308,15 +308,17 @@ export function Mask({
   visible,
   onClose,
   children,
+  dialogStyle,
 }: {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  dialogStyle?: StyleProp<ViewStyle>;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.mask} onPress={onClose}>
-        <Pressable style={styles.dialog} onPress={undefined}>{children}</Pressable>
+        <Pressable style={[styles.dialog, dialogStyle]} onPress={undefined}>{children}</Pressable>
       </Pressable>
     </Modal>
   );

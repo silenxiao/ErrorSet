@@ -1,17 +1,23 @@
 import katex from "katex";
 import { Fragment, type ReactNode } from "react";
 
-/** 把题目文本中的 $...$ / $$...$$ 渲染为 KaTeX，其余原样输出。 */
+/** 支持美元及括号定界的公式，纯文本中的转义下划线显示为填空线。 */
 export function renderMathText(text: string): ReactNode {
-  const parts = autoWrapLatex(text).split(/(\$\$[^$]+\$\$|\$[^$]+\$)/g);
+  const parts = autoWrapLatex(text).split(/(\$\$[\s\S]+?\$\$|\$[^$\n]+\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g);
   return parts.map((part, index) => {
+    if (part.startsWith("\\[") && part.endsWith("\\]")) {
+      return <MathSpan key={index} tex={part.slice(2, -2)} displayMode />;
+    }
+    if (part.startsWith("\\(") && part.endsWith("\\)")) {
+      return <MathSpan key={index} tex={part.slice(2, -2)} displayMode={false} />;
+    }
     if (part.startsWith("$$") && part.endsWith("$$") && part.length > 4) {
       return <MathSpan key={index} tex={part.slice(2, -2)} displayMode />;
     }
     if (part.startsWith("$") && part.endsWith("$") && part.length > 2) {
       return <MathSpan key={index} tex={part.slice(1, -1)} displayMode={false} />;
     }
-    return <Fragment key={index}>{part}</Fragment>;
+    return <Fragment key={index}>{part.replace(/\\_/g, "_")}</Fragment>;
   });
 }
 

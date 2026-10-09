@@ -1,3 +1,4 @@
+<page-meta page-style="{{illustrationPreviewUrl ? 'overflow: hidden;' : ''}}" />
 <!-- 科目筛选 chips -->
 <view wx:if="{{subjectTags.length > 0}}" class="filter-wrap">
   <view class="filter-row">
@@ -45,7 +46,7 @@
         wx:for-item="ill"
         wx:key="id"
         class="ill-img"
-        src="{{ill.imgUrl}}"
+        src="{{ill.imgUrl}}" data-url="{{ill.imgUrl}}" catchtap="onPreviewIllustration"
         mode="aspectFit"
         style="{{illSizes[item.id + '.' + ill.id]}}"
         data-key="{{item.id}}.{{ill.id}}"
@@ -86,3 +87,5 @@
     </view>
   </view>
 </view>
+
+<illustration-preview src="{{illustrationPreviewUrl}}" bind:close="closeIllustrationPreview" />

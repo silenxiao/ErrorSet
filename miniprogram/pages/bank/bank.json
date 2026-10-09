@@ -3,6 +3,7 @@
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
-    "md-render": "../../components/md-render/md-render"
+    "md-render": "../../components/md-render/md-render",
+    "illustration-preview": "/components/illustration-preview/illustration-preview"
   }
 }

@@ -1,0 +1,11 @@
+<view wx:if="{{src}}" class="preview-mask" bindtap="close" catchtouchmove="noop">
+  <view class="preview-dialog" catchtap="noop">
+    <view class="preview-header"><text>插图预览</text><text class="close" bindtap="close">关闭</text></view>
+    <movable-area class="preview-area" scale-area style="width:{{areaWidth}}px;height:{{areaHeight}}px;">
+      <movable-view direction="none" scale scale-min="0.5" scale-max="6" scale-value="{{scale}}" x="{{x}}" y="{{y}}" style="width:{{width}}px;height:{{height}}px;">
+        <image class="preview-image" src="{{src}}" mode="aspectFit" bindload="onLoad" binderror="onError" />
+      </movable-view>
+    </movable-area>
+    <view class="preview-hint">{{failed ? '插图加载失败，请关闭后重试' : '双指放大或缩小插图'}}</view>
+  </view>
+</view>

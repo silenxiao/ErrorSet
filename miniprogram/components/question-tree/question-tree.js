@@ -29,6 +29,7 @@ Component({
         out.push({
           id: q.id,
           depth,
+          indent: Math.min(depth, 3) * 28,
           no: q.questionNo,
           text: q.text,
           statusText: Q_STATUS[q.status] ? Q_STATUS[q.status].text : q.status,

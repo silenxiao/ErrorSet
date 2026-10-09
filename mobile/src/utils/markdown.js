@@ -27,6 +27,18 @@ function inlineHtml(text) {
         i += m[0].length;
         continue;
       }
+    } else if (ch === '\\' && (s[i + 1] === '(' || s[i + 1] === '[')) {
+      const closing = s[i + 1] === '(' ? '\\)' : '\\]';
+      const end = s.indexOf(closing, i + 2);
+      if (end !== -1) {
+        out += latexToHtml(s.slice(i + 2, end));
+        i = end + 2;
+        continue;
+      }
+    } else if (ch === '\\' && s[i + 1] === '_') {
+      out += '_';
+      i += 2;
+      continue;
     } else if (ch === '$' && s[i + 1] === '$') {
       const m = /^\$\$([^$]+)\$\$/.exec(s.slice(i));
       if (m) { out += latexToHtml(m[1]); i += m[0].length; continue; }
@@ -62,7 +74,11 @@ function isBlockStart(l) {
 }
 
 function mdHtml(md) {
-  const src = String(md == null ? '' : md).replace(/\r\n?/g, '\n');
+  // 公式内部的换行不参与 Markdown 列表分段；代码内容保持原样。
+  const src = String(md == null ? '' : md).replace(/\r\n?/g, '\n').replace(
+    /(```[\s\S]*?```|`[^`\n]*`)|(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g,
+    (match, code) => code ? match : match.replace(/\n/g, ' ')
+  );
   const lines = src.split('\n');
   const out = [];
   let i = 0;
@@ -126,7 +142,7 @@ function mdHtml(md) {
     // 段落
     const pl = [];
     while (i < lines.length && lines[i].trim() !== '' && !isBlockStart(lines[i])) { pl.push(lines[i]); i++; }
-    if (pl.length) out.push('<div style="margin:6px 0;font-size:14px;line-height:1.7;color:#1D2129;">' + inlineHtml(pl.join('\n')) + '</div>');
+    if (pl.length) out.push('<div style="margin:6px 0;font-size:14px;line-height:1.9;overflow-wrap:anywhere;color:#1D2129;">' + inlineHtml(pl.join('\n')) + '</div>');
   }
   return out.join('');
 }
