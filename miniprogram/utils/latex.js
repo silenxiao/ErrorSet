@@ -20,7 +20,7 @@ const SYMBOLS = {
   Rightarrow: '⇒', implies: '⇒', Leftarrow: '⇐',
   leftrightarrow: '↔', Leftrightarrow: '⇔', iff: '⇔',
   mapsto: '↦', uparrow: '↑', downarrow: '↓',
-  ldots: '…', dots: '…', vdots: '⋮', ddots: '⋱',
+  ldots: '…', dots: '…', cdots: '⋯', vdots: '⋮', ddots: '⋱',
   prime: '′', langle: '⟨', rangle: '⟩', lvert: '|', rvert: '|',
   '{': '{', '}': '}', '%': '%', '&': '&', '#': '#', '$': '$',
   alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ',
@@ -247,9 +247,11 @@ function serNodes(nodes) {
     else if (n.k === 'u') h += '<span style="' + C_UPRIGHT + (n.bold ? 'font-weight:bold;' : '') + '">' + escHtml(n.v) + '</span>';
     else if (n.k === 's') h += '<span style="' + C_SYM + '">' + escHtml(n.v) + '</span>';
     else if (n.k === 'f') {
-      h += '<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 2px;">';
-      h += serNodes(n.n);
-      h += '<span style="border-top:1px solid #0b53c9;padding:0 4px;">' + serNodes(n.d) + '</span>';
+      // 分子和分母各自是一整行，不能让每个数学节点都成为 column 的子项。
+      // 嵌套分式逐级缩小；nowrap 防止公式内部被段落的断行规则拆开。
+      h += '<span style="display:inline-flex;flex-direction:column;align-items:stretch;vertical-align:middle;margin:0 2px;font-size:0.85em;line-height:1.2;white-space:nowrap;">';
+      h += '<span style="display:block;text-align:center;padding:1px 3px;white-space:nowrap;">' + serNodes(n.n) + '</span>';
+      h += '<span style="display:block;text-align:center;border-top:1px solid #0b53c9;padding:1px 3px;white-space:nowrap;">' + serNodes(n.d) + '</span>';
       h += '</span>';
     } else if (n.k === 'sup') h += '<sup style="font-size:0.7em;">' + serNodes(n.b) + '</sup>';
     else if (n.k === 'sub') h += '<sub style="font-size:0.7em;">' + serNodes(n.b) + '</sub>';
@@ -276,7 +278,7 @@ function latexToHtml(latex) {
   try {
     const nodes = parseMath(latex);
     if (!nodes.length) return escHtml(latex);
-    return '<span style="display:inline-block;vertical-align:middle;">' + serNodes(nodes) + '</span>';
+    return '<span style="display:inline-block;vertical-align:middle;white-space:nowrap;line-height:1.2;">' + serNodes(nodes) + '</span>';
   } catch (e) {
     return escHtml(latex);
   }

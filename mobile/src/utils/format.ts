@@ -10,6 +10,7 @@ export const EXAM_STATUS: Record<string, StatusMeta> = {
   uploaded: { text: '排队中', color: '#86909C' },
   global_processing: { text: '整页识别中', color: '#165DFF' },
   awaiting_review: { text: '待人工确认', color: '#FF7D00' },
+  local_queued: { text: '二次识别排队中', color: '#86909C' },
   local_processing: { text: '二次识别中', color: '#165DFF' },
   completed: { text: '已完成', color: '#00B42A' },
   failed: { text: '失败', color: '#F53F3F' },

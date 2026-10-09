@@ -1,5 +1,7 @@
 """数据访问层：所有 DB 读写集中在这里，pipeline / service 不直接操作 Session。"""
 
+from uuid import uuid4
+
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, selectinload
 
@@ -256,16 +258,13 @@ def save_questions(
     """保存 Validator 展平后的题目（含层级 parent 关联）与插图。
 
     normalized 中每项：question_no / text / bbox / ai_bbox / confidence /
-    illustrations / parent_no（独立题为 None）。
+    illustrations / parent_index（独立题为 None；兼容旧调用的 parent_no）。
     """
-    created: dict[str, Question] = {}
     rows: list[Question] = []
 
     for item in normalized:
-        parent = created.get(item["parent_no"]) if item.get("parent_no") else None
         q = Question(
             exam_id=exam.id,
-            parent_id=parent.id if parent else None,
             question_no=item["question_no"],
             text=item["text"],
             subject=item.get("subject", ""),
@@ -277,12 +276,20 @@ def save_questions(
         )
         db.add(q)
         rows.append(q)
-        created[item["question_no"]] = q
 
-    db.flush()  # 分配主键 id，供插图外键使用
+    db.flush()  # 先分配所有主键，再建立父题与插图外键。
 
-    for item in normalized:
-        q = created[item["question_no"]]
+    for index, (item, q) in enumerate(zip(normalized, rows)):
+        if "parent_index" in item:
+            parent_index = item["parent_index"]
+            if parent_index is not None and not (isinstance(parent_index, int) and 0 <= parent_index < index):
+                raise ValueError("父题必须位于子题之前，禁止循环关联")
+            parent = rows[parent_index] if parent_index is not None else None
+        else:
+            # 兼容旧调用，但不能用重复题号建立含糊或自身关联。
+            candidates = [row for row in rows[:index] if row.question_no == item.get("parent_no")]
+            parent = candidates[0] if len(candidates) == 1 else None
+        q.parent_id = parent.id if parent is not None else None
         for illus in item.get("illustrations") or []:
             bbox = illus.get("bbox", [0, 0, 0, 0])
             db.add(
@@ -310,6 +317,8 @@ def update_question_bbox(db: Session, question: Question, bbox: list[int]) -> Qu
 
 
 def update_question(db: Session, question: Question, **fields) -> Question:
+    if any(getattr(question, name) != value for name, value in fields.items()):
+        question.last_analysis = None
     for name, value in fields.items():
         setattr(question, name, value)
     db.commit()
@@ -337,6 +346,8 @@ def get_illustration(db: Session, illustration_id: int) -> Illustration | None:
 def update_illustration_bbox(
     db: Session, illustration: Illustration, bbox: list[int]
 ) -> Illustration:
+    if illustration.bbox != bbox:
+        illustration.question.last_analysis = None
     illustration.bbox = bbox
     illustration.bbox_source = "manual"
     db.commit()
@@ -345,6 +356,8 @@ def update_illustration_bbox(
 
 
 def reset_illustration_bbox(db: Session, illustration: Illustration) -> Illustration:
+    if illustration.bbox != illustration.ai_bbox:
+        illustration.question.last_analysis = None
     illustration.bbox = list(illustration.ai_bbox)
     illustration.bbox_source = "ai"
     db.commit()
@@ -358,6 +371,8 @@ def set_question_status(db: Session, question: Question, status: str) -> None:
 
 
 def set_question_text(db: Session, question: Question, text: str) -> None:
+    if question.text != text:
+        question.last_analysis = None
     question.text = text
     db.commit()
 
@@ -408,10 +423,11 @@ def get_wrong_question(db: Session, wrong_id: int) -> WrongQuestion | None:
 def increment_wrong_question_count(
     db: Session, row: WrongQuestion, *, correct: bool
 ) -> WrongQuestion:
-    if correct:
-        row.correct_count += 1
-    else:
-        row.wrong_count += 1
+    counter = WrongQuestion.correct_count if correct else WrongQuestion.wrong_count
+    db.execute(
+        update(WrongQuestion).where(WrongQuestion.id == row.id, WrongQuestion.user_id == row.user_id)
+        .values({counter: counter + 1}), execution_options={"synchronize_session": False},
+    )
     db.commit()
     db.refresh(row)
     return row
@@ -557,6 +573,8 @@ def list_users_with_counts(db: Session) -> list[dict]:
 
 def update_user_password(db: Session, user: User, password_hash: str) -> User:
     user.password_hash = password_hash
+    # 与密码在同一事务更新，撤销所有已签发的登录令牌。
+    user.auth_identity = uuid4().hex
     db.commit()
     db.refresh(user)
     return user

@@ -1,14 +1,16 @@
+<page-meta page-style="{{editing ? 'overflow:hidden;' : ''}}" />
 <view class="card">
   <view class="card-title">上传试卷</view>
 
   <view class="uploader" bindtap="chooseImage" wx:if="{{!previewImage}}">
     <view class="ico ico-upload"></view>
-    <view class="uploader-text">点击选择试卷照片</view>
+    <view class="uploader-text">选择或拍照，编辑后上传</view>
     <view class="muted">JPG/PNG/WebP，≤10MB，一张图 = 一份试卷</view>
   </view>
 
   <view wx:if="{{previewImage}}" class="preview">
-    <image class="preview-img" src="{{previewImage}}" mode="widthFix" bindtap="chooseImage"></image>
+    <image class="preview-img" src="{{previewImage}}" mode="aspectFit" style="{{previewStyle}}" bindload="onPreviewLoad" bindtap="reeditImage"></image>
+    <view class="text-btn" bindtap="reeditImage">重新编辑</view>
     <view class="text-btn danger preview-remove" bindtap="clearImage">移除</view>
   </view>
 
@@ -21,7 +23,7 @@
 
   <view class="field">
     <text class="label">试卷名称</text>
-    <input class="input" value="{{name}}" placeholder="例如：数学月考（默认取文件名）" bindinput="onName" />
+    <input class="input" value="{{name}}" placeholder="默认取图片名，无文件名或拍照时取日期时间" bindinput="onName" />
   </view>
 
   <view class="field">
@@ -31,7 +33,7 @@
   </view>
 
   <view class="submit-row">
-    <button class="btn-primary submit submit-grow" hover-class="none" loading="{{uploading}}" bindtap="upload">上传并开始识别</button>
+    <button class="btn-primary submit submit-grow" hover-class="none" loading="{{uploading}}" disabled="{{editing || uploading || !previewImage}}" bindtap="upload">上传并开始识别</button>
     <button class="btn-ghost model-btn" hover-class="none" bindtap="chooseModel">{{modelName || '选择模型'}}<view class="ico ico-chev-down-p"></view></button>
   </view>
 </view>
@@ -65,3 +67,5 @@
     </view>
   </view>
 </view>
+
+<image-editor src="{{editorSrc}}" bind:confirm="confirmImageEdit" bind:cancel="cancelImageEdit" />

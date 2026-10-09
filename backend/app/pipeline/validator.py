@@ -1,6 +1,7 @@
 """Validator（§16）：JSON/题目/BBox/LaTeX 校验，并把层级 JSON 展平。"""
 
 import re
+import math
 from dataclasses import dataclass, field
 
 from app.core.exceptions import ValidationError
@@ -18,6 +19,8 @@ class NormalizedQuestion:
     subject: str = ""
     bbox_valid: bool = True
     issues: list[str] = field(default_factory=list)
+    # 扁平列表中的父节点位置，不依赖可能重复的展示题号。
+    parent_index: int | None = None
 
 
 def to_int_bbox(raw: object) -> list[int] | None:
@@ -26,7 +29,7 @@ def to_int_bbox(raw: object) -> list[int] | None:
         return None
     try:
         x1, y1, x2, y2 = (round(float(v)) for v in raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
     x1, y1 = max(0, min(1000, x1)), max(0, min(1000, y1))
     x2, y2 = max(0, min(1000, x2)), max(0, min(1000, y2))
@@ -68,13 +71,15 @@ def normalize_global(raw: dict | list) -> list[NormalizedQuestion]:
     result: list[NormalizedQuestion] = []
     seen: set[str] = set()
 
-    def walk(node: object, parent_no: str | None) -> None:
+    def walk(node: object, parent_no: str | None, parent_index: int | None) -> None:
         if not isinstance(node, dict):
-            return
+            raise ValidationError("questions 元素必须是题目对象")
         question_no = str(
             node.get("question_no") or node.get("number") or ""
         ).strip()
-        text = str(node.get("text") or "")
+        text = node.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValidationError("题目 text 必须是非空字符串")
         raw_bbox = node.get("bbox")
         bbox = to_int_bbox(raw_bbox)
 
@@ -91,10 +96,19 @@ def normalize_global(raw: dict | list) -> list[NormalizedQuestion]:
         seen.add(question_no)
 
         raw_illus = node.get("illustrations")
-        illustrations = raw_illus if isinstance(raw_illus, list) else []
+        if raw_illus is not None and not isinstance(raw_illus, list):
+            raise ValidationError("illustrations 必须是数组")
+        illustrations = []
+        for illustration in raw_illus or []:
+            if not isinstance(illustration, dict) or to_int_bbox(illustration.get("bbox")) is None:
+                raise ValidationError("插图必须是包含有效 bbox 的对象")
+            illustrations.append({**illustration, "bbox": to_int_bbox(illustration["bbox"])})
 
         subject = str(node.get("subject") or "").strip()
+        if subject and subject not in {"语文", "数学", "英语", "物理", "化学", "生物", "历史", "地理", "政治"}:
+            raise ValidationError("题目 subject 不在支持的科目中")
 
+        current_index = len(result)
         result.append(
             NormalizedQuestion(
                 question_no=question_no,
@@ -104,22 +118,32 @@ def normalize_global(raw: dict | list) -> list[NormalizedQuestion]:
                 confidence=_to_confidence(node.get("confidence")),
                 illustrations=illustrations,
                 parent_no=parent_no,
+                parent_index=parent_index,
                 subject=subject,
                 bbox_valid="invalid_bbox" not in issues,
                 issues=issues,
             )
         )
-        for sub in node.get("sub_questions") or []:
-            walk(sub, question_no or parent_no)
+        children = node.get("sub_questions") or []
+        if not isinstance(children, list):
+            raise ValidationError("sub_questions 必须是数组")
+        for sub in children:
+            walk(sub, question_no or parent_no, current_index)
 
     for item in questions:
-        walk(item, None)
+        walk(item, None, None)
+    if not result:
+        raise ValidationError("未识别到有效题目")
     return result
 
 
 def _to_confidence(value: object) -> float | None:
     if isinstance(value, (int, float)):
+        if isinstance(value, bool) or not 0 <= value <= 1 or not math.isfinite(value):
+            raise ValidationError("confidence 必须是 0 到 1 的有限数字")
         return float(value)
+    if value is not None:
+        raise ValidationError("confidence 必须是数字或 null")
     return None
 
 

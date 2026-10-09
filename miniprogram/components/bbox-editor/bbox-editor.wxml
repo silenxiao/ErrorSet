@@ -1,6 +1,7 @@
+<view id="available" class="available">
 <!-- touchmove 必须在框上 catch：bind 会被页面原生滚动抢走垂直手势，导致无法上下调整大小 -->
-<view class="editor" id="editor" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
-  <image wx:if="{{imageUrl}}" class="paper" src="{{imageUrl}}" mode="widthFix" bindload="onImgLoad" binderror="onImgError"></image>
+<view class="editor" id="editor" style="{{paperStyle}}" bindtouchmove="onTouchMove" bindtouchend="onTouchEnd">
+  <image wx:if="{{imageUrl}}" class="paper" src="{{imageUrl}}" mode="aspectFit" bindload="onImgLoad" binderror="onImgError"></image>
   <view wx:if="{{imageUrl && !imgLoaded}}" class="paper-skeleton">
     <view class="spinner"></view>
     <text class="sk-text">原图加载中…</text>
@@ -76,4 +77,6 @@
   </view>
 
   <view wx:if="{{!imageUrl}}" class="empty">暂无图片</view>
+</view>
+
 </view>

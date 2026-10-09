@@ -1,3 +1,4 @@
+.available { width:100%; display:flex; justify-content:center; }
 .editor {
   position: relative;
   width: 100%;
@@ -11,6 +12,7 @@
 .paper {
   width: 100%;
   display: block;
+  height: 100%;
 }
 
 /* 图片加载骨架 */

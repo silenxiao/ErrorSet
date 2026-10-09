@@ -34,7 +34,7 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 
 cp ../.env.example ../.env   # 填入 API Key
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --no-proxy-headers
 ```
 
 服务默认运行在 http://127.0.0.1:8000 ，API 文档在 http://127.0.0.1:8000/docs 。
@@ -80,6 +80,21 @@ cd frontend && npm test
 上传（uploaded）
   → Global Vision 整页识别（global_processing）
   → awaiting_review：人工检查 / 调整 bbox（逐题保存）
-  → 点击确认（POST /exams/{id}/confirm）触发二次识别（local_processing）
+  → 点击确认（POST /exams/{id}/confirm）进入二次识别队列（local_queued）
+  → worker 认领后二次识别（local_processing）
   → completed：可手动加入错题库
 ```
+
+## AI 设置与结果校验
+
+识图和解题共用用户当前启用的模型，不区分模型用途。Gemini 配置使用原生 generateContent 协议；使用 OpenAI 兼容代理时请选择“自定义”服务商。
+
+模型测试发送一张简单算式图片，校验读取内容、计算答案及 JSON 格式。测试通过仅代表基础流程可用，复杂试卷与解题质量仍须用实际样本评估。
+
+全卷识别将大题、共享材料与全部小问合并为一个记录；AI 分析回答当前记录内的全部小问。模糊内容标记为 `[无法辨认]`，缺失关键条件时返回无法确定与低置信度。JSON 或字段校验失败按 `JSON_MAX_RETRIES` 有限重试，携带校验错误；网络或认证错误沿用 Provider 层策略。
+
+编辑题干、修改或重置插图范围会清除该题旧分析；分析期间输入改变时返回 409，需重新分析。错题库已保存的分析快照独立保留。
+
+## 上传前人工编辑
+
+选择图片或拍照后先进行人工编辑，确认后再点击“上传并开始识别”。Web 使用与插图相同的蓝色选框：拖动框体移动、拖动八向手柄缩放裁剪范围，并支持左右旋转、保留全图、恢复原图与重新编辑，导出保留原始像素范围。移动端使用系统图片编辑界面（Android 支持裁剪与旋转，iOS 为方形裁剪），小程序使用微信图片编辑接口（基础库 2.22.0 及以上）。取消编辑保留之前已确认的图片，不上传新原图；编辑后的文件仍限制在 10MB 内。编辑确认本身不会触发识别。

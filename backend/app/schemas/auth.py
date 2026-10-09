@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import field_validator
 
+from app.core.security import validate_new_password
 from app.schemas.common import CamelModel
 
 # 可选年级（与前端三端的上传页选项保持一致）
@@ -62,12 +63,7 @@ class PasswordUpdate(CamelModel):
     @field_validator("new_password")
     @classmethod
     def _check_new_password(cls, value: str) -> str:
-        if len(value) < 6:
-            raise ValueError("新密码至少 6 位")
-        if len(value) > 128:
-            # 与注册一致：bcrypt 只取前 72 字节，超长部分会被静默截断
-            raise ValueError("新密码不能超过 128 个字符")
-        return value
+        return validate_new_password(value)
 
 
 class TokenOut(CamelModel):

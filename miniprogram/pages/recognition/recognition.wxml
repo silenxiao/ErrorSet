@@ -125,6 +125,7 @@
         selectedId="{{selectedId}}"
         onlyIllustrations="{{true}}"
         editable="{{true}}"
+        maxHeight="{{previewMaxHeight}}"
         bind:select="onSelect"
         bind:updateillbbox="onUpdateIllBbox"
       />

@@ -2,6 +2,7 @@ import json
 import logging
 
 from pydantic import ValidationError
+from app.core.config import get_settings
 
 from app.prompts.teacher.system import TEACHER_SYSTEM_PROMPT
 from app.prompts.teacher.task import TEACHER_TASK_PROMPT
@@ -54,9 +55,16 @@ class TeacherAgent:
 
         request = self._build_request(question)
 
-        response = await self.provider.analyze(request)
-
-        return self._parse_response(response.text)
+        original_task = request.task_prompt
+        for attempt in range(get_settings().json_max_retries + 1):
+            response = await self.provider.analyze(request)
+            try:
+                return self._parse_response(response.text)
+            except TeacherAgentError as exc:
+                if attempt >= get_settings().json_max_retries:
+                    raise
+                request.task_prompt = original_task + f"\n上次输出未通过校验：{exc}。请重新解题并输出符合结构的完整 JSON。"
+        raise TeacherAgentError("分析重试耗尽")
 
     @staticmethod
     def _build_request(
@@ -105,6 +113,10 @@ class TeacherAgent:
         try:
             return TeacherAnswer.model_validate(data)
         except ValidationError as exc:
+            fields = ", ".join(
+                str(error["loc"][0]) if error["loc"] and error["loc"][0] in TeacherAnswer.model_fields else "额外或无效字段"
+                for error in exc.errors(include_input=False)
+            )[:300]
             raise TeacherAgentError(
-                "Teacher model returned invalid TeacherAnswer"
+                f"分析字段校验失败：{fields}；科目须为指定值，答案和分析须非空，知识点数组、范围标记与置信度须完整"
             ) from exc

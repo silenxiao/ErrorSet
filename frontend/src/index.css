@@ -405,6 +405,14 @@ body {
 }
 
 /* "打开试卷"浮窗内容：固定高度两栏各自滚动；窄屏改为整体滚动 */
+.exam-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: max(120px, calc(100dvh - 260px));
+}
+
 .exam-modal-body {
   height: calc(100dvh - 80px);
   overflow: hidden;

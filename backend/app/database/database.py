@@ -90,6 +90,9 @@ def _sqlite_lightweight_migrations() -> None:
             except OperationalError:
                 pass  # 列已存在
 
+    from app.database.security_migrations import migrate_security_identities
+
+    migrate_security_identities(engine)
     _migrate_provider_setting_to_model_profile()
     _seed_default_user()
     _backfill_wrong_question_text()
@@ -173,7 +176,7 @@ def _backfill_wrong_question_text() -> None:
     """存量错题回填题目文本快照（题目仍存在时），保证删卷后列表仍可展示。"""
     from sqlalchemy import select
 
-    from app.database.models import Question, WrongQuestion
+    from app.database.models import Exam, Question, WrongQuestion
 
     with SessionLocal() as db:
         rows = list(
@@ -183,7 +186,8 @@ def _backfill_wrong_question_text() -> None:
             return
         for row in rows:
             question = db.get(Question, row.question_id)
-            if question is not None:
+            exam = db.get(Exam, question.exam_id) if question is not None else None
+            if exam is not None and exam.user_id == row.user_id:
                 row.question_no = question.question_no
                 row.question_text = question.text
         db.commit()
@@ -206,17 +210,15 @@ def _seed_default_user() -> None:
         owner = next((u for u in users if u.is_admin), None)
         if owner is None:
             if users:
-                # 无管理员的存量库：把最早的普通用户提为管理员，保证后台可达
-                owner = users[0]
-                owner.is_admin = True
-            else:
-                settings = get_settings()
-                owner = User(
-                    username=settings.seed_admin_username,
-                    password_hash=hash_password(settings.seed_admin_password),
-                    is_admin=True,
-                )
-                db.add(owner)
+                # 既有账号的权限只接受显式管理操作，不因重启自动提权。
+                return
+            settings = get_settings()
+            owner = User(
+                username=settings.seed_admin_username,
+                password_hash=hash_password(settings.seed_admin_password),
+                is_admin=True,
+            )
+            db.add(owner)
             db.commit()
             db.refresh(owner)
 
@@ -243,6 +245,11 @@ def _migrate_provider_setting_to_model_profile() -> None:
             text("SELECT COUNT(*) FROM model_profile")
         ).scalar_one()
         if count > 0:
+            return
+        # 全新库没有已废弃的 provider_setting 表，无需迁移旧配置。
+        if conn.exec_driver_sql(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='provider_setting'"
+        ).first() is None:
             return
         row = conn.execute(
             text(

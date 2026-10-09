@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type GestureResponderEvent,
   type PanResponderGestureState,
   type ViewStyle,
@@ -17,6 +18,7 @@ import {
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import type { BBox, Illustration, Question } from '@/types/question';
+import { fitImageSize } from '@/utils/imageSize';
 import { applyDrag, normalizeBBox } from '@/utils/bbox';
 
 // 八向手柄：fx/fy 为相对所选框的百分比位置（0~100）
@@ -43,6 +45,7 @@ function bboxStyle(b: BBox): ViewStyle {
 
 interface Props {
   imageUrl: string;
+  maxHeight?: number;
   questions: Question[];
   selectedId: number | null;
   selectedIllustrationId?: number | null;
@@ -60,6 +63,7 @@ interface Props {
 
 export function BboxEditor({
   imageUrl,
+  maxHeight,
   questions,
   selectedId,
   selectedIllustrationId,
@@ -71,7 +75,12 @@ export function BboxEditor({
   onInteractionChange,
   onSelectIllustration,
 }: Props) {
-  const [aspect, setAspect] = useState<number | null>(null);
+  const window = useWindowDimensions();
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const [natural, setNatural] = useState<{ uri: string; width: number; height: number } | null>(null);
+  const loaded = natural?.uri === imageUrl ? natural : null;
+  const aspect = loaded ? loaded.width / loaded.height : null;
+  const displaySize = loaded && availableWidth > 0 ? fitImageSize(loaded.width, loaded.height, availableWidth, maxHeight ?? Math.max(80, window.height - 160)) : null;
   const [previews, setPreviews] = useState<Record<number, BBox>>({});
   // 插图框拖拽预览（key: 插图 id）
   const [illPreviews, setIllPreviews] = useState<Record<number, BBox>>({});
@@ -219,8 +228,9 @@ export function BboxEditor({
   };
 
   return (
+    <View style={{ width: '100%', alignItems: 'center' }} onLayout={e => setAvailableWidth(e.nativeEvent.layout.width)}>
     <View
-      style={styles.editor}
+      style={[styles.editor, displaySize]}
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
         sizeRef.current = { w: width, h: height };
@@ -229,11 +239,11 @@ export function BboxEditor({
       {imageUrl ? (
         <Image
           source={{ uri: imageUrl }}
-          style={[styles.paper, { aspectRatio: aspect ?? 3 / 4 }]}
+          style={[styles.paper, displaySize || { aspectRatio: aspect ?? 3 / 4 }]}
           contentFit="contain"
           onLoad={(e) => {
             const s = (e.source as { width?: number; height?: number } | undefined) || {};
-            if (s.width && s.height) setAspect(s.width / s.height);
+            if (s.width && s.height) setNatural({ uri: imageUrl, width: s.width, height: s.height });
           }}
         />
       ) : (
@@ -316,6 +326,7 @@ export function BboxEditor({
             );
           })
         : null}
+    </View>
     </View>
   );
 }

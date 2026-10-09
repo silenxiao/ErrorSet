@@ -48,7 +48,7 @@ import {
 } from '@/components/ui';
 
 // 未到终态的状态：轮询同步
-const POLLING = ['uploaded', 'global_processing', 'local_processing'];
+const POLLING = ['uploaded', 'global_processing', 'local_queued', 'local_processing'];
 const POLL_INTERVAL = 1500;
 
 export default function RecognitionPage() {
@@ -372,6 +372,7 @@ export default function RecognitionPage() {
           <ScrollView scrollEnabled={!illDragging} contentContainerStyle={{ padding: 12 }}>
             {exam ? (
               <BboxEditor
+                maxHeight={Math.max(80, windowHeight * 0.8 - 160)}
                 imageUrl={exam.imageUrl}
                 questions={exam.questions}
                 selectedId={selectedId}

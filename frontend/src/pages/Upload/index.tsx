@@ -12,6 +12,7 @@ import type { ExamListItem, ExamStatus } from "../../types/exam";
 const ACTIVE_STATUSES: ExamStatus[] = [
   "uploaded",
   "global_processing",
+  "local_queued",
   "local_processing",
 ];
 const POLL_INTERVAL_MS = 3000;

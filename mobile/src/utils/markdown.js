@@ -132,8 +132,12 @@ function mdHtml(md) {
     // 有序列表
     if (/^\d+\.\s+/.test(line)) {
       const items = [];
-      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s+/, '')); i++; }
-      out.push('<div style="margin:6px 0;">' + items.map((t, idx) => '<div style="margin:3px 0;line-height:1.7;font-size:14px;"><span style="color:#0b53c9;margin-right:6px;">' + (idx + 1) + '.</span>' + inlineHtml(t) + '</div>').join('') + '</div>');
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+        const item = /^(\d+)\.\s+(.*)$/.exec(lines[i]);
+        items.push({ number: item[1], text: item[2] });
+        i++;
+      }
+      out.push('<div style="margin:6px 0;">' + items.map(item => '<div style="margin:8px 0;line-height:1.7;font-size:14px;"><span style="color:#0b53c9;margin-right:6px;">' + item.number + '.</span>' + inlineHtml(item.text) + '</div>').join('') + '</div>');
       continue;
     }
 

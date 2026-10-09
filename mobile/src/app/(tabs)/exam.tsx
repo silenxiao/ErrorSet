@@ -11,12 +11,16 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { ExamImageEditor, type ExamImage } from '@/components/ExamImageEditor';
+import { fitImageSize } from '@/utils/imageSize';
+import { examImageName } from '@/utils/examImage';
 import { createExam, deleteExam, listExams } from '@/api/exam';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { ExamListItem } from '@/types/exam';
@@ -39,7 +43,7 @@ import {
 } from '@/components/ui';
 
 // 未到终态的状态：存在时列表需要轮询同步
-const ACTIVE_STATUSES = ['uploaded', 'global_processing', 'local_processing'];
+const ACTIVE_STATUSES = ['uploaded', 'global_processing', 'local_queued', 'local_processing'];
 const POLL_INTERVAL = 3000;
 
 export default function ExamScreen() {
@@ -49,6 +53,12 @@ export default function ExamScreen() {
 
   // 上传表单
   const [imageUri, setImageUri] = useState('');
+  const window = useWindowDimensions();
+  const [confirmedImage, setConfirmedImage] = useState<ExamImage | null>(null);
+  const [originalImage, setOriginalImage] = useState<ExamImage | null>(null);
+  const [editor, setEditor] = useState<{ source: ExamImage; name: string } | null>(null);
+  const nameEdited = useRef(false);
+  const [previewWidth, setPreviewWidth] = useState(0);
   const [name, setName] = useState('');
   const [grade, setGrade] = useState(() => {
     // 默认年级：上次手动选择 > 注册时选择的年级 > 一年级
@@ -57,6 +67,7 @@ export default function ExamScreen() {
   });
   const [includeIllustrations, setIncludeIllustrations] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   // 识别模型（与 Web 端上传页一致：切换即独占启用）
   const [models, setModels] = useState<ModelProfile[]>([]);
@@ -113,48 +124,46 @@ export default function ExamScreen() {
   }, [exams, loadExams]);
 
   const chooseImage = () => {
+    if (picking || uploading || editor) return;
     Alert.alert('选择试卷照片', undefined, [
-      { text: '拍照', onPress: () => pick(ImagePicker.MediaTypeOptions.Images, true) },
-      { text: '从相册选择', onPress: () => pick(ImagePicker.MediaTypeOptions.Images, false) },
+      { text: '拍照', onPress: () => void pick(true).catch((e) => Alert.alert('图片编辑失败', e instanceof Error ? e.message : String(e))) },
+      { text: '从相册选择', onPress: () => void pick(false).catch((e) => Alert.alert('图片编辑失败', e instanceof Error ? e.message : String(e))) },
       { text: '取消', style: 'cancel' as const },
     ]);
   };
 
   const pick = async (
-    mediaTypes: ImagePicker.MediaTypeOptions,
     useCamera: boolean,
   ) => {
-    const perm = useCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('提示', '需要授权访问相机/相册才能选择试卷照片');
-      return;
-    }
-    const result = useCamera
-      ? await ImagePicker.launchCameraAsync({ mediaTypes, quality: 0.9 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes, quality: 0.9 });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
-      Alert.alert('提示', '图片超过 10MB，请压缩后再试');
-      return;
-    }
-    setImageUri(asset.uri);
-    if (!name) {
-      const fileName = asset.fileName || asset.uri.split('/').pop() || '';
-      setName(fileName.replace(/\.(jpe?g|png|webp|heic)$/i, ''));
-    }
+    if (picking || uploading || editor) return;
+    setPicking(true);
+    try {
+      const perm = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('提示', '需要授权访问相机/相册才能选择试卷照片');
+        return;
+      }
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setEditor({ source: { uri: asset.uri, width: asset.width, height: asset.height },
+        name: nameEdited.current && name.trim() ? name : examImageName(asset.fileName, useCamera) });
+    } finally { setPicking(false); }
   };
 
   const upload = async () => {
+    if (picking || uploading || editor) return;
     if (!imageUri) {
       showToast('请先选择图片');
       return;
     }
     setUploading(true);
     try {
-      const fileName = imageUri.split('/').pop() || `exam_${Date.now()}.jpg`;
+      const fileName = `exam_${Date.now()}.jpg`;
       const created = await createExam(
         { uri: imageUri, name: fileName, type: 'image/jpeg' },
         name,
@@ -163,6 +172,9 @@ export default function ExamScreen() {
       );
       showToast('上传成功，开始识别');
       setImageUri('');
+      setConfirmedImage(null);
+      setOriginalImage(null);
+      nameEdited.current = false;
       setName('');
       router.push({ pathname: '/recognition/[id]', params: { id: String(created.id) } });
     } catch (e) {
@@ -222,15 +234,16 @@ export default function ExamScreen() {
           {!imageUri ? (
             <TouchableOpacity activeOpacity={0.7} style={styles.uploader} onPress={chooseImage}>
               <Feather name="plus" size={44} color={C.primary} />
-              <Text style={styles.uploaderText}>点击选择试卷照片</Text>
+              <Text style={styles.uploaderText}>选择照片并编辑</Text>
               <Muted>（JPG/PNG/WebP，≤10MB，一张图=一份试卷）</Muted>
             </TouchableOpacity>
           ) : (
-            <View style={styles.preview}>
-              <TouchableOpacity activeOpacity={0.8} onPress={chooseImage}>
-                <Image source={{ uri: imageUri }} style={styles.previewImg} contentFit="contain" />
+            <View style={styles.preview} onLayout={e => setPreviewWidth(e.nativeEvent.layout.width)}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { if (originalImage && !uploading && !picking) setEditor({ source: originalImage, name }); }}>
+                <Image source={{ uri: imageUri }} style={[styles.previewImg, confirmedImage && fitImageSize(confirmedImage.width, confirmedImage.height, previewWidth || window.width - 64, window.height - 160)]} contentFit="contain" />
               </TouchableOpacity>
-              <TextBtn danger onPress={() => setImageUri('')}>
+              <TextBtn onPress={() => { if (!uploading && !picking && originalImage) setEditor({ source: originalImage, name }); }}>重新编辑</TextBtn>
+              <TextBtn danger onPress={() => { if (uploading || picking) return; setImageUri(''); setConfirmedImage(null); setOriginalImage(null); }}>
                 移除
               </TextBtn>
             </View>
@@ -244,7 +257,7 @@ export default function ExamScreen() {
           </Field>
 
           <Field label="试卷名称">
-            <Input value={name} placeholder="例如：数学月考（默认取文件名）" onChangeText={setName} />
+            <Input value={name} placeholder="图片默认取文件名，拍照取日期时间" onChangeText={value => { nameEdited.current = !!value.trim(); setName(value); }} />
           </Field>
 
           <View style={styles.switchRow}>
@@ -265,7 +278,7 @@ export default function ExamScreen() {
           </View>
 
           <View style={styles.submitRow}>
-            <Btn loading={uploading} style={styles.submitGrow} onPress={upload}>
+            <Btn loading={uploading} disabled={picking || !!editor || !imageUri} style={styles.submitGrow} onPress={upload}>
               上传并开始识别
             </Btn>
             {models.length > 0 ? (
@@ -319,6 +332,13 @@ export default function ExamScreen() {
           })}
         </Card>
       </ScrollView>
+      {editor ? <ExamImageEditor source={editor.source} onCancel={() => setEditor(null)} onConfirm={result => {
+        setOriginalImage(editor.source);
+        setConfirmedImage(result);
+        setImageUri(result.uri);
+        setName(editor.name);
+        setEditor(null);
+      }} /> : null}
     </Screen>
   );
 }
@@ -344,8 +364,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewImg: {
-    width: '100%',
-    aspectRatio: 3 / 4,
+    width: 120,
+    height: 120,
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
     marginBottom: 6,

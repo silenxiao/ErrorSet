@@ -1,3 +1,4 @@
+const { fitImage } = require('../../utils/imageSize');
 const { normalizeBBox, applyDrag, bboxToStyle } = require('../../utils/bbox');
 
 // 八向手柄：fx/fy 为相对所选框的百分比位置（0~100）
@@ -14,6 +15,7 @@ const HANDLES = [
 
 Component({
   properties: {
+    maxHeight: { type: Number, value: 0 },
     imageUrl: { type: String, value: '' },
     questions: { type: Array, value: [] },
     selectedId: { type: Number, value: null },
@@ -35,11 +37,13 @@ Component({
     'imageUrl,questions,selectedId,selIllId': function (imageUrl) {
       if (imageUrl !== this._lastImg) {
         this._lastImg = imageUrl;
-        this.setData({ imgLoaded: false });
+        this.setData({ imgLoaded: false, paperStyle: '' });
       }
       this.build();
     },
   },
+
+  pageLifetimes: { resize() { this.fitPaper(); } },
 
   lifetimes: {
     attached() {
@@ -97,8 +101,20 @@ Component({
       return null;
     },
 
-    onImgLoad() {
+    onImgLoad(e) {
+      this._imageSize = e.detail;
+      this.fitPaper();
       this.setData({ imgLoaded: true });
+    },
+
+    fitPaper() {
+      if (!this._imageSize) return;
+      const win = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      this.createSelectorQuery().select('#available').boundingClientRect(rect => {
+        if (!rect) return;
+        const size = fitImage(this._imageSize.width, this._imageSize.height, rect.width, this.properties.maxHeight || win.windowHeight - 120);
+        this.setData({ paperStyle: `width:${size.width}px;height:${size.height}px;` });
+      }).exec();
     },
 
     onImgError() {

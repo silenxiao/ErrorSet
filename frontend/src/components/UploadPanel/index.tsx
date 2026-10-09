@@ -1,12 +1,13 @@
 import { InboxOutlined } from "@ant-design/icons";
 import { Button, Form, Input, Radio, Select, Space, Upload, message } from "antd";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { createExam } from "../../api/exam";
 import { getStoredGrade } from "../../api/auth";
 import { GRADE_OPTIONS, GRADE_STORAGE_KEY } from "../../utils/grade";
 import type { ExamCreated } from "../../types/exam";
 import ModelSelector from "../ModelSelector";
+import ImageEditor from "../ImageEditor";
 import "./index.css";
 
 interface Props {
@@ -16,6 +17,15 @@ interface Props {
 /** 上传面板（§27.1）：拖拽/点击上传 + 预览 + 命名 + 插图选项 + 识别模型选择。 */
 export default function UploadPanel({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const cameraInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!file) { setPreview(""); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
   const [name, setName] = useState("");
   const [includeIllustrations, setIncludeIllustrations] = useState(false);
   const [grade, setGrade] = useState(() => {
@@ -30,7 +40,7 @@ export default function UploadPanel({ onUploaded }: Props) {
   const [form] = Form.useForm();
 
   const handleUpload = async () => {
-    if (!file) {
+    if (!file || editingFile) {
       message.warning("请先选择图片");
       return;
     }
@@ -50,16 +60,16 @@ export default function UploadPanel({ onUploaded }: Props) {
     <div className="upload-panel">
       <div className="upload-panel-file">
         <div className="upload-panel-heading">上传试卷</div>
-        <p className="upload-panel-description">选择一张试卷图片，开始识别题目</p>
+        <p className="upload-panel-description">选择或拍摄图片，编辑确认后再上传识别</p>
         <Upload.Dragger
           accept=".jpg,.jpeg,.png,.webp"
           maxCount={1}
-          showUploadList={{ showRemoveIcon: true }}
+          showUploadList={false}
+          disabled={uploading || !!editingFile}
           beforeUpload={(f) => {
-            setFile(f);
-            return false;
+            setEditingFile(f);
+            return Upload.LIST_IGNORE;
           }}
-          onRemove={() => setFile(null)}
         >
           <p className="ant-upload-drag-icon" style={{ marginBottom: 8 }}>
             <InboxOutlined style={{ color: "var(--primary)" }} />
@@ -67,6 +77,23 @@ export default function UploadPanel({ onUploaded }: Props) {
           <p className="ant-upload-text">点击或拖拽图片到此处上传</p>
           <p className="ant-upload-hint">试卷图片（JPG/PNG/WebP，≤10MB，一张图 = 一份试卷）</p>
         </Upload.Dragger>
+        <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden
+          onChange={(e) => {
+            const selected = e.target.files?.[0];
+            if (selected) setEditingFile(selected);
+            e.target.value = "";
+          }} />
+        <Space wrap style={{ marginTop: 12 }}>
+          <Button disabled={uploading || !!editingFile} onClick={() => cameraInput.current?.click()}>拍照</Button>
+          {file && <>
+            <Button disabled={uploading} onClick={() => setEditingFile(file)}>重新编辑</Button>
+            <Button disabled={uploading} onClick={() => setFile(null)}>移除图片</Button>
+          </>}
+        </Space>
+        {preview && <div style={{ marginTop: 12 }}>
+          <img src={preview} alt="编辑后待上传的试卷" className="exam-image" />
+          <p className="upload-panel-description" style={{ marginTop: 8 }}>已确认：{file?.name}</p>
+        </div>}
       </div>
       <Form form={form} layout="vertical" className="upload-panel-settings">
         <div className="upload-panel-heading">识别设置</div>
@@ -103,7 +130,7 @@ export default function UploadPanel({ onUploaded }: Props) {
           <Button
             type="primary"
             loading={uploading}
-            disabled={!file}
+            disabled={!file || !!editingFile}
             onClick={handleUpload}
           >
             上传并开始识别
@@ -111,6 +138,9 @@ export default function UploadPanel({ onUploaded }: Props) {
           <ModelSelector />
         </Space>
       </Form>
+      {editingFile && <ImageEditor key={editingFile.name + editingFile.lastModified} file={editingFile}
+        onCancel={() => setEditingFile(null)}
+        onConfirm={(edited) => { setFile(edited); setEditingFile(null); }} />}
     </div>
   );
 }

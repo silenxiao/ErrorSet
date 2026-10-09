@@ -1,11 +1,13 @@
+from ipaddress import ip_address, ip_network
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser
+from app.core.config import get_settings
 from app.core.exceptions import AuthError, RateLimitError, ValidationError
-from app.core.security import RateLimiter, create_token, hash_password, verify_password
+from app.core.security import RateLimiter, create_token, hash_password, validate_new_password, verify_password
 from app.database import repository as repo
 from app.database.database import get_db
 from app.schemas.auth import (
@@ -28,21 +30,34 @@ _change_password_limiter = RateLimiter(max_events=5, window_seconds=300)
 
 
 def _client_ip(request: Request) -> str:
-    """取真实客户端 IP。部署在 nginx 后，优先取转发链第一跳。"""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """从实际连接端向外回溯，只跨过显式信任的代理。"""
+    peer = request.client.host if request.client else "unknown"
+    try:
+        current = ip_address(peer)
+    except ValueError:
+        return peer
+    trusted = [ip_network(value) for value in get_settings().trusted_proxy_cidrs]
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if not forwarded or not any(current in network for network in trusted):
+        return str(current)
+    try:
+        chain = [ip_address(value.strip()) for value in forwarded.split(",")]
+    except ValueError:
+        return str(current)  # 非法链不能提供新的限流身份
+    for address in reversed(chain):
+        if not any(current in network for network in trusted):
+            break
+        current = address
+    return str(current)
 
 
 def _check_credentials(username: str, password: str) -> None:
     if not username or len(username) > 64:
         raise ValidationError("用户名不能为空且不超过 64 个字符")
-    if len(password) < 6:
-        raise ValidationError("密码至少 6 位")
-    if len(password) > 128:
-        # bcrypt 只取前 72 字节，超长部分静默截断；提前拒绝避免"设的密码和以为的不一致"
-        raise ValidationError("密码不能超过 128 个字符")
+    try:
+        validate_new_password(password)
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 @router.post("/register", response_model=TokenOut, status_code=201)
@@ -59,7 +74,7 @@ def register(payload: CredentialsIn, db: DbSession, request: Request) -> TokenOu
         password_hash=hash_password(payload.password),
         grade=payload.grade,
     )
-    return TokenOut(token=create_token(user.id), user=UserOut.model_validate(user))
+    return TokenOut(token=create_token(user), user=UserOut.model_validate(user))
 
 
 @router.post("/login", response_model=TokenOut)
@@ -72,7 +87,7 @@ def login(payload: CredentialsIn, db: DbSession, request: Request) -> TokenOut:
     if user is None or not verify_password(payload.password, user.password_hash):
         raise AuthError("用户名或密码错误")
     _login_limiter.clear(key)
-    return TokenOut(token=create_token(user.id), user=UserOut.model_validate(user))
+    return TokenOut(token=create_token(user), user=UserOut.model_validate(user))
 
 
 @router.get("/me", response_model=UserOut)

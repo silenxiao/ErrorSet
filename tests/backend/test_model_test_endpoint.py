@@ -51,7 +51,7 @@ def test_success_path_reports_latency(monkeypatch: pytest.MonkeyPatch) -> None:
 
     class FakeResp:
         latency_ms = 321
-        text = "OK"
+        text = '{"expression":"7 + 5 = ?","answer":12}'
 
     class FakeProvider:
         async def analyze(self, request):  # noqa: ANN001, ANN201

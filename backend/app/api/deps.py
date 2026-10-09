@@ -21,11 +21,12 @@ def get_current_user(
         raw = authorization[len("Bearer "):]
     if not raw:
         raise AuthError()
-    user_id = security.decode_token(raw)
-    if user_id is None:
+    identity = security.decode_token(raw)
+    if identity is None:
         raise AuthError()
+    user_id, auth_identity = identity
     user = repo.get_user(db, user_id)
-    if user is None:
+    if user is None or user.auth_identity != auth_identity:
         raise AuthError("用户不存在")
     return user
 

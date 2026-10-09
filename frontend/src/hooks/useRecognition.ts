@@ -6,6 +6,7 @@ import type { ExamDetail, ExamStatus } from "../types/exam";
 const POLLING_STATUSES: ExamStatus[] = [
   "uploaded",
   "global_processing",
+  "local_queued",
   "local_processing",
 ];
 const POLL_INTERVAL_MS = 1500;

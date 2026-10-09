@@ -1,0 +1,22 @@
+<view wx:if="{{src}}" class="mask" catchtouchmove="noop">
+  <view class="dialog">
+    <view class="title">图片编辑</view>
+    <view class="hint">拖动蓝色框体移动位置，拖动八向手柄调整裁剪范围</view>
+    <view class="stage">
+      <view wx:if="{{ready}}" class="picture" style="width:{{width}}px;height:{{height}}px;">
+        <image src="{{src}}" mode="aspectFit" class="image" style="width:{{imageWidth}}px;height:{{imageHeight}}px;transform:translate(-50%,-50%) rotate({{angle}}deg);" />
+        <view class="crop" style="{{boxStyle}}" data-mode="move" catchtouchstart="start" catchtouchmove="move" catchtouchend="end" catchtouchcancel="cancelDrag">
+          <view wx:for="{{handles}}" wx:key="mode" class="handle" style="left:{{item.x}}%;top:{{item.y}}%;" data-mode="{{item.mode}}" catchtouchstart="start" catchtouchmove="move" catchtouchend="end" catchtouchcancel="cancelDrag" />
+        </view>
+      </view>
+      <text wx:else>加载中…</text>
+    </view>
+    <view class="actions">
+      <button class="action cancel" hover-class="action-pressed" bindtap="cancel" disabled="{{busy}}">取消</button>
+      <button class="action" hover-class="action-pressed" bindtap="rotate" disabled="{{busy || !ready}}">旋转</button>
+      <button class="action" hover-class="action-pressed" bindtap="restore" disabled="{{busy || !ready}}">恢复原图</button>
+      <button class="action confirm" hover-class="confirm-pressed" bindtap="confirm" loading="{{busy}}" disabled="{{busy || !ready}}">确认</button>
+    </view>
+  </view>
+  <canvas type="2d" id="export" class="export" />
+</view>

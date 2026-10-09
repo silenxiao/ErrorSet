@@ -15,9 +15,13 @@ class GeminiProvider(VisionProvider):
         "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     )
 
-    def __init__(self, model: str, api_key: str):
+    def __init__(self, model: str, api_key: str, base_url: str | None = None):
         self.model = model
         self.api_key = api_key
+        self.endpoint = (
+            f"{base_url.rstrip('/')}/models/{model}:generateContent"
+            if base_url else self.ENDPOINT_TPL.format(model=model)
+        )
 
     async def analyze(self, request: VisionRequest) -> VisionResponse:
         mime = mimetypes.guess_type(request.image_path)[0] or "image/jpeg"
@@ -45,7 +49,7 @@ class GeminiProvider(VisionProvider):
             payload["systemInstruction"] = {"parts": [{"text": request.system_prompt}]}
         started = time.monotonic()
         data = await self._post_with_retries(
-            self.ENDPOINT_TPL.format(model=self.model),
+            self.endpoint,
             payload,
             {"x-goog-api-key": self.api_key},
         )

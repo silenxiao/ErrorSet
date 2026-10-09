@@ -11,6 +11,7 @@ export const EXAM_STATUS: Record<string, { label: string; color: string }> = {
   uploaded: { label: "已上传", color: "default" },
   global_processing: { label: "整页识别中", color: "processing" },
   awaiting_review: { label: "待人工确认", color: "warning" },
+  local_queued: { label: "二次识别排队中", color: "default" },
   local_processing: { label: "二次识别中", color: "processing" },
   completed: { label: "已完成", color: "success" },
   failed: { label: "失败", color: "error" },

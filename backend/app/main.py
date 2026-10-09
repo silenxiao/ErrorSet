@@ -38,6 +38,9 @@ async def lifespan(_app: FastAPI):
             if exam.status == "uploaded":
                 worker.enqueue(RecognitionJob(exam_id=exam.id, stage="global"))
                 logger.info("启动恢复：试卷 %s 重新入队整页识别", exam.id)
+        for exam in repo.list_exams_by_status(db, "local_queued"):
+            worker.enqueue(RecognitionJob(exam_id=exam.id, stage="local"))
+            logger.info("启动恢复：试卷 %s 重新入队二次识别", exam.id)
     finally:
         db.close()
     logger.info("应用启动，识别 worker 已就绪")

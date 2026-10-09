@@ -2,5 +2,5 @@
   "navigationBarTitleText": "试卷上传",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
-  "usingComponents": {}
+  "usingComponents": { "image-editor": "/components/image-editor/image-editor" }
 }

@@ -12,4 +12,8 @@ def illustration_out(row, viewer_id: int) -> IllustrationOut:
 def question_out(row, viewer_id: int) -> QuestionOut:
     out = QuestionOut.model_validate(row)
     out.illustrations = [illustration_out(item, viewer_id) for item in row.illustrations]
+    if row.last_analysis and row.last_analysis.get("_input_fingerprint"):
+        from app.services.question_service import _analysis_fingerprint
+        if row.last_analysis["_input_fingerprint"] != _analysis_fingerprint(row):
+            out.last_analysis = None
     return out

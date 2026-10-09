@@ -13,7 +13,7 @@ description: 启动 ErrorSet 本地开发三件套：backend（FastAPI :8000）�
 
 1. **backend**（后台）：
    ```bash
-   cd /Users/xiaohui/Documents/Hanry/ErrorSet/backend && .venv/bin/uvicorn app.main:app --reload
+   cd /Users/xiaohui/Documents/Hanry/ErrorSet/backend && .venv/bin/uvicorn app.main:app --reload --no-proxy-headers
    ```
    识别 worker 随应用内置启动，不需要单独起进程。
 

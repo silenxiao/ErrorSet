@@ -79,8 +79,6 @@ def update_user(
     if user is None:
         raise NotFoundError("用户不存在")
     if payload.password is not None:
-        if len(payload.password) < 6:
-            raise ValidationError("密码至少 6 位")
         repo.update_user_password(db, user, hash_password(payload.password))
     if payload.is_admin is not None:
         if user.id == admin.id and not payload.is_admin:

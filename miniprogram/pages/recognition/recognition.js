@@ -2,7 +2,7 @@ const api = require('../../utils/api');
 const { EXAM_STATUS, formatDate } = require('../../utils/format');
 const { illStyle } = require('../../utils/device');
 
-const POLLING = ['uploaded', 'global_processing', 'local_processing'];
+const POLLING = ['uploaded', 'global_processing', 'local_queued', 'local_processing'];
 const POLL_INTERVAL = 1500;
 
 Page({
@@ -101,7 +101,8 @@ Page({
 
   // 插图预览浮层：页面内插图框只读，浮层内才可拖动/缩放
   openIllPreview() {
-    this.setData({ illPreviewVisible: true });
+    const win = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    this.setData({ illPreviewVisible: true, previewMaxHeight: Math.max(80, win.windowHeight * 0.8 - 160) });
   },
 
   closeIllPreview() {

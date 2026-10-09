@@ -54,7 +54,7 @@ export default function ImageViewer({
 
   return (
     <div
-      style={{ position: "relative", display: "inline-block", width: "100%" }}
+      style={{ position: "relative", display: "inline-block", maxWidth: "100%", lineHeight: 0 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -65,7 +65,7 @@ export default function ImageViewer({
           const image = event.currentTarget;
           if (image.naturalHeight) setImageRatio(image.naturalWidth / image.naturalHeight);
         }}
-        style={{ display: "block", width: "100%", height: "auto" }}
+        className="exam-image"
       />
       {/* 悬停遮罩：纯视觉层（pointer-events: none），层级在插图框之下 */}
       {hovered && !previewOpen && (
@@ -137,13 +137,7 @@ export default function ImageViewer({
           <img
             src={imageUrl}
             alt="试卷原图"
-            style={{
-              display: "block",
-              maxWidth: "100%",
-              maxHeight: "74vh",
-              width: "auto",
-              height: "auto",
-            }}
+            className="exam-image"
           />
           {showBoxes && (
             <svg

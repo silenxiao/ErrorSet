@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Literal, Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, StringConstraints
 
 
 class TeacherQuestion(BaseModel):
@@ -22,8 +22,9 @@ class TeacherQuestion(BaseModel):
 
 
 class TeacherAnswer(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid", strict=True)
 
-    subject: str = Field(min_length=1)
+    subject: Literal["语文", "数学", "英语", "物理", "化学", "生物", "历史", "政治", "地理"]
 
     answer: str = Field(
         min_length=1,
@@ -33,16 +34,14 @@ class TeacherAnswer(BaseModel):
         min_length=1,
     )
 
-    knowledge_points: list[str] = Field(
-        default_factory=list,
-    )
+    knowledge_points: list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]]
 
     grade_level: str | None = None
 
-    out_of_scope: bool = False
+    out_of_scope: bool
 
     confidence: Literal[
         "high",
         "medium",
         "low",
-    ] = "medium"
+    ]

@@ -87,7 +87,7 @@ export default function MineScreen() {
     try {
       await updatePassword(oldPassword, newPassword, confirmPassword);
       setPwdOpen(false);
-      // 后端旧 token 仍有效，但改密后要求重新登录更符合用户预期
+      // 改密已撤销旧登录令牌，清理本地会话并重新登录
       confirm('密码已修改', '请使用新密码重新登录', () => {
         clearSession();
         router.replace('/login');

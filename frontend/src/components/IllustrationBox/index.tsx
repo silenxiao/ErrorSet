@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { message } from "antd";
 
 import { updateIllustrationBbox } from "../../api/question";
@@ -12,6 +12,8 @@ interface Props {
   editable?: boolean;
   onSelectParent: () => void;
   onUpdated: () => void;
+  /** 本地编辑模式：由调用方保存选框，不请求插图接口。 */
+  onBboxChange?: (bbox: BBox) => void;
 }
 
 const HANDLES: { mode: DragMode; fx: number; fy: number; cursor: string }[] = [
@@ -43,6 +45,7 @@ export default function IllustrationBox({
   editable = false,
   onSelectParent,
   onUpdated,
+  onBboxChange,
 }: Props) {
   const [preview, setPreview] = useState<BBox | null>(null);
   const drag = useRef<{
@@ -52,6 +55,8 @@ export default function IllustrationBox({
     startBBox: BBox;
     svg: SVGSVGElement;
   } | null>(null);
+  const detach = useRef<(() => void) | null>(null);
+  useEffect(() => () => detach.current?.(), []);
 
   const bbox = preview ?? illustration.bbox;
   const [x1, y1, x2, y2] = bbox;
@@ -62,6 +67,8 @@ export default function IllustrationBox({
 
   const startDrag = (mode: DragMode) => (e: React.PointerEvent) => {
     if (!editable || e.button !== 0) return;
+    if (drag.current) return;
+    e.preventDefault();
     e.stopPropagation();
     onSelectParent();
     const svg = (e.currentTarget as SVGElement).ownerSVGElement;
@@ -80,8 +87,7 @@ export default function IllustrationBox({
     };
 
     const onUp = async (ev: PointerEvent) => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
+      detach.current?.();
       const d = drag.current;
       drag.current = null;
       if (!d) return;
@@ -89,6 +95,10 @@ export default function IllustrationBox({
       const next = applyDrag(d.startBBox, p.x - d.startX, p.y - d.startY, d.mode);
       setPreview(null);
       if (next.every((v, i) => v === illustration.bbox[i])) return;
+      if (onBboxChange) {
+        onBboxChange(next);
+        return;
+      }
       try {
         await updateIllustrationBbox(illustration.id, next);
         onUpdated();
@@ -98,13 +108,27 @@ export default function IllustrationBox({
       }
     };
 
+    const onCancel = () => {
+      detach.current?.();
+      drag.current = null;
+      setPreview(null);
+    };
+    detach.current = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      detach.current = null;
+    };
+
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
   };
 
   return (
     <g>
       <rect
+        data-drag-mode="move"
         x={x1}
         y={y1}
         width={x2 - x1}
@@ -127,6 +151,7 @@ export default function IllustrationBox({
         HANDLES.map((h) => (
           <rect
             key={h.mode}
+            data-drag-mode={h.mode}
             x={x1 + (x2 - x1) * h.fx - HANDLE_SIZE / 2}
             y={y1 + (y2 - y1) * h.fy - HANDLE_SIZE / 2}
             width={HANDLE_SIZE}

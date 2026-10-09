@@ -60,7 +60,7 @@ export default function MinePage() {
     setSavingPwd(true);
     try {
       await updatePassword(values.oldPassword, values.newPassword, values.confirmPassword);
-      // 旧 token 仍然有效，但改密后要求重新登录更符合用户预期
+      // 改密已撤销旧登录令牌，清理本地会话并重新登录
       clearSession();
       setPwdOpen(false);
       pwdForm.resetFields();

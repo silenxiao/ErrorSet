@@ -4,6 +4,7 @@ export type ExamStatus =
   | "uploaded"
   | "global_processing"
   | "awaiting_review"
+  | "local_queued"
   | "local_processing"
   | "completed"
   | "failed";

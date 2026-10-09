@@ -61,7 +61,7 @@ def confirm_exam(exam_id: int, db: DbSession, user: CurrentUser) -> ExamCreated:
     """人工确认，触发第二段识别（§11.5/§6.2）。"""
     exam = recognition_service.confirm_exam(db, exam_id, user.id)
     worker.enqueue(RecognitionJob(exam_id=exam.id, stage="local"))
-    return ExamCreated(id=exam.id, status="local_processing")
+    return ExamCreated(id=exam.id, status=exam.status)
 
 
 @router.post("/api/v1/exams/{exam_id}/re-recognize", response_model=ExamCreated)

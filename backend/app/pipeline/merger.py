@@ -20,7 +20,7 @@ def merge(
 
     规则（§20 冲突规则）：
     - Local 失败或输出为空：保留 Global 结果
-    - Local 题号与 Global 不一致：保留 Global 题号并记录警告
+    - Local 题号与 Global 不一致：保留 Global 内容并记录警告
     - Local 认为不是完整题目（text 为空）：丢弃 Local 结果
     - bbox / 结构永远不动
     """
@@ -28,7 +28,8 @@ def merge(
         warning = f"local_failed: {local_error}" if local_error else "local_missing"
         return MergeOutcome(text=global_text, used_local=False, warnings=[warning])
 
-    local_text = str(local.get("text") or "").strip()
+    raw_text = local.get("text")
+    local_text = raw_text.strip() if isinstance(raw_text, str) else ""
     if not local_text:
         return MergeOutcome(
             text=global_text, used_local=False, warnings=["local_empty_discarded"]
@@ -36,9 +37,10 @@ def merge(
 
     warnings: list[str] = []
     local_no = local.get("question_no")
-    if local_no is not None and str(local_no) != global_no:
+    if local_no is not None and str(local_no).strip() != global_no.strip():
         warnings.append(
             f"question_no_mismatch: global={global_no}, local={local_no}"
         )
+        return MergeOutcome(text=global_text, used_local=False, warnings=warnings)
 
     return MergeOutcome(text=local_text, used_local=True, warnings=warnings)

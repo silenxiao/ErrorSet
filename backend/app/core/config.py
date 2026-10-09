@@ -1,6 +1,8 @@
 from functools import lru_cache
+from ipaddress import ip_network
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 项目根目录的 .env（cwd 无论在哪都能读到；backend/.env 可作本地覆盖）
@@ -32,6 +34,13 @@ class Settings(BaseSettings):
     # JWT 登录鉴权（生产环境务必在 .env 覆盖 jwt_secret）
     jwt_secret: str = "errorset-dev-secret-change-me"
     jwt_expire_days: int = 30
+    # 空列表忽略转发头；部署时只列出实际 nginx 的 IP/CIDR。
+    trusted_proxy_cidrs: list[str] = []
+
+    @field_validator("trusted_proxy_cidrs")
+    @classmethod
+    def _validate_proxy_networks(cls, values: list[str]) -> list[str]:
+        return [str(ip_network(value)) for value in values]
 
     # 首次启动（用户表为空时）播种的管理员账号；生产环境务必在 .env 覆盖密码
     seed_admin_username: str = "xiaohui"

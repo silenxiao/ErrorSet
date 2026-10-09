@@ -1,8 +1,9 @@
 const api = require('../../utils/api');
+const { fitImage } = require('../../utils/imageSize');
 const { EXAM_STATUS, GRADE_OPTIONS, formatDate } = require('../../utils/format');
 
 // 未到终态的状态：存在时列表需要轮询同步
-const ACTIVE_STATUSES = ['uploaded', 'global_processing', 'local_processing'];
+const ACTIVE_STATUSES = ['uploaded', 'global_processing', 'local_queued', 'local_processing'];
 const POLL_INTERVAL = 3000;
 
 Page({
@@ -20,9 +21,12 @@ Page({
       )
     ),
     previewImage: '',
+    previewStyle: '',
+    editorSrc: '',
     name: '',
     includeIllustrations: false,
     uploading: false,
+    editing: false,
     models: [],
     modelName: '',
   },
@@ -142,23 +146,93 @@ Page({
   },
 
   chooseImage() {
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        const f = res.tempFiles[0];
-        const name = this.data.name || (f.tempFilePath.split('/').pop() || '');
-        this.setData({ previewImage: f.tempFilePath, name });
-      },
+    if (this.data.uploading || this.data.editing) return;
+    this.setData({ editing: true });
+    wx.showActionSheet({
+      itemList: ['从相册选择', '拍照', '从聊天选择图片'],
+      success: res => this.chooseImageSource(['album', 'camera', 'message'][res.tapIndex]),
+      fail: () => this.setData({ editing: false }),
     });
   },
 
+  imageName(file, source, date = new Date()) {
+    // 临时路径的 basename 是微信生成的随机标识，不能作为真实图片名。
+    if (source !== 'camera' && file.name && file.name.trim()) return file.name.trim();
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  },
+
+  chooseImageSource(source) {
+    if (!source) { this.setData({ editing: false }); return; }
+    const options = {
+      count: 1,
+      success: (res) => {
+        const f = res.tempFiles[0];
+        if (!f) { this.setData({ editing: false }); return; }
+        const name = this._nameEdited && this.data.name.trim() ? this.data.name : this.imageName(f, source);
+        this.editSelectedImage(f.tempFilePath || f.path, name);
+      },
+      fail: (err) => {
+        this.setData({ editing: false });
+        if (!/cancel/i.test(err.errMsg || '')) wx.showToast({ title: '选择图片失败', icon: 'none' });
+      },
+    };
+    if (source === 'message') {
+      wx.chooseMessageFile({ ...options, type: 'image' });
+    } else {
+      wx.chooseMedia({ ...options, mediaType: ['image'], sourceType: [source], sizeType: ['original'] });
+    }
+  },
+
+  editSelectedImage(src, name) {
+    this._editName = name;
+    this.setData({ editing: true, editorSrc: src });
+  },
+
+  cancelImageEdit() {
+    this.setData({ editing: false, editorSrc: '' });
+  },
+
+  confirmImageEdit(e) {
+    const filePath = e.detail.tempFilePath;
+    if (!filePath) return;
+    wx.getFileSystemManager().getFileInfo({
+      filePath,
+      success: info => {
+        if (info.size > 10 * 1024 * 1024) {
+          this.cancelImageEdit();
+          wx.showToast({ title: '编辑后图片超过10MB', icon: 'none' });
+          return;
+        }
+        this._originalImage = this.data.editorSrc;
+        this.setData({ previewImage: filePath, name: this._editName, previewStyle: '', editing: false, editorSrc: '' });
+      },
+      fail: () => { this.cancelImageEdit(); wx.showToast({ title: '无法读取编辑结果', icon: 'none' }); },
+    });
+  },
+
+  onPreviewLoad(e) {
+    const win = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+    wx.createSelectorQuery().select('.preview').boundingClientRect(rect => {
+      if (!rect) return;
+      const size = fitImage(e.detail.width, e.detail.height, rect.width, win.windowHeight - 120);
+      this.setData({ previewStyle: `width:${size.width}px;height:${size.height}px;` });
+    }).exec();
+  },
+
+  reeditImage() {
+    if (this.data.previewImage && !this.data.uploading && !this.data.editing) {
+      this.editSelectedImage(this._originalImage || this.data.previewImage, this.data.name);
+    }
+  },
+
   clearImage() {
+    if (this.data.uploading || this.data.editing) return;
     this.setData({ previewImage: '' });
   },
 
   onName(e) {
+    this._nameEdited = !!e.detail.value.trim();
     this.setData({ name: e.detail.value });
   },
 
@@ -173,6 +247,7 @@ Page({
   },
 
   upload() {
+    if (this.data.editing || this.data.uploading) return;
     if (!this.data.previewImage) {
       wx.showToast({ title: '请先选择图片', icon: 'none' });
       return;
@@ -186,6 +261,7 @@ Page({
       })
       .then((ex) => {
         wx.showToast({ title: '上传成功，开始识别', icon: 'success' });
+        this._nameEdited = false;
         this.setData({ previewImage: '', name: '', uploading: false });
         wx.navigateTo({ url: `/pages/recognition/recognition?id=${ex.id}` });
       })

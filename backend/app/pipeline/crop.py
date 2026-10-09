@@ -3,7 +3,7 @@
 import uuid
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app.core.logging import get_logger
 
@@ -22,6 +22,8 @@ def crop_question(
         raise ValueError(f"bbox 无效，无法裁剪: {bbox}")
 
     with Image.open(image_path) as im:
+        # bbox 与整页识别采用同一转正坐标系，保留原始分辨率用于裁图。
+        ImageOps.exif_transpose(im, in_place=True)
         width, height = im.size
         pad_x = (x2 - x1) / 1000 * width * padding_ratio
         pad_y = (y2 - y1) / 1000 * height * padding_ratio

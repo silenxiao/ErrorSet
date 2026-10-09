@@ -3,7 +3,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AlreadyExistsError, NotFoundError, ValidationError
+from app.core.exceptions import AlreadyExistsError, NotFoundError, ValidationError, InvalidStateError
 from app.database import repository as repo
 from app.database.models import Question, WrongQuestion
 from app.schemas.question import AnalysisOut
@@ -137,10 +137,19 @@ def update_wrong_question(
     return repo.update_wrong_question(db, row, **fields)
 
 
+def _analysis_fingerprint(question: Question) -> str:
+    """涵盖实际送给模型的文字、年级、科目和插图范围。"""
+    import hashlib
+    import json
+    data = [question.text, question.subject, question.exam.grade, question.exam.original_image,
+            [(ill.id, ill.bbox) for ill in sorted(question.illustrations, key=lambda ill: ill.id)]]
+    return hashlib.sha256(json.dumps(data, ensure_ascii=False).encode()).hexdigest()
+
+
 def _prepare_analyze_input(
     db: Session, question_id: int, user_id: int
-) -> tuple[object, "TeacherQuestion"]:
-    """同步准备 AI 分析输入：校验归属、渲染插图拼图，返回 (provider, TeacherQuestion)。
+) -> tuple[object, "TeacherQuestion", str]:
+    """同步准备 AI 分析输入：校验归属、渲染插图拼图，并记录输入指纹。
 
     Provider 接口是视觉专用的：无插图题目给一张 1x1 占位白图，
     答案完全基于已识别的题目文本。
@@ -159,7 +168,9 @@ def _prepare_analyze_input(
     if exam is None:
         raise NotFoundError("题目所属试卷不存在")
 
-    # 二次识别不计入系统模型调用次数（只统计整卷识别）
+    fingerprint = _analysis_fingerprint(question)
+
+    # 分析不计入系统模型整卷调用次数
     provider = get_recognition_provider(exam.user_id, count_usage=False)
 
     illustrations = list(question.illustrations)
@@ -200,7 +211,7 @@ def _prepare_analyze_input(
         subject=question.subject or None,
         image_path=image_path,
     )
-    return provider, question_input
+    return provider, question_input, fingerprint
 
 
 def _write_blank_placeholder() -> str:
@@ -228,7 +239,7 @@ async def analyze_question(db: Session, question_id: int, user_id: int) -> Analy
     from app.agents.teacher_agent import TeacherAgent, TeacherAgentError
     from app.core.exceptions import ProviderError
 
-    provider, question_input = await asyncio.to_thread(
+    provider, question_input, fingerprint = await asyncio.to_thread(
         _prepare_analyze_input, db, question_id, user_id
     )
     try:
@@ -243,8 +254,17 @@ async def analyze_question(db: Session, question_id: int, user_id: int) -> Analy
 
     # 持久化最近一次分析：未加入错题库时打开加入页也能找回（只保留最新一次，
     # 与错题库入库时复制的 analysis 相互独立）
+    db.rollback()
+    db.expire_all()
+    # SQLite 中将核验与保存放在同一个写事务，避免编辑在两者之间插入。
+    if db.get_bind().dialect.name == "sqlite":
+        db.connection().exec_driver_sql("BEGIN IMMEDIATE")
     question = get_question_or_404(db, question_id, user_id)
+    if _analysis_fingerprint(question) != fingerprint:
+        db.rollback()
+        raise InvalidStateError("题目或插图已修改，请重新进行 AI 分析")
     question.last_analysis = {
+        "_input_fingerprint": fingerprint,
         "subject": answer.subject,
         "answer": answer.answer,
         "analysis": answer.analysis,
@@ -302,6 +322,8 @@ def create_wrong_question(
 
     # 先做覆盖校验再裁快照：409 / 用户取消时不留无主的快照文件
     existing = repo.get_wrong_question_by_question(db, question.id)
+    if existing is not None and existing.user_id != user_id:
+        raise NotFoundError("错题不存在")
     if existing is not None and not overwrite:
         raise AlreadyExistsError("该题目已加入错题库")
 
@@ -338,11 +360,15 @@ def create_wrong_question(
             **fields,
         )
     except IntegrityError:
-        # 并发加入同一题目撞了 question_id 唯一索引：回滚后就地更新已有记录
+        # 唯一索引冲突后重新检查归属和覆盖授权，不能借并发分支绕过它们。
         db.rollback()
         existing = repo.get_wrong_question_by_question(db, question.id)
         if existing is None:
             raise
+        if existing.user_id != user_id:
+            raise NotFoundError("错题不存在")
+        if not overwrite:
+            raise AlreadyExistsError("该题目已加入错题库")
         _delete_wrong_question_files(existing)
         return repo.update_wrong_question(
             db,
@@ -359,7 +385,7 @@ def render_illustration_image(
     """按插图当前 bbox（含 padding）从原图裁剪 PNG 字节，供前端展示。"""
     import io
 
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     illustration = get_illustration_or_404(db, illustration_id, user_id)
     question = get_question_or_404(db, illustration.question_id, user_id)
@@ -372,6 +398,7 @@ def render_illustration_image(
         raise ValidationError(f"插图 bbox 无效: {illustration.bbox}")
 
     with Image.open(exam.original_image) as im:
+        ImageOps.exif_transpose(im, in_place=True)
         width, height = im.size
         pad_x = (x2 - x1) / 1000 * width * 0.02
         pad_y = (y2 - y1) / 1000 * height * 0.02

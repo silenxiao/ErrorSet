@@ -42,7 +42,15 @@ tests/*
 !tests/backend/
 tests/backend/*
 !tests/backend/test_permission_isolation.py
+!tests/backend/test_model_network_security.py
+!tests/backend/test_p1_security_regressions.py
+!tests/backend/test_security_identity_migration.py
+!tests/backend/test_p2_regressions.py
+!tests/backend/test_followup_regressions.py
 backend/pytest-of-*/
 
 # logs
 .agents/dev-logs/
+
+!tests/backend/test_ai_workflows.py
+!tests/backend/test_model_test_endpoint.py

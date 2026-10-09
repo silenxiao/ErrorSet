@@ -46,7 +46,7 @@ if defined CHECK_ONLY (
 if not exist "%ROOT%backend\logs" mkdir "%ROOT%backend\logs"
 
 echo [start-dev] starting backend  -^> http://0.0.0.0:8000 (also reachable via LAN IP)
-start "ErrorSet-Backend" /D "%ROOT%backend" cmd /k ""%PYTHON%" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > logs\backend.log 2>&1 & echo. & echo [ErrorSet-Backend] Process exited. See logs\backend.log for details. & pause"
+start "ErrorSet-Backend" /D "%ROOT%backend" cmd /k ""%PYTHON%" -m uvicorn app.main:app --reload --no-proxy-headers --host 0.0.0.0 --port 8000 > logs\backend.log 2>&1 & echo. & echo [ErrorSet-Backend] Process exited. See logs\backend.log for details. & pause"
 
 echo [start-dev] starting frontend -^> http://localhost:5173
 start "ErrorSet-Frontend" /D "%ROOT%frontend" cmd /k "call npm.cmd run dev & echo. & echo [ErrorSet-Frontend] Process exited. & pause"

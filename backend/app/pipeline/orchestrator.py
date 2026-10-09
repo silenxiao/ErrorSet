@@ -106,6 +106,7 @@ class RecognitionPipeline:
                             "confidence": n.confidence,
                             "illustrations": n.illustrations,
                             "parent_no": n.parent_no,
+                            "parent_index": n.parent_index,
                         }
                         for n in normalized
                     ],
@@ -137,7 +138,7 @@ class RecognitionPipeline:
                 return
             # 原子认领：双击确认等并发场景只有一个调用能进入二次识别
             if not repo.transition_exam_status(
-                db, exam, expected_status="awaiting_review",
+                db, exam, expected_status="local_queued",
                 target_status="local_processing",
             ):
                 logger.warning(

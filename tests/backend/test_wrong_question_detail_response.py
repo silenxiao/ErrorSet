@@ -9,12 +9,14 @@ questionText / illustrationImages 必须已经齐备，前端才敢跳过兜底�
 """
 
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.questions import _wrong_question_out
 from app.core.config import get_settings
+from app.core.media_access import verify_media_access
 from app.database.database import Base
 from app.database.models import Exam, Question, User, WrongQuestion
 
@@ -76,7 +78,10 @@ def test_snapshot_fields_are_populated_for_frontend_guard() -> None:
         # 前端守卫读的就是 camelCase 的 questionText
         assert dumped["questionText"] == "4. 快照原文"
         assert dumped["questionNo"] == "4"
-        assert dumped["illustrationImages"] == ["/files/wrong-illustrations/a.png"]
+        assert len(dumped["illustrationImages"]) == 1
+        parts = urlsplit(dumped["illustrationImages"][0])
+        assert parts.path == "/files/wrong-illustrations/a.png"
+        assert verify_media_access("wrong-illustrations/a.png", parse_qs(parts.query)["access"][0]) == (wrong.user_id, False)
         # 快照优先：不再回退实时题目文本
         assert dumped["questionText"] != "4. 实时题目原文"
     finally:

@@ -102,6 +102,11 @@ def _wrong_question_out(
     ]
     if question is None:
         question = repo.get_question(db, row.question_id)
+    # 旧数据库可能已发生 ID 复用；不能回退读取别人的实时题目。
+    if question is not None:
+        exam = repo.get_exam(db, question.exam_id)
+        if exam is None or exam.user_id != row.user_id:
+            question = None
     if question is not None:
         # 文本快照优先；旧记录（快照为空）回退到实时读取
         out.question_no = row.question_no or question.question_no

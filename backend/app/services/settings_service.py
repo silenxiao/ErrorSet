@@ -9,7 +9,7 @@
 一行，无法在行上存每用户的启用状态）；自有模型的 enabled 列同步维护作兼容。
 """
 
-import base64
+import io
 import os
 import tempfile
 import time
@@ -352,11 +352,18 @@ def _build_provider(
     )
 
 
-# 连通性测试：1x1 透明 PNG + 固定提示词，走真实识别路径（含鉴权/端点/模型名校验）
-_TEST_PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
-)
-_TEST_PROMPT = "这是一张测试图片。请直接回复：OK"
+# 同一个模型的最小识图、计算和 JSON 输出探测；答案仅存在于测试图片中。
+_TEST_PROMPT = '识别图片中的算式并计算，只返回 JSON：{"expression":"图片中的完整算式","answer":整数结果}。'
+
+
+def _model_test_png() -> bytes:
+    from PIL import Image, ImageDraw
+    image = Image.new("RGB", (100, 24), "white")
+    ImageDraw.Draw(image).text((8, 6), "7 + 5 = ?", fill="black")
+    image = image.resize((600, 144), Image.Resampling.NEAREST)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
 async def test_model_profile(row: ModelProfile) -> dict:
@@ -378,10 +385,15 @@ async def test_model_profile(row: ModelProfile) -> dict:
     started = time.monotonic()
     try:
         with os.fdopen(fd, "wb") as f:
-            f.write(_TEST_PNG)
+            f.write(_model_test_png())
         resp = await provider.analyze(
             VisionRequest(image_path=path, prompt=_TEST_PROMPT)
         )
+        from app.pipeline.global_recognition import parse_json_text
+        probe = parse_json_text(resp.text)
+        expression = probe.get("expression")
+        if not isinstance(expression, str) or expression.replace(" ", "") != "7+5=?" or type(probe.get("answer")) is not int or probe["answer"] != 12:
+            raise ValidationError("模型未通过基础识图与计算测试，请检查模型是否支持图片输入及 JSON 输出")
         return {"ok": True, "latencyMs": resp.latency_ms}
     except Exception as exc:  # Provider 层错误统一转为结果，不中断请求
         latency = int((time.monotonic() - started) * 1000)

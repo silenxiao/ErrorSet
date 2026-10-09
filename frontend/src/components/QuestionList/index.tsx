@@ -11,7 +11,7 @@ import {
   Tag,
   message,
 } from "antd";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQuestion } from "../../api/question";
 import { ApiError } from "../../api/http";
@@ -19,6 +19,7 @@ import ModelSelector from "../ModelSelector";
 import type { AnalysisResult, Question, QuestionStatus } from "../../types/question";
 import { renderMathText } from "../../utils/math";
 import { renderMarkdown } from "../../utils/markdown";
+import { AnalysisRequestGuard } from "../../utils/analysisRequest";
 
 interface Props {
   questions: Question[];
@@ -85,7 +86,7 @@ export default function QuestionList({
       </div>
 
       <WrongQuestionModal
-        question={wrongTarget?.question ?? null}
+        question={wrongTarget ? byId.get(wrongTarget.question.id) ?? null : null}
         defaultSubject={wrongTarget?.subject ?? ""}
         onClose={() => setWrongTarget(null)}
         onSaved={() => {
@@ -219,7 +220,14 @@ function WrongQuestionModal({
   const [aiResult, setAiResult] = useState<AnalysisResult | null>(null);
   /** 本会话内每道题最近一次分析结果：分析后未入库就关掉弹窗再打开时，
    * 接口里的 question.lastAnalysis 还是旧的，优先用内存里这份 */
-  const analyzedRef = useRef<Map<number, AnalysisResult>>(new Map());
+  const analyzedRef = useRef<Map<number, { input: string; result: AnalysisResult }>>(new Map());
+  const inputKey = JSON.stringify([question?.text, question?.subject,
+    question?.illustrations.map((ill) => [ill.id, ill.bbox])]);
+  const requestGuard = useRef(new AnalysisRequestGuard());
+  useLayoutEffect(() => {
+    requestGuard.current.invalidate();
+    return () => requestGuard.current.invalidate();
+  }, [question?.id, inputKey]);
 
   // 每次换题打开时重置表单：destroyOnClose 只销毁 DOM，
   // form store 里上一次的 AI 分析结果会串到下一题
@@ -230,9 +238,11 @@ function WrongQuestionModal({
     form.setFieldsValue({ subject: defaultSubject || "语文" });
     setEditingAnswer(false);
     setAiResult(null);
+    setAiAnalyzing(false);
     // 该题分析过但还没入库时，回显最近一次 AI 分析结果（后端持久化；
     // 本会话刚分析过的以内存为准，接口数据可能还没刷新）
-    const last = analyzedRef.current.get(questionId) ?? question?.lastAnalysis ?? null;
+    const cached = analyzedRef.current.get(questionId);
+    const last = (cached?.input === inputKey ? cached.result : question?.lastAnalysis) ?? null;
     if (last && (last.answer || last.analysis)) {
       const subjects = [
         "语文",
@@ -253,14 +263,18 @@ function WrongQuestionModal({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questionId, form, defaultSubject]);
+  }, [questionId, inputKey, form, defaultSubject]);
 
   const handleAiAnalyze = async (questionId: number) => {
+    const ticket = requestGuard.current.begin();
+    const capturedInput = inputKey;
+    const stillCurrent = () => requestGuard.current.isCurrent(ticket);
     setAiAnalyzing(true);
     try {
       const result = await analyzeQuestion(questionId);
+      if (!stillCurrent()) return;
       setAiResult(result);
-      analyzedRef.current.set(questionId, result);
+      analyzedRef.current.set(questionId, { input: capturedInput, result });
       const subjects = [
         "语文",
         "数学",
@@ -279,9 +293,10 @@ function WrongQuestionModal({
         analysis: result.analysis,
       });
     } catch (err) {
+      if (!stillCurrent()) return;
       message.error(err instanceof Error ? err.message : "AI 分析失败");
     } finally {
-      setAiAnalyzing(false);
+      if (stillCurrent()) setAiAnalyzing(false);
     }
   };
 

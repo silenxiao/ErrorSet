@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -12,10 +13,13 @@ def _now() -> datetime:
 
 class User(Base):
     __tablename__ = "user"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(128))
+    # 登录身份独立于可被数据库复用的数字主键。
+    auth_identity: Mapped[str] = mapped_column(String(32), default=lambda: uuid4().hex)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     # 当前生效的模型（可为自有模型，也可为系统模型），与 model_profile.enabled 同步维护。
     # 不加 FK：与 model_profile.user_id 形成循环依赖，create_all 无法建表
@@ -52,6 +56,7 @@ class Exam(Base):
 
 class Question(Base):
     __tablename__ = "question"
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     exam_id: Mapped[int] = mapped_column(ForeignKey("exam.id"), index=True)

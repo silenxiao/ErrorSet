@@ -31,7 +31,7 @@ class ProviderFactory:
         allow_env_key: bool = False,
     ) -> VisionProvider:
         settings = get_settings()
-        name = provider_name.lower()
+        name = provider_name.strip().lower()
 
         env_key = {
             "openai": settings.openai_api_key,
@@ -47,15 +47,16 @@ class ProviderFactory:
 
         if resolved_base:
             validate_model_base_url(resolved_base)
-            provider: VisionProvider = OpenAICompatibleProvider(
+        if name == "gemini":
+            provider: VisionProvider = GeminiProvider(model, resolved_key, resolved_base)
+        elif resolved_base:
+            provider = OpenAICompatibleProvider(
                 model, resolved_key, resolved_base, name=name
             )
         elif name == "openai":
             provider = OpenAIProvider(model, resolved_key)
         elif name == "qwen":
             provider = QwenProvider(model, resolved_key)
-        elif name == "gemini":
-            provider = GeminiProvider(model, resolved_key)
         elif name in ("zhipu", "glm"):
             provider = ZhipuProvider(model, resolved_key)
         elif name == "amd":

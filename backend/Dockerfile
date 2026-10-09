@@ -16,4 +16,4 @@ RUN mkdir -p /data
 EXPOSE 8000
 
 # 识别 worker 在进程内运行，必须单进程启动，不要加 --workers
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

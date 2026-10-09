@@ -95,7 +95,9 @@ def exam_image_url(exam: Exam, viewer_id: int) -> str:
 def confirm_exam(db: Session, exam_id: int, user_id: int) -> Exam:
     """确认触发二次识别，仅 awaiting_review 状态有效（§6.2）。"""
     exam = get_exam_or_404(db, exam_id, user_id)
-    if exam.status != "awaiting_review":
+    if not repo.transition_exam_status(
+        db, exam, expected_status="awaiting_review", target_status="local_queued"
+    ):
         raise InvalidStateError(
             f"当前状态为 {exam.status}，只有 awaiting_review 可以确认"
         )
@@ -117,7 +119,7 @@ def rerecognize_exam(
     供本次及后续识别的 Global/Local 两段共同使用。
     """
     exam = get_exam_or_404(db, exam_id, user_id)
-    if exam.status in ("global_processing", "local_processing"):
+    if exam.status in ("global_processing", "local_queued", "local_processing"):
         raise InvalidStateError("识别进行中，无法重新识别")
     dirty = False
     if include_illustrations is not None:

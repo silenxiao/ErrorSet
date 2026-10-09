@@ -9,6 +9,8 @@
 """
 
 from pathlib import Path
+from types import SimpleNamespace
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from sqlalchemy import create_engine
@@ -17,6 +19,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.api.admin import get_wrong_question_detail
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError
+from app.core.media_access import verify_media_access
 from app.database.database import Base
 from app.database.models import Exam, Question, User, WrongQuestion
 
@@ -80,7 +83,7 @@ def test_detail_returns_expected_camel_case_shape() -> None:
     session = make_session()
     try:
         wrong = _seed(session)
-        out = get_wrong_question_detail(wrong.id, session, None)
+        out = get_wrong_question_detail(wrong.id, session, SimpleNamespace(id=1))
         dumped = out.model_dump(by_alias=True)
 
         # 管理后台直接读这些 camelCase 字段
@@ -94,8 +97,11 @@ def test_detail_returns_expected_camel_case_shape() -> None:
         assert dumped["knowledgePoints"] == ["分数减法", "单位换算"]
         assert dumped["note"] == "课上讲过"
         # 路径转成 /files 静态 URL 后回传，不暴露文件系统路径
-        assert dumped["imageUrl"] == "/files/wrong/snap.png"
-        assert dumped["illustrationImages"] == ["/files/wrong-illustrations/a.png"]
+        for url, path in [(dumped["imageUrl"], "wrong/snap.png"),
+                          (dumped["illustrationImages"][0], "wrong-illustrations/a.png")]:
+            parts = urlsplit(url)
+            assert parts.path == f"/files/{path}"
+            assert verify_media_access(path, parse_qs(parts.query)["access"][0]) == (1, True)
         assert dumped["createdAt"]
 
         # 已删除的两项不得再出现在响应里
@@ -113,7 +119,7 @@ def test_detail_falls_back_to_live_question_text() -> None:
         wrong.question_text = ""
         session.commit()
 
-        out = get_wrong_question_detail(wrong.id, session, None)
+        out = get_wrong_question_detail(wrong.id, session, SimpleNamespace(id=1))
         assert out.question_text == "4. 实时题目原文"
     finally:
         session.close()
@@ -138,7 +144,7 @@ def test_detail_survives_deleted_question_row() -> None:
         question = session.get(Question, wrong.question_id)
         repo.delete_exam(session, session.get(Exam, question.exam_id))
 
-        out = get_wrong_question_detail(wrong.id, session, None)
+        out = get_wrong_question_detail(wrong.id, session, SimpleNamespace(id=1))
         assert out.question_text == "4. 入库时的题目原文"
     finally:
         session.close()
