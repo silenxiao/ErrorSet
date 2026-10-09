@@ -41,13 +41,9 @@
 - 后端识别 worker 运行在进程内，**必须单进程运行**，所以 backend 容器固定单 uvicorn 进程，不能加 `--workers` 或多副本。
 - 所有持久化数据（SQLite 数据库 + 上传/识别图片）都在宿主机 `./data/` 目录，备份、迁移只需拷贝该目录。
 
-登录/注册限流默认按后端连接地址计数，并忽略未受信任的转发头。生产反代部署应在
-`.env` 的 `TRUSTED_PROXY_CIDRS` 中配置实际代理地址（JSON 数组）：包含 web/admin
-容器 IP；有宿主机 nginx 时还需包含它在容器网络中的入口地址。只信任代理地址，
-不要信任客户端网段或所有地址。未配置时经同一代理的用户会共用限流额度。
-容器后端已使用 `--no-proxy-headers`，其他启动方式也需传此参数，避免 Uvicorn
-提前改写客户端地址。宿主机 nginx 入口须使用更新后的模板，将
-`X-Forwarded-For` 覆盖为 `$remote_addr`；容器 nginx 追加实际连接端地址供后端回溯。
+Compose 使用专用网络，默认 `172.30.86.0/24`：网关 `.1`、backend `.2`、web `.3`、admin `.4`。部署脚本每次将 `TRUSTED_PROXY_CIDRS` 设置为网关/web/admin 的三个 `/32` 地址，容器重建不会改变信任地址。若与 VPN/宿主网络冲突，先在 `.env` 修改 `PROXY_NETWORK_PREFIX`（前三段，如 `172.30.87`）。勿将无关或不可信容器接入此网络；自定义代理拓扑需另行调整脚本的信任边界。
+
+后端使用 `--no-proxy-headers`，由应用统一校验转发链。宿主 nginx 覆盖 `X-Forwarded-For` 为 `$remote_addr`，容器 nginx 追加连接地址。上线时验证不同客户端未共用登录限流额度。
 
 本次安全升级会为存量账号生成独立登录身份，旧登录令牌失效，用户需重新登录。
 后端启动时会事务化迁移旧用户/题目表为 `AUTOINCREMENT`，保留数据/索引并跨过历史数据引用的已删除 ID。
@@ -65,7 +61,7 @@
 # 1. 把代码上传到服务器（二选一）
 git clone <你的仓库地址> errorset && cd errorset
 # 或在本机执行（排除不需要的目录，速度快很多）：
-rsync -avz --exclude node_modules --exclude .git --exclude '*/dist' \
+rsync -avz --exclude node_modules --exclude .git --exclude '*/dist' --exclude .env --exclude .env.local --exclude '.env.*.local' --exclude data --exclude backups --exclude logs --exclude .venv --exclude .agents \
     ./ user@服务器IP:/opt/errorset
 
 # 2. 在服务器上执行一键部署脚本
@@ -75,10 +71,10 @@ bash deploy/setup_server.sh
 # 3. 浏览器访问
 #    Web 前端    http://服务器IP/
 #    管理后台    http://服务器IP:8081/
-#    默认管理员  xiaohui / 123456 —— 登录后立即改密码！
+#    初始管理员  见 .env 的 SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD（仅空库创建）
 ```
 
-脚本会自动完成：安装 Docker（如缺失）→ 生成 `.env`（含随机 `JWT_SECRET`）→ 构建镜像 → 启动三个容器 → 健康检查。**脚本幂等，重复执行即为"更新部署"**。
+脚本会自动完成：安装 Docker（如缺失）→ 生成 `.env`（含随机 `JWT_SECRET` 和管理员密码，权限 600）→ 构建镜像 → 启动三个容器 → 健康检查。**脚本幂等，重复执行即为"更新部署"**。
 
 > ⚠️ 如果 `.env` 还没填 AI API Key，试卷识别功能不可用。编辑 `.env` 填入后重跑 `bash deploy/setup_server.sh` 即可（无需删容器）。
 
@@ -97,6 +93,8 @@ bash deploy/setup_server.sh
 | `CORS_ORIGINS` | 跨域白名单 | **无需修改**（nginx 同源反代，浏览器请求不跨域） |
 | `DATABASE_URL` / `DATA_DIR` | 数据库与图片路径 | **不要修改**（docker-compose 已固定为容器内 `/data`） |
 
+已有 `.env` 必须提供至少 32 字符的非默认 `JWT_SECRET`；空库首次启动前设置 12–72 字符的随机 `SEED_ADMIN_PASSWORD`（建议 ASCII）。修改 JWT 密钥会使已有令牌和签名媒体链接失效。修改种子密码不会修改已有账号。
+
 改完 `.env` 后重跑 `bash deploy/setup_server.sh` 或执行 `docker compose up -d` 生效。
 
 > 模型与 API Key 也可以在 Web 端「模型管理」页面在线配置（存数据库），二者取其一即可。
@@ -106,7 +104,7 @@ bash deploy/setup_server.sh
 所有命令都在仓库根目录执行：
 
 ```bash
-# 更新部署（一键：先自动备份 → 拉新代码 → 重新构建并滚动重启）
+# 更新部署（一键：先自动备份 → 拉新代码 → 先构建镜像再重建容器（短暂停机））
 bash deploy/update.sh
 
 # 查看日志
@@ -118,21 +116,27 @@ docker compose logs -f admin     # 管理后台
 docker compose restart backend
 docker compose down              # 停止并移除容器（./data 数据保留）
 
-# 备份（打包 data/ + .env 到 backups/，自动保留最近 10 份）
+# 备份（停止后端后打包 data/ + .env + Git 版本到 backups/，自动保留最近 10 份）
 bash deploy/backup.sh
 ```
 
-**为什么更新不影响数据**：所有持久化数据（SQLite `app.db` + 全部图片）都在宿主机 `./data/` 目录，经 bind mount 进入容器——重新构建镜像、删除/重建容器、`docker compose down` 都不触碰它；`.env` 已存在时脚本也不会覆盖。数据库结构变更（新表/新列）由后端启动时自动建表 + 轻量列迁移完成，存量数据自动兼容。`update.sh` 在此基础上先自动备份一份，若新版本迁移逻辑异常，可用 `backups/` 里最新一份回滚：
+**为什么更新不影响数据**：所有持久化数据（SQLite `app.db` + 全部图片）都在宿主机 `./data/` 目录，经 bind mount 进入容器——重新构建镜像、删除/重建容器、`docker compose down` 不删除该目录；启动迁移会修改数据库。已有 `.env` 会保留密钥和模型配置，仅更新代理信任与旧端口配置。数据库结构变更（新表/新列）由后端启动时自动建表 + 轻量列迁移完成，存量数据自动兼容。`update.sh` 在此基础上先自动备份一份，若新版本迁移逻辑异常，可用 `backups/` 里最新一份回滚：
 
 ```bash
-docker compose down
-tar xzf backups/errorset-<时间戳>.tar.gz   # 在仓库根目录解包，覆盖 data/ 与 .env
-bash deploy/setup_server.sh
+bash deploy/rollback.sh backups/errorset-<时间戳>-<PID>.tar.gz
 ```
 
-**数据迁移到新服务器**：旧服务器执行 `bash deploy/backup.sh` → 把 `backups/*.tar.gz` 传到新服务器 → 新服务器按"快速部署"装好代码和 `.env` → 停服解包覆盖 `data/` → `docker compose up -d`。
+自动回滚仅接受本项目生成的可信备份，要求备份包含 `deployment-revision.txt`。脚本先备份当前状态，再停服、切换到匹配的 Git 提交，将当前数据目录整体移到 `backups/pre-rollback-*`，恢复备份数据和配置后启动。回滚后的数据回到备份时刻；之后的新业务写入保留在移出的目录中，不会合并。确认恢复后由维护者清理保留目录。
 
-**数据库说明**：SQLite，位于 `./data/app.db`，启动时自动建表并做轻量列迁移，无需手工迁移。首次启动会创建默认管理员 `xiaohui / 123456`（is_admin）。
+回滚后处于 detached HEAD，后续更新前需切回部署分支。旧备份无版本记录时须手动确认对应代码版本。回滚到旧脚本版本后须检查端口与宿主 nginx 的兼容性。
+
+**停机说明**：备份会停止运行中的后端，并在成功或失败退出时尝试恢复原运行状态；更新重建也会中断服务，不是无中断滚动更新。进行中的识别可能失败，排队任务会恢复。备份要求没有其他进程写入 data/。归档包含 SQLite WAL 和全部图片，权限受 umask 077 保护；建议定期异地备份。
+
+自动更新/备份/回滚要求服务器有 Git checkout。上传代码不能替代克隆仓库。备份不包含宿主 nginx 配置和证书，迁移时需另行保存或重新配置。
+
+**数据迁移到新服务器**：旧服务器执行 `bash deploy/backup.sh` → 将可信归档传到新服务器 → 准备与归档版本匹配的 Git checkout 和 Docker → 停服并移出已有 data/ 后恢复完整 data/ 与 .env → 检查网络/域名配置并执行部署脚本。不要先启动空库创建默认数据。
+
+**数据库说明**：SQLite，位于 `./data/app.db`，启动时自动建表并做轻量列迁移，无需手工迁移。空用户表首次启动按 `.env` 的种子账号创建管理员（is_admin）。
 
 已有用户的数据库不会因管理员缺失而自动提权。管理员被删除或降级后，需要由维护者显式恢复权限。
 二次识别确认后立即持久化 `local_queued` 状态；排队任务在重启后自动重新入队，
@@ -154,7 +158,7 @@ bash deploy/setup_server.sh --with-domain example.com
 bash deploy/setup_server.sh --with-domain example.com --admin-domain admin.example.com
 ```
 
-脚本会自动完成：安装 nginx + certbot → 把容器端口收回回环监听（写入 `.env` 的 `WEB_PUBLISH=127.0.0.1:8080`、`ADMIN_PUBLISH=127.0.0.1:8081`，不进 git，`update.sh` 拉新代码不影响）→ 渲染 [deploy/nginx-errorset.conf.template](deploy/nginx-errorset.conf.template) 为宿主机 nginx 站点配置 → certbot 签发证书并配置 443 跳转。完成后访问 `https://example.com/`。
+脚本会自动完成：安装 nginx + certbot → 把容器端口收回回环监听（写入 `.env` 的 `WEB_PUBLISH=127.0.0.1:8080:80`、`ADMIN_PUBLISH=127.0.0.1:8082:80`，不进 git，`update.sh` 拉新代码不影响）→ 渲染 [deploy/nginx-errorset.conf.template](deploy/nginx-errorset.conf.template) 为宿主机 nginx 站点配置 → certbot 签发证书并配置 443 跳转。完成后访问 `https://example.com/`。
 
 说明：
 
@@ -162,8 +166,8 @@ bash deploy/setup_server.sh --with-domain example.com --admin-domain admin.examp
 - 证书签发失败（DNS 未生效 / 80 端口未放行）时脚本会提示原因并继续以 HTTP 运行，排除后手动重试：`sudo certbot --nginx -d example.com --redirect`
 - 证书注册邮箱默认跳过（Let's Encrypt 到期前无法邮件提醒），如需要：`CERTBOT_EMAIL=you@example.com bash deploy/setup_server.sh --with-domain example.com`
 - **IP 仍然可以访问**：站点配置里有一个 `default_server` 兜底块，`http://服务器IP/`（Web + API）和 `http://服务器IP:8081/`（管理后台）走 HTTP 照常可用——IP 签发不了 Let's Encrypt 证书，HTTPS 只有域名能走。若不希望 IP:8081 暴露公网，删除站点文件里 `listen 8081 default_server` 那个 server 块即可。
-- 站点配置文件只在**首次生成**（避免覆盖 certbot 追加的证书段）。若服务器上已生成过旧版配置、想套用模板的新改动：`sudo rm /etc/nginx/sites-available/errorset /etc/nginx/sites-enabled/errorset` 后重跑脚本（certbot 已签的证书会自动复用）。
-- 管理后台也可以**仅走域名**：传 `--admin-domain` 后可用 `https://admin.example.com`；需要彻底不暴露时，用 SSH 隧道 `ssh -L 8081:127.0.0.1:8081 服务器`。
+- 站点配置文件只在**首次生成**；已有配置会先备份，再迁移旧管理代理端口和旧的追加式转发头，保留证书段。新增/更换域名须另行维护 server_name 和证书。若服务器上已生成过旧版配置、想套用模板的新改动：`sudo rm /etc/nginx/sites-available/errorset /etc/nginx/sites-enabled/errorset` 后重跑脚本（certbot 已签的证书会自动复用）。
+- 管理后台也可以**仅走域名**：传 `--admin-domain` 后可用 `https://admin.example.com`；仅用 SSH 隧道时须删除管理域名入口和 IP:8081 的整个 server 块，再使用 `ssh -L 8082:127.0.0.1:8082 服务器`。传 --admin-domain 本身不会关闭 IP:8081 入口。
 
 ### 手动配置（了解原理 / 特殊环境）
 
@@ -171,7 +175,7 @@ bash deploy/setup_server.sh --with-domain example.com --admin-domain admin.examp
 sudo apt install -y nginx certbot python3-certbot-nginx
 # 站点配置可参考 deploy/nginx-errorset.conf.template：
 #   example.com      → proxy_pass http://127.0.0.1:8080;   # Web + API（经 web 容器同源反代）
-#   admin.example.com → proxy_pass http://127.0.0.1:8081;  # 管理后台（可选）
+#   admin.example.com → proxy_pass http://127.0.0.1:8082;  # 管理后台（可选）
 # 同时把 .env 里 WEB_PUBLISH/ADMIN_PUBLISH 设为回环监听（见上），docker compose up -d 生效
 sudo certbot --nginx -d example.com -d admin.example.com
 ```
@@ -199,13 +203,17 @@ sudo certbot --nginx -d example.com -d admin.example.com
    ⚠️ 当前 release 包仍用 `debug.keystore` 签名，正式分发前请在 `android/app/build.gradle` 配置自己的签名 keystore。
 3. **iOS**：`npx expo prebuild -p ios` 后用 Xcode 打开 `mobile/ios` 签名打包（需 Apple 开发者账号）。
 
-## 八、常见问题
+## 八、上线验证
+
+确认 Web/管理后台入口、HTTPS 证书、登录、图片上传/查看和识别正常，并查看后端启动迁移日志。当前健康检查仅访问 `/docs`，不覆盖完整业务链路或前端入口。宿主 nginx 管理代理使用回环 8082，公网入口使用 8081，两者分开避免端口冲突。
+
+## 九、常见问题
 
 | 问题 | 处理 |
 |---|---|
-| 80/8081 端口被占用 | 改 [docker-compose.yml](docker-compose.yml) 里 `ports` 左侧的宿主端口，如 `"8080:80"` |
+| 80/8081 端口被占用 | 改 `.env` 的完整 WEB_PUBLISH/ADMIN_PUBLISH 映射，并同步宿主 nginx 代理端口 |
 | 境内服务器构建镜像慢 | 给 `backend/Dockerfile` 的 pip 加 `-i https://pypi.tuna.tsinghua.edu.cn/simple`；`frontend`、`admin` 的 `npm ci` 改为 `npm ci --registry=https://registry.npmmirror.com` |
-| 后端起不来 / 健康检查不过 | `docker compose logs -f backend`；多为 `.env` 缺 Key 或 `data/` 目录权限问题 |
+| 后端起不来 / 健康检查不过 | `docker compose logs -f backend`；检查配置格式、数据库迁移和 `data/` 权限；缺 AI Key 通常只影响识别 |
 | 图片/数据库写入失败 | 宿主机 `./data` 目录需对容器内进程（默认 root）可写，检查属主与挂载路径 |
 | 为什么不能开多个后端副本 | 识别 worker 在进程内轮询任务，多副本会重复消费；确需扩展需先改造为独立 worker 进程 |
 | 管理后台安全 | 8081 建议仅对可信 IP 开放（云安全组/防火墙），或经宿主 nginx 加 basic auth |

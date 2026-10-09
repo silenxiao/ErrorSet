@@ -19,6 +19,9 @@ else
   SUDO=""
 fi
 
+[ -z "$(git status --porcelain --untracked-files=no)" ] || fail "有已跟踪文件的本地改动，请先处理"
+git rev-parse --verify '@{u}' >/dev/null 2>&1 || fail "没有配置上游分支"
+
 # ---------- 1. 更新前备份（失败则中止，不带风险更新） ----------
 log "第 1 步：备份当前数据（data/ + .env）"
 bash deploy/backup.sh
@@ -31,17 +34,15 @@ else
   fail "当前仓库没有配置上游分支（git remote / upstream），无法自动拉取；请手动更新代码后重试"
 fi
 
-# ---------- 3. 重建并滚动重启（setup_server.sh 幂等，不覆盖 .env、不触碰 data/） ----------
-log "第 3 步：重新构建镜像并滚动重启"
+# ---------- 3. 重建容器（短暂停机）（setup_server.sh 幂等，不覆盖 .env、不触碰 data/） ----------
+log "第 3 步：重新构建镜像并重建容器"
 if ! bash deploy/setup_server.sh; then
   LATEST="$(ls -1t backups/errorset-*.tar.gz 2>/dev/null | head -n 1 || true)"
   cat >&2 <<EOF
 
 [失败] 更新部署未通过健康检查，服务可能处于异常状态。
 回滚方法（数据回到更新前状态）：
-  $SUDO docker compose down
-  tar xzf ${LATEST:-<backups/ 下最新一份备份>}   # 在仓库根目录解包，覆盖 data/ 与 .env
-  bash deploy/setup_server.sh
+  bash deploy/rollback.sh ${LATEST:-<备份路径>}
 排查日志：$SUDO docker compose logs -f backend
 EOF
   exit 1

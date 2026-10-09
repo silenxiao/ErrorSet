@@ -54,3 +54,6 @@ backend/pytest-of-*/
 
 !tests/backend/test_ai_workflows.py
 !tests/backend/test_model_test_endpoint.py
+
+# Docker production bind mount
+/data/

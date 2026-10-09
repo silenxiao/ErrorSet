@@ -3,7 +3,7 @@
 # 用法：把仓库上传到服务器后，在仓库根目录执行  bash deploy/setup_server.sh
 #       HTTPS 域名模式（需域名 A 记录已指向本机、安全组放行 80/443）：
 #         bash deploy/setup_server.sh --with-domain example.com [--admin-domain admin.example.com]
-# 幂等：重复执行即为"更新部署"（重新构建镜像并滚动重启）
+# 幂等：重复执行会重新构建镜像并重建容器（短暂停机）
 
 set -euo pipefail
 
@@ -12,17 +12,20 @@ cd "$(dirname "$0")/.."
 WEB_DOMAIN="" ADMIN_DOMAIN=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --with-domain)   WEB_DOMAIN="${2:-}";   shift 2 ;;
-    --admin-domain)  ADMIN_DOMAIN="${2:-}"; shift 2 ;;
+    --with-domain)   [ $# -ge 2 ] && [ -n "$2" ] || { echo "缺少域名" >&2; exit 1; }; WEB_DOMAIN="$2"; shift 2 ;;
+    --admin-domain)  [ $# -ge 2 ] && [ -n "$2" ] || { echo "缺少管理域名" >&2; exit 1; }; ADMIN_DOMAIN="$2"; shift 2 ;;
     *) echo "[失败] 未知参数：$1（用法：bash deploy/setup_server.sh [--with-domain 域名] [--admin-domain 域名]）" >&2; exit 1 ;;
   esac
 done
 if [ -n "$ADMIN_DOMAIN" ] && [ -z "$WEB_DOMAIN" ]; then
   echo "[失败] --admin-domain 需要与 --with-domain 一起使用" >&2; exit 1
 fi
-if [ -n "$WEB_DOMAIN" ] && ! echo "$WEB_DOMAIN" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$'; then
-  echo "[失败] 域名格式不正确：${WEB_DOMAIN}（示例：exam.example.com）" >&2; exit 1
+for DOMAIN in "$WEB_DOMAIN" "$ADMIN_DOMAIN"; do
+if [ -n "$DOMAIN" ] && ! echo "$DOMAIN" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$'; then
+  echo "[失败] 域名格式不正确：${DOMAIN}（示例：exam.example.com）" >&2; exit 1
 fi
+
+done
 
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m[注意]\033[0m %s\n' "$*"; }
@@ -38,7 +41,7 @@ upsert_env() {
       sed -i '' "s|^${key}=.*|${key}=${val}|" .env
     fi
   else
-    printf '\n# HTTPS 域名模式（setup_server.sh --with-domain 写入）\n%s=%s\n' "$key" "$val" >> .env
+    printf '\n# 部署脚本维护的配置\n%s=%s\n' "$key" "$val" >> .env
   fi
 }
 
@@ -79,6 +82,7 @@ fi
 # ---------- 2. 初始化 .env ----------
 if [ ! -f .env ]; then
   log "生成生产环境配置 .env"
+  umask 077
   cp .env.example .env
   SECRET="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   if sed --version >/dev/null 2>&1; then
@@ -86,6 +90,8 @@ if [ ! -f .env ]; then
   else
     sed -i '' "s|^JWT_SECRET=.*|JWT_SECRET=${SECRET}|" .env
   fi
+  ADMIN_SECRET="$(openssl rand -hex 16)"
+  upsert_env SEED_ADMIN_PASSWORD "$ADMIN_SECRET"
   warn ".env 已生成，AI API Key（QWEN_API_KEY 等）默认为空，请编辑 .env 填入后重新执行本脚本"
 else
   log "已存在 .env，沿用现有配置"
@@ -95,6 +101,26 @@ if ! grep -qE '^(QWEN_API_KEY|OPENAI_API_KEY|GEMINI_API_KEY|ZHIPU_API_KEY|AMD_AP
   warn "未检测到任何 AI API Key，试卷识别功能将不可用；请编辑 .env 填入后重新执行本脚本"
 fi
 
+# Validate secrets without printing their contents. Existing weak JWT secrets must
+# be explicitly rotated by the operator (rotation invalidates existing tokens).
+env_value() { sed -n "s/^$1=//p" .env | tail -n 1 | tr -d '\r'; }
+JWT_VALUE="$(env_value JWT_SECRET)"
+[ ${#JWT_VALUE} -ge 32 ] && [ "$JWT_VALUE" != errorset-dev-secret-change-me ] || fail "JWT_SECRET 缺失或不安全，请在 .env 设置至少 32 字符的随机密钥"
+ADMIN_VALUE="$(env_value SEED_ADMIN_PASSWORD)"
+if [ ! -s data/app.db ]; then
+  [ ${#ADMIN_VALUE} -ge 12 ] && [ ${#ADMIN_VALUE} -le 72 ] && [ "$ADMIN_VALUE" != 123456 ] || fail "首次部署请设置 SEED_ADMIN_PASSWORD（12–72 字符）"
+fi
+# Static addresses keep the trust boundary stable across container recreation.
+PREFIX="$(env_value PROXY_NETWORK_PREFIX)"
+PREFIX="${PREFIX:-172.30.86}"
+[[ "$PREFIX" =~ ^([0-9]{1,3}\.){2}[0-9]{1,3}$ ]] || fail "PROXY_NETWORK_PREFIX 格式错误"
+IFS=. read -r OCTET1 OCTET2 OCTET3 <<< "$PREFIX"
+for OCTET in "$OCTET1" "$OCTET2" "$OCTET3"; do
+  [ "$((10#$OCTET))" -le 255 ] || fail "网络地址超出范围"
+done
+upsert_env TRUSTED_PROXY_CIDRS "[\"${PREFIX}.1/32\",\"${PREFIX}.3/32\",\"${PREFIX}.4/32\"]"
+chmod 600 .env
+
 # ---------- 3. 数据目录 ----------
 mkdir -p data
 
@@ -102,13 +128,34 @@ mkdir -p data
 # 写在 .env（不进 git），update.sh 拉新代码不会与此配置冲突
 if [ -n "$WEB_DOMAIN" ]; then
   log "域名模式：容器端口改为回环监听（TLS 由宿主机 nginx 终止）"
-  upsert_env WEB_PUBLISH "127.0.0.1:8080"
-  upsert_env ADMIN_PUBLISH "127.0.0.1:8081"
+  upsert_env WEB_PUBLISH "127.0.0.1:8080:80"
+  upsert_env ADMIN_PUBLISH "127.0.0.1:8082:80"
+fi
+
+# Upgrade the old malformed/domain-mode mappings on existing installations.
+[ "$(env_value WEB_PUBLISH)" != "127.0.0.1:8080" ] || upsert_env WEB_PUBLISH "127.0.0.1:8080:80"
+case "$(env_value ADMIN_PUBLISH)" in
+  127.0.0.1:8081|127.0.0.1:8081:80) upsert_env ADMIN_PUBLISH "127.0.0.1:8082:80" ;;
+esac
+
+# Existing domain deployments are also migrated during update.sh (no domain args).
+if [ "$(env_value ADMIN_PUBLISH)" = "127.0.0.1:8082:80" ]; then
+  for EXISTING_SITE in /etc/nginx/sites-available/errorset /etc/nginx/conf.d/errorset.conf; do
+    if [ -f "$EXISTING_SITE" ] && grep -q 'proxy_pass http://127.0.0.1:8081;' "$EXISTING_SITE"; then
+      $SUDO cp "$EXISTING_SITE" "${EXISTING_SITE}.bak.$(date +%Y%m%d-%H%M%S)"
+      $SUDO sed -i -e 's|proxy_pass http://127.0.0.1:8081;|proxy_pass http://127.0.0.1:8082;|g' \
+        -e 's|proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;|proxy_set_header X-Forwarded-For $remote_addr;|g' "$EXISTING_SITE"
+      $SUDO nginx -t
+      $SUDO systemctl reload nginx 2>/dev/null || $SUDO nginx -s reload
+    fi
+  done
 fi
 
 # ---------- 4. 构建并启动 ----------
 log "构建镜像并启动（首次构建需几分钟）"
-$SUDO $COMPOSE up -d --build
+$SUDO $COMPOSE config --quiet
+$SUDO $COMPOSE build
+$SUDO $COMPOSE up -d
 
 # ---------- 5. 等待后端就绪 ----------
 log "等待后端就绪……"
@@ -143,7 +190,10 @@ if [ -n "$WEB_DOMAIN" ]; then
     LINK=""
   fi
   if [ -f "$SITE_DST" ]; then
-    warn "已存在 ${SITE_DST}，保留现有配置（不覆盖 certbot 写入的证书段）"
+    warn "已存在 ${SITE_DST}，保留证书段并迁移旧管理后台代理端口/转发头"
+    $SUDO cp "$SITE_DST" "${SITE_DST}.bak.$(date +%Y%m%d-%H%M%S)"
+    $SUDO sed -i -e 's|proxy_pass http://127.0.0.1:8081;|proxy_pass http://127.0.0.1:8082;|g' \
+      -e 's|proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;|proxy_set_header X-Forwarded-For $remote_addr;|g' "$SITE_DST"
   else
     sed -e "s/__WEB_DOMAIN__/${WEB_DOMAIN}/g" -e "s/__ADMIN_DOMAIN__/${ADMIN_DOMAIN}/g" \
       deploy/nginx-errorset.conf.template > /tmp/errorset-nginx.conf
@@ -202,7 +252,7 @@ EOF
   fi
   cat <<EOF
 
-  默认管理员  xiaohui / 123456  —— 登录后请立即修改密码！
+  初始管理员  见 .env 的 SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD（仅空库创建）
   数据目录    $(pwd)/data （SQLite + 图片，迁移/备份即拷贝此目录）
 
   常用命令    $SUDO $COMPOSE logs -f backend   # 看日志
@@ -218,7 +268,7 @@ else
   Web 前端    http://${SERVER_IP}/
   管理后台    http://${SERVER_IP}:8081/
 
-  默认管理员  xiaohui / 123456  —— 登录后请立即修改密码！
+  初始管理员  见 .env 的 SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD（仅空库创建）
   数据目录    $(pwd)/data （SQLite + 图片，迁移/备份即拷贝此目录）
 
   常用命令    $SUDO $COMPOSE logs -f backend   # 看日志

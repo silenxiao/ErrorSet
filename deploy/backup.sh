@@ -1,26 +1,34 @@
 #!/usr/bin/env bash
-# ErrorSet 数据备份脚本：打包 data/（SQLite + 图片）与 .env 到 backups/
-# 用法：bash deploy/backup.sh   （建议在服务器上低峰期执行）
-# 注意：包内含 .env 密钥与用户数据，请妥善保管备份文件
-
+# Stop all backend writers for a consistent SQLite/WAL and image snapshot.
 set -euo pipefail
-
 cd "$(dirname "$0")/.."
-
-if [ ! -d data ]; then
-  echo "[失败] 未找到 data 目录，请在仓库根目录执行" >&2
-  exit 1
-fi
-
+source deploy/common.sh
+[ -d data ] && [ -f .env ] || { echo "缺少 data/ 或 .env" >&2; exit 1; }
+umask 077
 mkdir -p backups
-STAMP="$(date +%Y%m%d-%H%M%S)"
-OUT="backups/errorset-${STAMP}.tar.gz"
-
-tar czf "$OUT" data .env
-
-# 只保留最近 10 份
-ls -1t backups/errorset-*.tar.gz 2>/dev/null | tail -n +11 | xargs -r rm -f
-
-echo "已备份到 ${OUT}"
-echo "恢复方法：解包覆盖 data/ 与 .env 后执行 docker compose up -d"
-echo "（提示：后端运行时直接拷贝 SQLite 存在极小的不一致风险，重要备份可先 docker compose stop backend 再执行本脚本）"
+STAGE="$(mktemp -d)"
+OUT="backups/errorset-$(date +%Y%m%d-%H%M%S)-$$.tar.gz"
+RESTART=0
+COMPLETE=0
+cleanup() {
+  local result=$?
+  trap - EXIT
+  rm -rf "$STAGE"
+  if [ "$RESTART" = 1 ]; then compose start backend || result=1; fi
+  [ "$COMPLETE" = 1 ] || rm -f "$OUT"
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+RUNNING="$(compose ps --status running -q backend)"
+if [ -n "$RUNNING" ]; then
+  RESTART=1
+  compose stop backend
+fi
+git rev-parse HEAD > "$STAGE/deployment-revision.txt"
+$SUDO tar czf - data .env -C "$STAGE" deployment-revision.txt > "$OUT"
+tar tzf "$OUT" >/dev/null
+COMPLETE=1
+ls -1t backups/errorset-*.tar.gz | tail -n +11 | xargs -r rm -f
+echo "已备份到 $OUT（数据、配置、Git 版本；退出时恢复后端原运行状态）"

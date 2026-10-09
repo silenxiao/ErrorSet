@@ -10,6 +10,9 @@ services:
       DATA_DIR: /data
     volumes:
       - ./data:/data
+    networks:
+      production:
+        ipv4_address: ${PROXY_NETWORK_PREFIX:-172.30.86}.2
     expose:
       - "8000"
     healthcheck:
@@ -28,11 +31,14 @@ services:
     restart: unless-stopped
     ports:
       # 默认直接占宿主 80；HTTPS 域名模式（setup_server.sh --with-domain）会在 .env
-      # 写入 WEB_PUBLISH=127.0.0.1:8080，把 80/443 让给宿主机 nginx
+      # 写入 WEB_PUBLISH=127.0.0.1:8080:80，把 80/443 让给宿主机 nginx
       - "${WEB_PUBLISH:-80:80}"
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      production:
+        ipv4_address: ${PROXY_NETWORK_PREFIX:-172.30.86}.3
 
   admin:
     build: ./admin
@@ -43,3 +49,13 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks:
+      production:
+        ipv4_address: ${PROXY_NETWORK_PREFIX:-172.30.86}.4
+
+networks:
+  production:
+    ipam:
+      config:
+        - subnet: ${PROXY_NETWORK_PREFIX:-172.30.86}.0/24
+          gateway: ${PROXY_NETWORK_PREFIX:-172.30.86}.1
