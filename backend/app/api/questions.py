@@ -1,10 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Header, Query, Response
 from fastapi.responses import Response as ImageResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, get_current_user
+from app.core.media_access import verify_media_access
+from app.schemas.media import illustration_out, question_out
 from app.core.exceptions import NotFoundError
 from app.database import repository as repo
 from app.database.database import get_db
@@ -30,8 +32,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 @router.get("/api/v1/questions/{question_id}", response_model=QuestionOut)
 def get_question(question_id: int, db: DbSession, user: CurrentUser) -> QuestionOut:
     """查询题目（§26）。"""
-    return QuestionOut.model_validate(
-        question_service.get_question_or_404(db, question_id, user.id)
+    return question_out(
+        question_service.get_question_or_404(db, question_id, user.id), user.id
     )
 
 
@@ -41,8 +43,8 @@ def update_question(
 ) -> QuestionOut:
     """编辑题目字段（目前支持 text），仅传入的字段会被修改。"""
     fields = payload.model_dump(by_alias=False, exclude_unset=True)
-    return QuestionOut.model_validate(
-        question_service.update_question_fields(db, question_id, user.id, **fields)
+    return question_out(
+        question_service.update_question_fields(db, question_id, user.id, **fields), user.id
     )
 
 
@@ -52,14 +54,14 @@ def update_bbox(
 ) -> QuestionOut:
     """修改 bbox，保存后 bbox_source = manual（§13/§36）。"""
     question = question_service.update_bbox(db, question_id, user.id, payload.bbox)
-    return QuestionOut.model_validate(question)
+    return question_out(question, user.id)
 
 
 @router.post("/api/v1/questions/{question_id}/bbox/reset", response_model=QuestionOut)
 def reset_bbox(question_id: int, db: DbSession, user: CurrentUser) -> QuestionOut:
     """恢复 AI bbox，bbox_source = ai（§13）。"""
     question = question_service.reset_bbox(db, question_id, user.id)
-    return QuestionOut.model_validate(question)
+    return question_out(question, user.id)
 
 
 @router.patch("/api/v1/illustrations/{illustration_id}/bbox", response_model=IllustrationOut)
@@ -70,7 +72,7 @@ def update_illustration_bbox(
     illustration = question_service.update_illustration_bbox(
         db, illustration_id, user.id, payload.bbox
     )
-    return IllustrationOut.model_validate(illustration)
+    return illustration_out(illustration, user.id)
 
 
 @router.post(
@@ -82,7 +84,7 @@ def reset_illustration_bbox(
 ) -> IllustrationOut:
     """恢复插图 AI bbox，bbox_source = ai。"""
     illustration = question_service.reset_illustration_bbox(db, illustration_id, user.id)
-    return IllustrationOut.model_validate(illustration)
+    return illustration_out(illustration, user.id)
 
 
 def _wrong_question_out(
@@ -93,8 +95,9 @@ def _wrong_question_out(
     question 可传入预载好插图的 Question（批量列表场景），缺省时按需查库。
     """
     out = WrongQuestionOut.model_validate(row)
+    out.image = recognition_service.data_file_url(row.image, row.user_id)
     out.illustration_images = [
-        recognition_service.data_file_url(path)
+        recognition_service.data_file_url(path, row.user_id)
         for path in (row.illustration_images or [])
     ]
     if question is None:
@@ -104,7 +107,7 @@ def _wrong_question_out(
         out.question_no = row.question_no or question.question_no
         out.question_text = row.question_text or question.text
         out.illustrations = [
-            IllustrationOut.model_validate(item) for item in question.illustrations
+            illustration_out(item, row.user_id) for item in question.illustrations
         ]
     return out
 
@@ -194,11 +197,25 @@ def delete_wrong_question(
 
 @router.get("/api/v1/illustrations/{illustration_id}/image")
 def get_illustration_image(
-    illustration_id: int, db: DbSession, user: CurrentUser
+    illustration_id: int, db: DbSession,
+    access: Annotated[str, Query()] = "",
+    authorization: Annotated[str | None, Header()] = None,
 ) -> ImageResponse:
     """按插图当前 bbox 从原图动态裁剪 PNG（吃到人工校正后的 bbox）。"""
+    if authorization is not None:
+        user = get_current_user(db, authorization)
+    else:
+        signature = verify_media_access(f"illustrations/{illustration_id}", access)
+        if signature is None or signature[1]:
+            raise NotFoundError("插图不存在")
+        user = repo.get_user(db, signature[0])
+        if user is None:
+            raise NotFoundError("插图不存在")
     data = question_service.render_illustration_image(db, illustration_id, user.id)
-    return ImageResponse(content=data, media_type="image/png")
+    return ImageResponse(content=data, media_type="image/png", headers={
+        "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 
 @router.get("/api/v1/questions/{question_id}/analyze", response_model=AnalysisOut)

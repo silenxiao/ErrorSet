@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, Header, Query, Request
+from fastapi import Depends, Header
 from sqlalchemy.orm import Session
 
 from app.core import security
@@ -13,18 +13,12 @@ from app.database.models import User
 
 
 def get_current_user(
-    request: Request,
     db: Annotated[Session, Depends(get_db)],
     authorization: Annotated[str | None, Header()] = None,
-    token: Annotated[str, Query()] = "",
 ) -> User:
-    # 浏览器 <img> / 小程序 <image> 标签发不出 Authorization 头，允许 ?token= 回退。
-    # 仅限 GET/HEAD：写操作必须走 header，避免 JWT 被带进 URL 和访问日志。
     raw = ""
     if authorization and authorization.startswith("Bearer "):
         raw = authorization[len("Bearer "):]
-    elif token and request.method in ("GET", "HEAD"):
-        raw = token
     if not raw:
         raise AuthError()
     user_id = security.decode_token(raw)

@@ -35,12 +35,16 @@ def create_token(user_id: int) -> str:
 def decode_token(token: str) -> int | None:
     """校验 token 并返回 user_id，无效/过期返回 None。"""
     try:
-        payload = jwt.decode(token, get_settings().jwt_secret, algorithms=["HS256"])
+        payload = jwt.decode(
+            token, get_settings().jwt_secret, algorithms=["HS256"],
+            options={"require": ["sub", "exp"]},
+        )
     except jwt.PyJWTError:
         return None
     sub = payload.get("sub")
     try:
-        return int(sub)
+        user_id = int(sub)
+        return user_id if user_id > 0 else None
     except (TypeError, ValueError):
         return None
 

@@ -8,6 +8,7 @@ from app.schemas.common import CamelModel
 
 class IllustrationOut(CamelModel):
     id: int
+    image_url: str = ""
     bbox: list[int]
     ai_bbox: list[int]
     bbox_source: str = "ai"

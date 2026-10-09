@@ -2,8 +2,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from app.api import media as media_api
 
 from app.api import questions, recognition, upload
 from app.api import admin as admin_api
@@ -68,33 +68,13 @@ def create_app() -> FastAPI:
     app.include_router(feedback_api.router)
     app.include_router(settings_api.router)
     app.include_router(admin_api.router)
-    # 试卷/裁剪/错题图片静态服务（§33：数据库只存路径）。
-    # data_dir 根下还有 SQLite 数据库（含密码哈希与 API key），
-    # 因此只暴露图片子目录，其余一律 404。
-    app.mount(
-        "/files",
-        RestrictedStaticFiles(directory=settings.data_dir, check_dir=False),
-        name="files",
-    )
+    app.include_router(media_api.router)
 
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
     return app
-
-
-# 允许通过 /files 访问的 data_dir 子目录；新增图片类型时同步补充
-FILE_PUBLIC_SUBDIRS = frozenset({"originals", "working", "crops", "wrong-illustrations"})
-
-
-class RestrictedStaticFiles(StaticFiles):
-    async def get_response(self, path: str, scope):  # type: ignore[override]
-        # Starlette 在 Windows 上会给出反斜杠路径，先统一成 / 再取首段
-        top = path.replace("\\", "/").split("/", 1)[0] if path else ""
-        if top not in FILE_PUBLIC_SUBDIRS:
-            return PlainTextResponse("Not Found", status_code=404)
-        return await super().get_response(path, scope)
 
 
 app = create_app()

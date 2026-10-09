@@ -114,7 +114,7 @@ def list_exams(db: DbSession, _admin: AdminUser) -> list[AdminExamOut]:
             status=row["exam"].status,
             username=row["username"],
             question_count=row["question_count"],
-            image_url=recognition_service.data_file_url(row["exam"].original_image),
+            image_url=recognition_service.data_file_url(row["exam"].original_image, _admin.id, admin=True),
             created_at=row["exam"].created_at,
         )
         for row in repo.list_all_exams(db)
@@ -140,7 +140,7 @@ def list_wrong_questions(
             username=row["username"],
             subject=row["wrong_question"].subject,
             question_text=row["question_text"],
-            image_url=recognition_service.data_file_url(row["wrong_question"].image),
+            image_url=recognition_service.data_file_url(row["wrong_question"].image, _admin.id, admin=True),
             created_at=row["wrong_question"].created_at,
         )
         for row in repo.list_all_wrong_questions(db)
@@ -163,7 +163,7 @@ def get_wrong_question_detail(
         username=row["username"],
         subject=wrong.subject,
         question_text=row["question_text"],
-        image_url=recognition_service.data_file_url(wrong.image),
+        image_url=recognition_service.data_file_url(wrong.image, _admin.id, admin=True),
         created_at=wrong.created_at,
         question_no=wrong.question_no,
         correct_answer=wrong.correct_answer,
@@ -173,7 +173,7 @@ def get_wrong_question_detail(
         illustration_images=[
             url
             for url in (
-                recognition_service.data_file_url(path)
+                recognition_service.data_file_url(path, _admin.id, admin=True)
                 for path in (wrong.illustration_images or [])
             )
             if url
@@ -306,7 +306,5 @@ def delete_model(model_id: int, db: DbSession, _admin: AdminUser) -> Response:
 @router.post("/models/{model_id}/test", response_model=dict)
 async def test_model(model_id: int, db: DbSession, _admin: AdminUser) -> dict:
     """向该模型发一次最小识别请求（1x1 测试图），检验配置是否可用。"""
-    row = db.get(settings_service.ModelProfile, model_id)
-    if row is None:
-        raise NotFoundError("模型不存在")
+    row = settings_service.get_admin_model_profile(db, model_id)
     return await settings_service.test_model_profile(row)

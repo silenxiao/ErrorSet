@@ -1,5 +1,6 @@
 from app.core.config import get_settings
 from app.core.exceptions import ProviderAuthError
+from app.core.network_security import validate_model_base_url
 from app.providers.amd import AMDProvider
 from app.providers.base import VisionProvider
 from app.providers.gemini import GeminiProvider
@@ -26,6 +27,8 @@ class ProviderFactory:
         model: str,
         api_key: str | None = None,
         base_url: str | None = None,
+        *,
+        allow_env_key: bool = False,
     ) -> VisionProvider:
         settings = get_settings()
         name = provider_name.lower()
@@ -39,10 +42,11 @@ class ProviderFactory:
             "amd": settings.amd_api_key,
         }.get(name, "")
 
-        resolved_key = api_key if api_key else env_key
+        resolved_key = api_key or (env_key if allow_env_key else "")
         resolved_base = base_url or DEFAULT_BASE_URLS.get(name)
 
         if resolved_base:
+            validate_model_base_url(resolved_base)
             provider: VisionProvider = OpenAICompatibleProvider(
                 model, resolved_key, resolved_base, name=name
             )

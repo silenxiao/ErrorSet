@@ -8,7 +8,7 @@ import type {
   WrongQuestion,
   WrongQuestionCreate,
 } from '../types/question';
-import { BACKEND_BASE } from './config';
+import { absUrl } from './config';
 
 export function getQuestion(questionId: number): Promise<Question> {
   return request(`/api/v1/questions/${questionId}`);
@@ -83,6 +83,6 @@ export function sortWrongQuestion(
 }
 
 /** 插图裁剪图地址（按当前 bbox 裁剪）。 */
-export function illustrationImageUrl(id: number): string {
-  return `${BACKEND_BASE}/api/v1/illustrations/${id}/image`;
+export function illustrationImageUrl(illustration: { imageUrl: string }): string {
+  return absUrl(illustration.imageUrl) || '';
 }

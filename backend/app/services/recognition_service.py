@@ -82,24 +82,14 @@ def create_exam_from_upload(
     return exam
 
 
-def data_file_url(path: str) -> str:
-    """data_dir 内相对路径 → /files 静态访问 URL（main.py 把 data_dir 挂载在 /files）。
-
-    空路径返回空串，调用方以真值判断是否有图可展示。
-    """
-    if not path:
-        return ""
-    settings = get_settings()
-    try:
-        relative = Path(path).relative_to(Path(settings.data_dir))
-    except ValueError:
-        relative = Path(path).name
-    return f"/files/{relative.as_posix()}"
+def data_file_url(path: str, viewer_id: int, *, admin: bool = False) -> str:
+    """只为已经完成归属验证的资源签发短时效图片链接。"""
+    from app.core.media_access import signed_media_url
+    return signed_media_url(path, viewer_id=viewer_id, admin=admin)
 
 
-def exam_image_url(exam: Exam) -> str:
-    """试卷原图的静态访问 URL。"""
-    return data_file_url(exam.original_image)
+def exam_image_url(exam: Exam, viewer_id: int) -> str:
+    return data_file_url(exam.original_image, viewer_id)
 
 
 def confirm_exam(db: Session, exam_id: int, user_id: int) -> Exam:

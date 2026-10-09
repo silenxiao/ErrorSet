@@ -15,6 +15,7 @@ from pathlib import Path
 import httpx
 
 from app.core.config import get_settings
+from app.core.network_security import PublicHTTPTransport
 from app.core.exceptions import ProviderAuthError, ProviderError, ProviderTimeoutError
 from app.core.logging import get_logger
 from typing import Any
@@ -29,7 +30,9 @@ _shared_client: httpx.AsyncClient | None = None
 def get_http_client() -> httpx.AsyncClient:
     global _shared_client
     if _shared_client is None:
-        _shared_client = httpx.AsyncClient()
+        _shared_client = httpx.AsyncClient(
+            transport=PublicHTTPTransport(), trust_env=False, follow_redirects=False,
+        )
     return _shared_client
 
 
@@ -159,6 +162,8 @@ class VisionProvider(ABC):
                 await asyncio.sleep(delay)
                 continue
 
+            if 300 <= resp.status_code < 400:
+                raise ProviderError("模型端点返回重定向，已拒绝跟随")
             if resp.status_code in (401, 403):
                 raise ProviderAuthError(f"认证失败({resp.status_code})")
             if resp.status_code == 429:
@@ -208,6 +213,8 @@ class VisionProvider(ABC):
                     headers=headers,
                     timeout=settings.provider_timeout_seconds,
                 ) as resp:
+                    if 300 <= resp.status_code < 400:
+                        raise ProviderError("模型端点返回重定向，已拒绝跟随")
                     if resp.status_code in (401, 403):
                         raise ProviderAuthError(f"认证失败({resp.status_code})")
                     if resp.status_code == 429:

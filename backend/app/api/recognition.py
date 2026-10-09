@@ -8,7 +8,7 @@ from app.api.deps import CurrentUser
 from app.database import repository as repo
 from app.database.database import get_db
 from app.schemas.exam import ExamCreated, ExamDetail, ExamListItem, ReRecognizeRequest
-from app.schemas.question import QuestionOut
+from app.schemas.media import question_out
 from app.services import recognition_service
 from app.workers.recognition_worker import RecognitionJob, worker
 
@@ -39,7 +39,7 @@ def get_exam(exam_id: int, db: DbSession, user: CurrentUser) -> ExamDetail:
     """查询试卷与题目（§26）。"""
     exam = recognition_service.get_exam_or_404(db, exam_id, user.id)
     questions = [
-        QuestionOut.model_validate(q)
+        question_out(q, user.id)
         for q in repo.list_questions(db, exam.id)
     ]
     return ExamDetail(
@@ -47,7 +47,7 @@ def get_exam(exam_id: int, db: DbSession, user: CurrentUser) -> ExamDetail:
         name=exam.name,
         status=exam.status,
         created_at=exam.created_at,
-        image_url=recognition_service.exam_image_url(exam),
+        image_url=recognition_service.exam_image_url(exam, user.id),
         include_illustrations=exam.include_illustrations,
         grade=exam.grade,
         extra_prompt=exam.extra_prompt,

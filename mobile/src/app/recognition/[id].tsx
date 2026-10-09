@@ -415,7 +415,7 @@ export default function RecognitionPage() {
               {editQ.illustrations.map((ill) => (
                 <IllustrationImage
                   key={ill.id}
-                  uri={illustrationImageUrl(ill.id)}
+                  uri={illustrationImageUrl(ill)}
                   maxHeight={Math.max(80, windowHeight * 0.8 - 160)}
                 />
               ))}

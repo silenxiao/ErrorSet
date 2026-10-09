@@ -23,6 +23,7 @@ from app.database.database import SessionLocal
 from app.database.models import ModelProfile, User
 from app.providers.base import VisionProvider, VisionRequest
 from app.providers.factory import ProviderFactory
+from app.core.network_security import validate_model_base_url
 
 
 def list_model_profiles(db: Session, user_id: int) -> list[ModelProfile]:
@@ -48,7 +49,7 @@ def list_model_profiles(db: Session, user_id: int) -> list[ModelProfile]:
 
 def get_model_profile(db: Session, profile_id: int, user_id: int) -> ModelProfile:
     row = db.get(ModelProfile, profile_id)
-    if row is None or row.user_id != user_id:
+    if row is None or row.user_id != user_id or row.origin != "user" or row.is_system:
         raise NotFoundError("模型不存在")
     return row
 
@@ -68,6 +69,8 @@ def _get_enableable_profile(
 def _validate(provider: str, base_url: str) -> None:
     if not provider.strip():
         raise ValidationError("服务商不能为空")
+    if base_url.strip():
+        validate_model_base_url(base_url)
     if provider.strip().lower() == "custom" and not base_url.strip():
         raise ValidationError("自定义服务商必须填写 API 地址（Base URL）")
 
@@ -221,7 +224,7 @@ def get_recognition_provider(user_id: int, count_usage: bool = True) -> VisionPr
     finally:
         db.close()
 
-    return ProviderFactory.create(settings.global_provider, settings.global_model)
+    return ProviderFactory.create(settings.global_provider, settings.global_model, allow_env_key=True)
 
 
 # ---------- 管理后台（/api/v1/admin/models） ----------
@@ -295,9 +298,7 @@ def admin_update_model_profile(
     db: Session, profile_id: int, **kwargs
 ) -> ModelProfile:
     """后台编辑模型。api_key 留空表示保持不变；系统模型的 enabled 为公共开关。"""
-    row = db.get(ModelProfile, profile_id)
-    if row is None:
-        raise NotFoundError("模型不存在")
+    row = get_admin_model_profile(db, profile_id)
     provider = (kwargs.get("provider") or "").strip()
     base_url = (kwargs.get("base_url") or "").strip()
     _validate(provider, base_url)
@@ -318,9 +319,7 @@ def admin_update_model_profile(
 
 def admin_delete_model_profile(db: Session, profile_id: int) -> None:
     """后台删除模型；选中它的用户回落到各自的自有启用模型。"""
-    row = db.get(ModelProfile, profile_id)
-    if row is None:
-        raise NotFoundError("模型不存在")
+    row = get_admin_model_profile(db, profile_id)
     db.execute(
         update(User)
         .where(User.active_model_id == profile_id)
@@ -328,6 +327,14 @@ def admin_delete_model_profile(db: Session, profile_id: int) -> None:
     )
     db.delete(row)
     db.commit()
+
+
+def get_admin_model_profile(db: Session, profile_id: int) -> ModelProfile:
+    """后台仅能管理后台创建的模型，不能借 ID 访问用户自建凭据。"""
+    row = db.get(ModelProfile, profile_id)
+    if row is None or row.origin != "admin":
+        raise NotFoundError("模型不存在")
+    return row
 
 
 def _build_provider(
@@ -341,6 +348,7 @@ def _build_provider(
         (model or "").strip() or fallback_model,
         api_key=api_key or None,
         base_url=base_url or None,
+        allow_env_key=False,
     )
 
 

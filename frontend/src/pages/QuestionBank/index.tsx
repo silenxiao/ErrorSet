@@ -326,7 +326,7 @@ function WrongQuestionItem({
             (row.illustrations ?? []).map((ill) => (
               <Image
                 key={ill.id}
-                src={illustrationSrc(ill.id)}
+                src={illustrationSrc(ill)}
                 alt={`插图（${ill.type}）`}
                 style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
               />
@@ -487,7 +487,7 @@ function DetailBody({
             ? question.illustrations.map((ill) => (
                 <Image
                   key={ill.id}
-                  src={illustrationSrc(ill.id)}
+                  src={illustrationSrc(ill)}
                   alt={`插图（${ill.type}）`}
                   // width:auto 覆盖 antd 默认的 width:100% 拉伸，
                   // 保证按原始像素显示；超出浮窗宽度才缩小；点击查看原始大小

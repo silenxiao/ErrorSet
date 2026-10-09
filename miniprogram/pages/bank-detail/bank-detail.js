@@ -43,7 +43,7 @@ Page({
           ? snapshots.map((imgUrl, idx) => ({ id: `s${idx}`, imgUrl }))
           : (w.illustrations || []).map((ill) => ({
               ...ill,
-              imgUrl: api.illustrationImageUrl(ill.id),
+              imgUrl: api.illustrationImageUrl(ill),
             }));
         this.setData({
           detail: w,
@@ -70,7 +70,7 @@ Page({
       .then((q) => {
         q.illustrations = (q.illustrations || []).map((ill) => ({
           ...ill,
-          imgUrl: api.illustrationImageUrl(ill.id),
+          imgUrl: api.illustrationImageUrl(ill),
         }));
         const patch = { question: q };
         // 快照为空的旧记录：原文/插图回退到实时题目

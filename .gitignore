@@ -37,6 +37,12 @@ tool/
 
 # test
 tests/
+!tests/
+tests/*
+!tests/backend/
+tests/backend/*
+!tests/backend/test_permission_isolation.py
+backend/pytest-of-*/
 
 # logs
 .agents/dev-logs/

@@ -11,6 +11,7 @@ export type QuestionStatus =
 
 export interface Illustration {
   id: number;
+  imageUrl: string;
   bbox: BBox;
   aiBbox: BBox;
   bboxSource: "ai" | "manual";

@@ -1,5 +1,4 @@
 import { jsonInit, request } from "./http";
-import { TOKEN_KEY } from "./auth";
 import type {
   AnalysisResult,
   BBox,
@@ -12,11 +11,9 @@ export function getQuestion(questionId: number): Promise<Question> {
   return request(`/api/v1/questions/${questionId}`);
 }
 
-/** 动态插图裁剪图 URL：<img> 标签带不上 Authorization 头，用 ?token= 回退。 */
-export function illustrationSrc(illustrationId: number): string {
-  const token = localStorage.getItem(TOKEN_KEY);
-  const query = token ? `?token=${encodeURIComponent(token)}` : "";
-  return `/api/v1/illustrations/${illustrationId}/image${query}`;
+/** 使用已鉴权响应返回的短期图片签名。 */
+export function illustrationSrc(illustration: { imageUrl: string }): string {
+  return illustration.imageUrl;
 }
 
 export function updateQuestion(

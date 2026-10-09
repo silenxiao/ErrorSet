@@ -125,7 +125,7 @@ Page({
       editText: q.text || '',
       editIlls: (q.illustrations || []).map((ill) => ({
         id: ill.id,
-        url: api.illustrationImageUrl(ill.id),
+        url: api.illustrationImageUrl(ill),
       })),
     });
   },

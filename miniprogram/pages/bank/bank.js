@@ -69,7 +69,7 @@ Page({
               ? api.wrongIllustrationUrls(w).map((imgUrl, idx) => ({ id: `s${idx}`, imgUrl }))
               : (w.illustrations || []).map((ill) => ({
                   ...ill,
-                  imgUrl: api.illustrationImageUrl(ill.id),
+                  imgUrl: api.illustrationImageUrl(ill),
                 })),
           }));
         const rows = this.data.rows.concat(pageRows);

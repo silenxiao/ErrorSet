@@ -480,7 +480,7 @@ function EditQuestionModal({
               {question?.illustrations.map((ill) => (
                 <Image
                   key={ill.id}
-                  src={illustrationSrc(ill.id)}
+                  src={illustrationSrc(ill)}
                   alt={`插图（${ill.type}）`}
                   style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
                 />
