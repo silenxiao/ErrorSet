@@ -134,6 +134,27 @@ Web 请求使用同源相对路径 `/api` 和 `/files`，没有把本机后端�
 
 ## 五、日常运维
 
+### 后端构建慢、每次重新安装 pip 依赖
+
+旧 Dockerfile 在安装依赖前复制 `app/`，每次源码修改都会让后面的 `pip install` 缓存失效。本版本改为先根据 `pyproject.toml` 安装运行依赖，再复制源码；仅修改业务代码时，依赖安装步骤应显示 `CACHED`。首次使用新 Dockerfile 仍需安装一次依赖；依赖配置、基础镜像或 pip 源变化，或构建缓存被清理后，也会重新安装。
+
+腾讯云境内服务器如下载 PyPI 较慢，可在仓库根目录 `.env` 添加以下构建配置（同名配置已有时修改原值）：
+
+```dotenv
+BACKEND_PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+同步本版本的 `backend/Dockerfile` 和 `docker-compose.yml` 后，在服务器项目目录执行：
+
+```bash
+docker compose --progress=plain build backend
+docker compose up -d --no-deps backend
+docker compose ps backend
+docker compose logs --tail=100 backend
+```
+
+后续继续使用普通的 `docker compose build backend` 或部署脚本即可，脚本也会读取该配置。不要在日常更新时使用 `--no-cache` 或清理 builder 缓存，否则无法复用依赖层。`pip --no-cache-dir` 只禁用 pip 下载缓存，不会禁用 Docker 层缓存。后端构建上下文也已排除虚拟环境和日志，减少上传量。
+
 ### 管理后台新增系统模型返回 500
 
 在服务器终端执行 `docker logs --since=10m --tail=200 errorset-backend` 查看异常，无需进入容器或项目目录。若日志包含 `NOT NULL constraint failed: model_profile.user_id`，说明旧数据库的用户归属列仍为非空，无法保存没有用户归属的系统模型。
@@ -264,7 +285,7 @@ sudo certbot --nginx -d example.com -d admin.example.com
 | 问题 | 处理 |
 |---|---|
 | 80/8081 端口被占用 | 改 `.env` 的完整 WEB_PUBLISH/ADMIN_PUBLISH 映射，并同步宿主 nginx 代理端口 |
-| 境内服务器构建镜像慢 | 给 `backend/Dockerfile` 的 pip 加 `-i https://pypi.tuna.tsinghua.edu.cn/simple`；`frontend`、`admin` 的 `npm ci` 改为 `npm ci --registry=https://registry.npmmirror.com` |
+| 境内服务器构建镜像慢 | 后端按第五节配置 `BACKEND_PIP_INDEX_URL` 并复用构建缓存；`frontend`、`admin` 的 `npm ci` 可改为 `npm ci --registry=https://registry.npmmirror.com` |
 | 后端起不来 / 健康检查不过 | `docker compose logs -f backend`；检查配置格式、数据库迁移和 `data/` 权限；缺 AI Key 通常只影响识别 |
 | 图片/数据库写入失败 | 宿主机 `./data` 目录需对容器内进程（默认 root）可写，检查属主与挂载路径 |
 | 为什么不能开多个后端副本 | 识别 worker 在进程内轮询任务，多副本会重复消费；确需扩展需先改造为独立 worker 进程 |

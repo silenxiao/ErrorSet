@@ -4,3 +4,7 @@ __pycache__/
 .pytest_cache/
 .env
 smoke_global.py
+.venv/
+venv/
+logs/
+.ruff_cache/

@@ -6,9 +6,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml ./
-COPY app ./app
 
-RUN pip install --no-cache-dir .
+# 依赖层只依赖 pyproject.toml；业务代码更新不会重新下载依赖。
+# 从项目配置提取依赖，避免维护两份依赖清单。
+ARG PIP_INDEX_URL=https://pypi.org/simple
+RUN python -c "import pathlib, tomllib; deps = tomllib.loads(pathlib.Path('pyproject.toml').read_text(encoding='utf-8'))['project']['dependencies']; pathlib.Path('/tmp/requirements.txt').write_text('\n'.join(deps) + '\n', encoding='utf-8')" \
+    && pip install --no-cache-dir --index-url "$PIP_INDEX_URL" -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
+
+# /app 位于 Python 导入路径，uvicorn 直接加载源码，无需重新安装项目包。
+COPY app ./app
 
 # 默认数据目录，docker-compose 会挂载宿主机目录到 /data
 RUN mkdir -p /data

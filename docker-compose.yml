@@ -1,6 +1,9 @@
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        PIP_INDEX_URL: ${BACKEND_PIP_INDEX_URL:-https://pypi.org/simple}
     container_name: errorset-backend
     restart: unless-stopped
     env_file: .env
