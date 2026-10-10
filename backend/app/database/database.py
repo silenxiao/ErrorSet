@@ -93,6 +93,9 @@ def _sqlite_lightweight_migrations() -> None:
     from app.database.security_migrations import migrate_security_identities
 
     migrate_security_identities(engine)
+    from app.database.model_profile_migrations import migrate_model_profile_owner
+
+    migrate_model_profile_owner(engine)
     _migrate_provider_setting_to_model_profile()
     _seed_default_user()
     _backfill_wrong_question_text()

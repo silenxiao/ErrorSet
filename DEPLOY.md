@@ -134,6 +134,25 @@ Web 请求使用同源相对路径 `/api` 和 `/files`，没有把本机后端�
 
 ## 五、日常运维
 
+### 管理后台新增系统模型返回 500
+
+在服务器终端执行 `docker logs --since=10m --tail=200 errorset-backend` 查看异常，无需进入容器或项目目录。若日志包含 `NOT NULL constraint failed: model_profile.user_id`，说明旧数据库的用户归属列仍为非空，无法保存没有用户归属的系统模型。
+
+本版本后端启动时会自动迁移该约束，保留已有模型、凭据、索引和触发器；迁移使用事务，失败会回滚。服务器更新到包含修复的代码后重新构建并启动后端即可，无需重新编译 Web 或管理后台，也不要删除数据库。
+
+```bash
+# 在服务器实际项目目录执行；将路径替换为实际位置
+cd /opt/errorset
+bash deploy/backup.sh
+git pull --ff-only
+docker compose build backend
+docker compose up -d --no-deps backend
+docker compose ps backend
+docker compose logs --tail=100 backend
+```
+
+确认后端健康后，在管理后台重新添加系统模型。也可以直接执行 `bash deploy/update.sh` 完成完整版本更新（会重建所有服务）。
+
 所有命令都在仓库根目录执行：
 
 ```bash
