@@ -342,6 +342,7 @@ export default function SettingsModal({ open, onClose }: Props) {
                   ) : (
                     <Tag>独享</Tag>
                   )}
+                  {item.exclusive && <Tag>独享</Tag>}
                   {item.enabled && <Tag color="success">当前使用</Tag>}
                 </div>
                 <div

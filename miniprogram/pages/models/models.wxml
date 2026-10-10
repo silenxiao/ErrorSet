@@ -23,6 +23,7 @@
         <text class="model-name">{{item.name || item.model}}</text>
         <text class="tag">{{item.providerText}}</text>
         <text class="tag {{item.isSystem ? 'tag-system' : ''}}">{{item.scopeText}}</text>
+        <text wx:if="{{item.exclusive}}" class="tag">独享</text>
         <text wx:if="{{item.enabled}}" class="tag tag-active">当前使用</text>
       </view>
       <view class="muted model-sub">{{item.model}}{{item.baseUrl ? ' · ' + item.baseUrl : ''}}{{item.hasApiKey ? ' · API Key 已保存' : ''}}</view>

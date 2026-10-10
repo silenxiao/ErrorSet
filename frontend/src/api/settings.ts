@@ -11,6 +11,7 @@ export interface ModelProfile {
   hasApiKey: boolean;
   enabled: boolean;
   scope: "system" | "private";
+  exclusive?: boolean;
 }
 
 export interface ModelProfilePayload {

@@ -253,6 +253,7 @@ export default function ModelsPage() {
                     <Tag color={C.primary}>{providerLabel(m.provider)}</Tag>
                     {/* scope: system=系统模型（后台下发，只读），private=独享模型 */}
                     <Tag color={m.scope === 'system' ? C.primary : C.gray}>{m.scope === 'system' ? '系统' : '独享'}</Tag>
+                    {m.exclusive ? <Tag color={C.gray}>独享</Tag> : null}
                     {m.enabled ? <Tag color={C.green}>当前使用</Tag> : null}
                   </View>
                   <Muted style={{ marginTop: 2 }} numberOfLines={1}>

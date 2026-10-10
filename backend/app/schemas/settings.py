@@ -15,6 +15,7 @@ class ModelProfileOut(CamelModel):
     has_api_key: bool
     enabled: bool
     scope: str = "private"
+    exclusive: bool = False
 
 
 class ModelProfileCreate(CamelModel):

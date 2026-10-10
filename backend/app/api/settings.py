@@ -28,7 +28,8 @@ def _to_out(db: Session, row, user_id: int) -> ModelProfileOut:
         model=row.model,
         has_api_key=bool(row.api_key),
         enabled=settings_service.get_active_model_id(db, user_id) == row.id,
-        scope="system" if row.is_system else "private",
+        scope="system" if row.is_system or row.origin == "admin" else "private",
+        exclusive=row.origin == "admin" and not row.is_system,
     )
 
 
