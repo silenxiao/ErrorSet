@@ -78,6 +78,39 @@ bash deploy/setup_server.sh
 
 > ⚠️ 如果 `.env` 还没填 AI API Key，试卷识别功能不可用。编辑 `.env` 填入后重跑 `bash deploy/setup_server.sh` 即可（无需删容器）。
 
+### Web 是否需要重新编译
+
+**首次从源码部署到外网，需要生产构建；部署脚本会自动完成，不需要先在本机手动编译。** `frontend/Dockerfile` 在构建镜像时执行 `npm ci` 和 `npm run build`（`tsc -b && vite build`），再将生成的 `dist/` 放入 nginx 镜像。管理后台 `admin/` 使用同样的流程。本机的 `dist/` 不会参与 Docker 构建，也无需上传；开发环境的 `npm run dev` 不能替代生产构建。
+
+| 场景 | 是否需要重新构建 Web |
+|---|---|
+| 首次从源码部署，或修改了前端源码、依赖、构建配置 | **需要**，通过部署脚本或下方命令构建 |
+| 修改 `frontend/nginx.conf` | **需要重建镜像并重建容器**，让镜像包含新配置 |
+| 同一版本已构建的镜像迁移到外网服务器 | **无需重新编译**，可复用该镜像 |
+| 仅更换公网 IP、域名、HTTPS 证书或宿主 nginx 配置 | **无需重新编译**，按第六节配置入口即可 |
+| 仅修改后端 `.env` 中的模型、API Key 等运行配置 | **无需重新编译 Web**，按第四节让后端配置生效 |
+
+Web 请求使用同源相对路径 `/api` 和 `/files`，没有把本机后端地址写入生产构建。`frontend/vite.config.ts` 中的 `127.0.0.1:8000` 只用于开发服务器代理；生产环境由 `frontend/nginx.conf` 反代到 `backend:8000`，不用为了外网访问把它改为公网 IP。
+
+**操作步骤（在服务器仓库根目录执行）：**
+
+1. 首次部署：按上面的快速部署步骤上传源码，然后运行 `bash deploy/setup_server.sh`；使用域名时运行 `bash deploy/setup_server.sh --with-domain example.com`。脚本自动构建 Web、管理后台和后端镜像并启动服务。
+2. 常规版本更新：运行 `bash deploy/update.sh`，自动备份、拉取代码并重新构建部署。
+3. 已完成首次部署、后端正常运行，且此次仅修改 Web 时：先将最新前端源码同步到服务器，再执行：
+
+   ```bash
+   # 构建成功后才替换 Web 容器；不更新后端及管理后台
+   docker compose build web
+   docker compose up -d --no-deps web
+
+   # 检查容器状态与日志
+   docker compose ps web
+   docker compose logs --tail=50 web
+   ```
+
+   若同时修改了管理后台，改为 `docker compose build web admin` 和 `docker compose up -d --no-deps web admin`。涉及后端/API 变更时使用完整版本更新流程，保持客户端与后端版本一致。仅执行 `docker compose restart web` 不会编译源码，也不会应用新镜像。
+4. 访问公网地址（如 `https://example.com/`），检查页面、登录、图片加载及刷新前端路由是否正常。若仍显示旧页面，强制刷新浏览器；如有 CDN，清理对应缓存。
+
 ## 四、配置说明（.env）
 
 配置文件为仓库根目录 `.env`（模板见 [.env.example](.env.example)），首次部署由脚本自动生成：
