@@ -69,7 +69,6 @@ const api = {
       return ex;
     }),
 
-  confirmExam: (id) => request(`/api/v1/exams/${id}/confirm`, { method: 'POST' }),
 
   reRecognizeExam: (id, opts) =>
     request(`/api/v1/exams/${id}/re-recognize`, { method: 'POST', data: opts || {} }),

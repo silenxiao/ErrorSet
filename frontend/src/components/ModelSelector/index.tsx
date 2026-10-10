@@ -8,7 +8,7 @@ import SettingsModal from "../SettingsModal";
 /** 模型列表变化的自定义事件：让页面上所有 ModelSelector 实例同步刷新。 */
 export const MODELS_CHANGED_EVENT = "errorset-models-changed";
 
-/** 识别模型选择下拉：点击切换即独占启用（整页识别与二次识别共用），供上传页/识别页复用。 */
+/** 识别模型选择下拉：点击切换即独占启用（识别时使用），供上传页/识别页复用。 */
 export default function ModelSelector() {
   const [models, setModels] = useState<ModelProfile[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);

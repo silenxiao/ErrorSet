@@ -93,14 +93,16 @@ def exam_image_url(exam: Exam, viewer_id: int) -> str:
 
 
 def confirm_exam(db: Session, exam_id: int, user_id: int) -> Exam:
-    """确认触发二次识别，仅 awaiting_review 状态有效（§6.2）。"""
+    """兼容旧客户端：确认存量试卷，不再触发二次识别。"""
     exam = get_exam_or_404(db, exam_id, user_id)
     if not repo.transition_exam_status(
-        db, exam, expected_status="awaiting_review", target_status="local_queued"
+        db, exam, expected_status="awaiting_review", target_status="completed"
     ):
         raise InvalidStateError(
             f"当前状态为 {exam.status}，只有 awaiting_review 可以确认"
         )
+    for question in repo.list_questions(db, exam.id):
+        repo.set_question_status(db, question, "completed")
     return exam
 
 
@@ -111,12 +113,12 @@ def rerecognize_exam(
     include_illustrations: bool | None = None,
     extra_prompt: str | None = None,
 ) -> Exam:
-    """清除识别结果并重新执行两段识别。
+    """清除识别结果并重新执行整页识别。
 
     include_illustrations 不为 None 时先更新试卷的插图识别设置。
     extra_prompt 不为 None 时更新用户补充提示词（空白视为清除），
     超过 EXTRA_PROMPT_MAX_CHARS 的提交直接弃用（保留试卷已有设置），
-    供本次及后续识别的 Global/Local 两段共同使用。
+    供本次及后续整页识别使用。
     """
     exam = get_exam_or_404(db, exam_id, user_id)
     if exam.status in ("global_processing", "local_queued", "local_processing"):

@@ -127,6 +127,10 @@ function QuestionItem({
   const status = STATUS_LABEL[question.status];
   const suspicious =
     question.confidence !== undefined && question.confidence < 0.7;
+  const selectQuestion = () => {
+    onSelect(question.id);
+    if (question.status === "completed") onEdit(question);
+  };
 
   return (
     <div
@@ -134,11 +138,11 @@ function QuestionItem({
       role="group"
       aria-label={`第 ${question.questionNo} 题`}
       tabIndex={0}
-      onClick={() => onSelect(question.id)}
+      onClick={selectQuestion}
       onKeyDown={(event) => {
         if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
-          onSelect(question.id);
+          selectQuestion();
         }
       }}
       style={{ "--question-depth": Math.min(depth, 3) } as CSSProperties}
@@ -192,7 +196,7 @@ function QuestionItem({
           >
             编辑题目
           </Button>
-        ) : <span className="recognition-question-hint">二次识别后可编辑</span>}
+        ) : <span className="recognition-question-hint">识别完成后可编辑</span>}
       </div>
     </div>
   );
@@ -361,6 +365,25 @@ function WrongQuestionModal({
             options={["语文", "数学", "英语", "物理", "化学", "生物", "历史", "政治", "地理"].map((value) => ({ value, label: value }))}
           />
         </Form.Item>
+        {question && (
+          <Form.Item label="题目">
+            <div style={{ padding: "10px 12px", border: "1px solid var(--divider)", borderRadius: 8 }}>
+              <div className="recognition-question-text">{renderMathText(question.text)}</div>
+              {question.illustrations.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                  {question.illustrations.map((ill) => (
+                    <Image
+                      key={ill.id}
+                      src={illustrationSrc(ill)}
+                      alt={`题目插图（${ill.type}）`}
+                      style={{ width: "auto", maxWidth: "100%", borderRadius: 8 }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </Form.Item>
+        )}
         <Form.Item label="正确答案">
           {editingAnswer ? (
             <>
@@ -410,7 +433,7 @@ function WrongQuestionModal({
   );
 }
 
-/** 编辑题目浮窗：二次识别完成后点击题目打开，可修改题目文本 */
+/** 编辑题目浮窗：识别完成后点击题目打开，可修改题目文本 */
 function EditQuestionModal({
   question,
   onClose,

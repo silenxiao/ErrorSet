@@ -96,7 +96,7 @@ export function QuestionTree({ questions, selectedId, onSelect, onAddWrong, onRe
                   <Feather name="edit-3" size={13} color={C.text} />
                   <Text style={{ fontSize: 13, color: C.text }}>编辑题目</Text>
                 </TouchableOpacity>
-              ) : <Text style={styles.editHint}>二次识别后可编辑</Text>}
+              ) : <Text style={styles.editHint}>识别完成后可编辑</Text>}
             </View>
           </TouchableOpacity>
         );

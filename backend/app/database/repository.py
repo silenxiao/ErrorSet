@@ -272,7 +272,7 @@ def save_questions(
             ai_bbox=item["ai_bbox"],
             bbox_source="ai",
             confidence=item.get("confidence"),
-            status="pending_review",
+            status="completed",
         )
         db.add(q)
         rows.append(q)

@@ -30,9 +30,9 @@
     <view class="muted">该科目下暂无错题</view>
   </view>
 
-  <view wx:for="{{visibleRows}}" wx:key="id" class="wrow" hover-class="wrow-hover" hover-stay-time="80">
+  <view wx:for="{{visibleRows}}" wx:key="id" class="wrow" data-id="{{item.id}}" bindtap="openDetail" hover-class="wrow-hover" hover-stay-time="80">
     <view class="whead">
-      <text class="tag tag-subject" style="background:{{item.subjectColor}}1a;color:{{item.subjectColor}};" bindtap="editSubject" data-id="{{item.id}}" data-subject="{{item.subject}}">{{item.subject || '未设置'}}</text>
+      <text class="tag tag-subject" style="background:{{item.subjectColor}}1a;color:{{item.subjectColor}};" catchtap="editSubject" data-id="{{item.id}}" data-subject="{{item.subject}}">{{item.subject || '未设置'}}</text>
       <text class="muted">第 {{item.questionNo}} 题</text>
     </view>
 
@@ -40,7 +40,7 @@
       <md-render content="{{item.questionText || '—'}}"></md-render>
     </view>
 
-    <view wx:if="{{item.illustrations.length > 0}}" class="ills">
+    <view wx:if="{{item.illustrations.length > 0}}" class="ills" catchtap="noop">
       <image
         wx:for="{{item.illustrations}}"
         wx:for-item="ill"
@@ -54,13 +54,13 @@
       ></image>
     </view>
 
-    <view class="wactions">
+    <view class="wactions" catchtap="noop">
       <view class="text-btn" data-id="{{item.id}}" bindtap="openDetail">详情</view>
-      <view class="text-btn" data-id="{{item.id}}" data-position="top" bindtap="sort">置顶</view>
-      <view class="text-btn" data-id="{{item.id}}" data-position="bottom" bindtap="sort">置底</view>
-      <view class="text-btn danger" data-id="{{item.id}}" bindtap="del">删除</view>
-      <view class="text-btn" data-id="{{item.id}}" data-result="correct" bindtap="mark"><view class="ico ico-like"></view>做对</view>
-      <view class="text-btn" data-id="{{item.id}}" data-result="wrong" bindtap="mark"><view class="ico ico-dislike"></view>做错</view>
+      <view class="text-btn" data-id="{{item.id}}" data-position="top" catchtap="sort">置顶</view>
+      <view class="text-btn" data-id="{{item.id}}" data-position="bottom" catchtap="sort">置底</view>
+      <view class="text-btn danger" data-id="{{item.id}}" catchtap="del">删除</view>
+      <view class="text-btn" data-id="{{item.id}}" data-result="correct" catchtap="mark"><view class="ico ico-like"></view>做对</view>
+      <view class="text-btn" data-id="{{item.id}}" data-result="wrong" catchtap="mark"><view class="ico ico-dislike"></view>做错</view>
       <text class="muted wcount">做对 {{item.correctCount}} · 做错 {{item.wrongCount}}</text>
     </view>
   </view>

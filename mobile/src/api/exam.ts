@@ -38,10 +38,6 @@ export function getExam(examId: number): Promise<ExamDetail> {
   });
 }
 
-export function confirmExam(examId: number): Promise<ExamCreated> {
-  return request(`/api/v1/exams/${examId}/confirm`, { method: "POST" });
-}
-
 export function reRecognizeExam(
   examId: number,
   options?: { includeIllustrations?: boolean; extraPrompt?: string },

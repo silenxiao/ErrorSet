@@ -59,6 +59,8 @@ Page({
     subjectOptions: SUBJECT_OPTIONS,
     subjectIndex: 0,
     questionNo: '',
+    questionText: '',
+    illustrations: [],
     correctAnswer: '',
     correctAnswerView: '',
     analysis: '',
@@ -79,12 +81,16 @@ Page({
 
     this.loadModels();
 
-    // 读取题号与科目默认值（不再展示题目原文）
+    // 读取题目、插图与科目默认值
     api
       .getQuestion(qid)
       .then((q) => {
         if (!q) return;
-        const patch = { questionNo: q.questionNo || '' };
+        const patch = {
+          questionNo: q.questionNo || '',
+          questionText: ensureMath(q.text || ''),
+          illustrations: (q.illustrations || []).map((ill) => ({ id: ill.id, url: api.illustrationImageUrl(ill) })),
+        };
         if (q.subject) patch.subjectIndex = Math.max(0, SUBJECT_OPTIONS.indexOf(q.subject));
         // 该题分析过但还没入库时，回显最近一次 AI 分析结果（后端持久化）
         const last = q.lastAnalysis;

@@ -155,7 +155,7 @@ bash deploy/rollback.sh backups/errorset-<时间戳>-<PID>.tar.gz
 bash deploy/setup_server.sh --with-domain example.com
 
 # 如需管理后台也走域名：
-bash deploy/setup_server.sh --with-domain example.com --admin-domain admin.example.com
+bash deploy/setup_server.sh --with-domain cuoti-ai.cn  --admin-domain admin.cuoti-ai.cn
 ```
 
 脚本会自动完成：安装 nginx + certbot → 把容器端口收回回环监听（写入 `.env` 的 `WEB_PUBLISH=127.0.0.1:8080:80`、`ADMIN_PUBLISH=127.0.0.1:8082:80`，不进 git，`update.sh` 拉新代码不影响）→ 渲染 [deploy/nginx-errorset.conf.template](deploy/nginx-errorset.conf.template) 为宿主机 nginx 站点配置 → certbot 签发证书并配置 443 跳转。完成后访问 `https://example.com/`。

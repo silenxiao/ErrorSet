@@ -1,6 +1,6 @@
 import { InboxOutlined } from "@ant-design/icons";
 import { Button, Form, Input, Radio, Select, Space, Upload, message } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createExam } from "../../api/exam";
 import { getStoredGrade } from "../../api/auth";
@@ -19,7 +19,6 @@ export default function UploadPanel({ onUploaded }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [editingFile, setEditingFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
-  const cameraInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (!file) { setPreview(""); return; }
     const url = URL.createObjectURL(file);
@@ -77,19 +76,10 @@ export default function UploadPanel({ onUploaded }: Props) {
           <p className="ant-upload-text">点击或拖拽图片到此处上传</p>
           <p className="ant-upload-hint">试卷图片（JPG/PNG/WebP，≤10MB，一张图 = 一份试卷）</p>
         </Upload.Dragger>
-        <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden
-          onChange={(e) => {
-            const selected = e.target.files?.[0];
-            if (selected) setEditingFile(selected);
-            e.target.value = "";
-          }} />
-        <Space wrap style={{ marginTop: 12 }}>
-          <Button disabled={uploading || !!editingFile} onClick={() => cameraInput.current?.click()}>拍照</Button>
-          {file && <>
+        {file && <Space wrap style={{ marginTop: 12 }}>
             <Button disabled={uploading} onClick={() => setEditingFile(file)}>重新编辑</Button>
             <Button disabled={uploading} onClick={() => setFile(null)}>移除图片</Button>
-          </>}
-        </Space>
+        </Space>}
         {preview && <div style={{ marginTop: 12 }}>
           <img src={preview} alt="编辑后待上传的试卷" className="exam-image" />
           <p className="upload-panel-description" style={{ marginTop: 8 }}>已确认：{file?.name}</p>

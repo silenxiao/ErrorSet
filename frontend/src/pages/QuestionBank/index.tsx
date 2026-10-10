@@ -299,7 +299,16 @@ function WrongQuestionItem({
   return (
     <div
       className="hover-lift"
+      tabIndex={0}
+      onClick={() => onDetail(row)}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          onDetail(row);
+        }
+      }}
       style={{
+        cursor: "pointer",
         padding: 16,
         border: "1px solid var(--divider)",
         borderRadius: "var(--radius-card)",
@@ -307,12 +316,12 @@ function WrongQuestionItem({
         boxShadow: "var(--shadow-card)",
       }}
     >
-      <Space size={8} wrap style={{ marginBottom: 4 }}>
+      <Space size={8} wrap style={{ marginBottom: 4 }} onClick={(event) => event.stopPropagation()}>
         <SubjectTag subject={row.subject} onSave={(v) => onSubject(row, v)} />
       </Space>
       <div style={{ whiteSpace: "pre-wrap" }}>{renderMathText(row.questionText)}</div>
       {(row.illustrationImages?.length ?? 0) > 0 || (row.illustrations ?? []).length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        <div onClick={(event) => event.stopPropagation()} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
           {/* 优先用入库时裁剪的快照（静态 /files，无需鉴权）；旧记录回退到动态裁剪接口 */}
           {(row.illustrationImages ?? []).map((url) => (
             <Image
@@ -343,7 +352,7 @@ function WrongQuestionItem({
           flexWrap: "wrap",
         }}
       >
-        <Space size={8} wrap>
+        <Space size={8} wrap onClick={(event) => event.stopPropagation()}>
           <Button size="small" onClick={() => onDetail(row)}>
             详情
           </Button>

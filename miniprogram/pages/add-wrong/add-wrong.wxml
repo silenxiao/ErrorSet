@@ -1,5 +1,4 @@
 <view class="page">
-
   <!-- 科目（必填） -->
   <view class="section">
     <view class="label-row">
@@ -12,6 +11,16 @@
         <view class="ico ico-chev-down"></view>
       </view>
     </picker>
+  </view>
+
+  <view wx:if="{{questionText}}" class="section">
+    <view class="label-row"><text class="label">题目</text></view>
+    <view class="ans-box">
+      <view class="preview-area">
+        <md-render content="{{questionText}}"></md-render>
+        <image wx:for="{{illustrations}}" wx:key="id" src="{{item.url}}" mode="widthFix" style="width: 100%; margin-top: 16rpx; border-radius: 8rpx;" />
+      </view>
+    </view>
   </view>
 
   <!-- 正确答案：默认 Markdown 预览，框内右上角铅笔图标切换编辑 -->

@@ -58,12 +58,20 @@ body {
 }
 
 /* ===== 顶栏导航 Tab：激活白字 + 底部短下划线 ===== */
+.app-header.ant-layout-header {
+  gap: 24px;
+  padding-inline: 24px;
+}
+
+.app-brand {
+  flex-shrink: 0;
+}
+
 .nav-tabs {
   display: flex;
   align-items: stretch;
   justify-content: flex-end;
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 auto;
   gap: 4px;
   /* 撑满 64px 顶栏高度：否则按钮只有文字高，下划线会压在文字中间 */
   align-self: stretch;
@@ -75,6 +83,8 @@ body {
   background: transparent;
   cursor: pointer;
   position: relative;
+  flex-shrink: 0;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   padding: 0 18px;
@@ -506,7 +516,73 @@ body {
 }
 
 /* 顶部导航在窄屏收紧 */
+@media (max-width: 767px) {
+  .exam-history .ant-card-body {
+    padding: 0 18px 16px;
+  }
+
+  .exam-history .ant-card-head {
+    border-bottom: 0;
+    padding-inline: 18px;
+  }
+
+  .exam-history .exam-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-block: 12px;
+  }
+
+  .exam-history-main {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+  }
+
+  .exam-history-side {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .exam-history-side .ant-tag {
+    margin-inline-end: 0;
+    border: 0;
+  }
+
+  .exam-history-name {
+    font-size: 15px;
+    margin-bottom: 4px;
+    overflow-wrap: anywhere;
+  }
+
+  .exam-history-time {
+    color: var(--text-3);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .exam-history .ant-list-pagination .ant-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 8px;
+  }
+}
+
 @media (max-width: 720px) {
+  .app-header.ant-layout-header {
+    gap: 12px;
+    padding-inline: 12px;
+  }
+
+  .app-brand-title {
+    display: none;
+  }
+
   .nav-tab {
     padding: 0 10px;
     font-size: 14px;

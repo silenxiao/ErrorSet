@@ -15,11 +15,12 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { analyzeQuestion, addWrongQuestion, getQuestion } from '@/api/question';
+import { analyzeQuestion, addWrongQuestion, getQuestion, illustrationImageUrl } from '@/api/question';
 import { ApiError } from '@/api/http';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import type { AnalysisResult, Question } from '@/types/question';
 import { SUBJECT_OPTIONS } from '@/utils/format';
+import { IllustrationImage } from '@/components/IllustrationImage';
 import { MdRender } from '@/components/MdRender';
 import { Btn, Field, Muted, OptionPicker, Screen, SubHeader, showToast, C } from '@/components/ui';
 
@@ -208,6 +209,17 @@ export default function AddWrongPage() {
           <Field label="科目">
             <OptionPicker options={SUBJECT_OPTIONS} value={subjectValue} onChange={setSubjectValue} />
           </Field>
+          {question && (
+            <View style={styles.section}>
+              <Text style={styles.label}>题目</Text>
+              <View style={styles.previewBox}>
+                <MdRender content={question.text} />
+                {question.illustrations.map((ill) => (
+                  <IllustrationImage key={ill.id} uri={illustrationImageUrl(ill)} />
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* 正确答案：默认 Markdown 预览，右上角铅笔切换编辑 */}
           <View style={styles.section}>

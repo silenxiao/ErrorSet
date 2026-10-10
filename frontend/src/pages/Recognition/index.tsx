@@ -14,7 +14,7 @@ import {
   message,
 } from "antd";
 
-import { confirmExam, reRecognizeExam } from "../../api/exam";
+import { reRecognizeExam } from "../../api/exam";
 import { STATUS_LABEL } from "../../constants/examStatus";
 import ImageViewer from "../../components/ImageViewer";
 import ModelSelector from "../../components/ModelSelector";
@@ -46,20 +46,6 @@ export default function RecognitionPage({
   }
 
   const label = STATUS_LABEL[exam.status];
-  const canConfirm = exam.status === "awaiting_review";
-
-  const handleConfirm = async () => {
-    setActing(true);
-    try {
-      await confirmExam(exam.id);
-      message.success("已确认，开始二次识别");
-      void refresh();
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : "确认失败");
-    } finally {
-      setActing(false);
-    }
-  };
 
   const openRerecognize = () => {
     setRerecogIncludeIllus(exam.includeIllustrations);
@@ -137,11 +123,6 @@ export default function RecognitionPage({
         className="recognition-pane recognition-questions-pane"
         extra={
           <Space>
-            {canConfirm && (
-              <Button type="primary" loading={acting} onClick={handleConfirm}>
-                二次识别
-              </Button>
-            )}
             {(exam.status === "failed" || exam.status === "completed") && (
               <Button icon={<ReloadOutlined />} loading={acting} onClick={openRerecognize}>
                 重新识别
@@ -195,7 +176,7 @@ export default function RecognitionPage({
           }
         />
         <p style={{ marginTop: 8, color: "#888", fontSize: 12 }}>
-          会拼接到整页识别与二次识别的提示词末尾，清空则移除已保存的补充要求。
+          会拼接到整页识别的提示词末尾，清空则移除已保存的补充要求。
         </p>
       </Modal>
     </div>

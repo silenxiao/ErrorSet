@@ -49,7 +49,6 @@
     <view class="questions-header">
       <view class="questions-heading">题目列表 <text class="question-count">{{questionCount}}</text></view>
       <view class="questions-tools">
-        <button wx:if="{{exam.status === 'awaiting_review'}}" class="btn-primary bar-btn" hover-class="none" loading="{{saving}}" bindtap="confirm">二次识别</button>
         <button wx:if="{{exam.status === 'failed' || exam.status === 'completed'}}" class="btn-ghost bar-btn" hover-class="none" loading="{{saving}}" bindtap="openRerecog"><text class="reload-icon">↻</text>重新识别</button>
       </view>
     </view>
@@ -57,7 +56,6 @@
     <question-tree
       questions="{{exam.questions}}"
       selectedId="{{selectedId}}"
-      canReview="{{exam.status === 'awaiting_review'}}"
       bind:select="onSelect"
       bind:addwrong="onAddWrong"
       bind:reset="onReset"
@@ -67,7 +65,7 @@
   </view>
 </block>
 
-<!-- 编辑题目弹窗：二次识别完成后单击题目打开 -->
+<!-- 编辑题目弹窗：识别完成后单击题目打开 -->
 <view wx:if="{{editQuestion}}" class="mask" bindtap="closeEdit" catchtouchmove="noop">
   <view class="dialog edit-dialog" catchtap="noop">
     <view class="dialog-title">编辑题目：第 {{editQuestion.questionNo}} 题</view>

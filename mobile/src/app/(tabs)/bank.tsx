@@ -198,6 +198,7 @@ export default function BankScreen() {
           </View>
         }
         renderItem={({ item }) => (
+          <TouchableOpacity activeOpacity={0.9} onPress={() => router.push(`/bank-detail/${item.id}`)}>
           <Card>
             <View style={styles.whead}>
               <TouchableOpacity onPress={() => { setEditId(item.id); setEditValue(item.subject || ''); }}>
@@ -211,14 +212,14 @@ export default function BankScreen() {
             </View>
 
             {illustrationUris(item).length > 0 ? (
-              <View style={styles.ills}>
+              <TouchableOpacity activeOpacity={1} onPress={(event) => event.stopPropagation()} style={styles.ills}>
                 {illustrationUris(item).map((uri) => (
                   <IllustrationImage
                     key={uri}
                     uri={uri}
                   />
                 ))}
-              </View>
+              </TouchableOpacity>
             ) : null}
 
             <View style={styles.wactions}>
@@ -236,6 +237,7 @@ export default function BankScreen() {
               </Muted>
             </View>
           </Card>
+          </TouchableOpacity>
         )}
         ListFooterComponent={
           hasMore ? (

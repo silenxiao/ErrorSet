@@ -112,7 +112,7 @@ Page({
   onSelect(e) {
     const id = e.detail.id;
     this.setData({ selectedId: id });
-    // 二次识别完成后，在题目列表单击题目打开编辑弹窗（图片框选点选不触发）
+    // 识别完成后，在题目列表单击题目打开编辑弹窗（图片框选点选不触发）
     if (e.detail.source === 'list') {
       const qs = (this.data.exam && this.data.exam.questions) || [];
       const q = qs.find((item) => item.id === id);
@@ -209,18 +209,6 @@ Page({
     wx.navigateTo({
       url: `/pages/add-wrong/add-wrong?questionId=${q.id}&subject=${encodeURIComponent(q.subject || '')}`,
     });
-  },
-
-  confirm() {
-    this.setData({ saving: true });
-    api
-      .confirmExam(this.data.id)
-      .then(() => {
-        wx.showToast({ title: '已确认，开始二次识别', icon: 'success' });
-        this.refresh();
-      })
-      .catch((err) => wx.showToast({ title: err.message || '确认失败', icon: 'none' }))
-      .then(() => this.setData({ saving: false }));
   },
 
   loadModels() {

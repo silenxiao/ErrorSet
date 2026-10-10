@@ -62,19 +62,19 @@ function MainLayout() {
     <Layout style={{ minHeight: "100vh" }}>
       <ScrollToTop />
       <Header
+        className="app-header"
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 24,
           position: "sticky",
           top: 0,
           zIndex: 100,
-          paddingInline: 24,
           background: "var(--primary-dark)",
           boxShadow: "0 2px 8px rgba(14, 66, 184, 0.25)",
         }}
       >
         <div
+          className="app-brand"
           style={{
             color: "#fff",
             fontSize: 17,
@@ -99,7 +99,7 @@ function MainLayout() {
           >
             <BookOutlined />
           </span>
-          AI 试卷识别与错题库
+          <span className="app-brand-title">AI 试卷识别与错题库</span>
         </div>
         <nav className="nav-tabs">
           {NAV_ITEMS.map((item) => (

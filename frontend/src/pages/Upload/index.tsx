@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, Card, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
+import { Alert, Button, Card, Grid, List, Modal, Popconfirm, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 import { deleteExam, listExams } from "../../api/exam";
@@ -19,6 +19,7 @@ const POLL_INTERVAL_MS = 3000;
 
 /** 上传页面（§27.1）：上传面板 + 历史试卷列表。 */
 export default function UploadPage() {
+  const screens = Grid.useBreakpoint();
   const [exams, setExams] = useState<ExamListItem[]>([]);
   const [loading, setLoading] = useState(false);
   /** 列表加载失败信息，null 表示正常 */
@@ -102,7 +103,7 @@ export default function UploadPage() {
           onUploaded={(exam) => setOpenedExamId(exam.id)}
         />
       </Card>
-      <Card title="历史试卷">
+      <Card title="历史试卷" className="exam-history">
         {loadError !== null && (
           <Alert
             type="error"
@@ -112,14 +113,37 @@ export default function UploadPage() {
             style={{ marginBottom: 16 }}
           />
         )}
-        <Table
+        {screens.md ? <Table
           rowKey="id"
           loading={loading}
           dataSource={exams}
           columns={columns}
           pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 份试卷` }}
           scroll={{ x: 720 }}
-        />
+        /> : <List
+          loading={loading}
+          dataSource={exams}
+          locale={{ emptyText: "暂无历史试卷" }}
+          pagination={{ pageSize: 10, size: "small", showSizeChanger: false, showTotal: (total) => `共 ${total} 份试卷` }}
+          renderItem={(exam) => {
+            const label = STATUS_LABEL[exam.status];
+            return (
+              <List.Item key={exam.id} className="exam-history-item">
+                <div className="exam-history-main" onClick={() => setOpenedExamId(exam.id)}>
+                  <div className="exam-history-name">{exam.name}</div>
+                  <div className="exam-history-time">题目数 {exam.questionCount} · {new Date(exam.createdAt).toLocaleString("sv-SE").slice(0, 16)}</div>
+                </div>
+                <div className="exam-history-side">
+                  <Tag color={label.color}>{label.text}</Tag>
+                  <Space size={20}>
+                  <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setOpenedExamId(exam.id)}>打开</Button>
+                  <PopconfirmDelete onConfirm={() => void handleDelete(exam)} />
+                  </Space>
+                </div>
+              </List.Item>
+            );
+          }}
+        />}
       </Card>
       <Modal
         className="exam-detail-modal"

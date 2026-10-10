@@ -29,6 +29,12 @@ async def lifespan(_app: FastAPI):
     # 进程重启后，恢复卡在处理中状态的试卷（§6.3 failed 可重跑）
     db = SessionLocal()
     try:
+        # 旧流程的待确认/局部识别任务保留已有结果，直接完成。
+        for status in ("awaiting_review", "local_queued", "local_processing"):
+            for exam in repo.list_exams_by_status(db, status):
+                for question in repo.list_questions(db, exam.id):
+                    repo.set_question_status(db, question, "completed")
+                repo.set_exam_status(db, exam, "completed")
         stale = repo.fail_stale_processing_exams(db)
         if stale:
             logger.warning("启动恢复：%s 张试卷因进程中断置为 failed", stale)
@@ -38,9 +44,6 @@ async def lifespan(_app: FastAPI):
             if exam.status == "uploaded":
                 worker.enqueue(RecognitionJob(exam_id=exam.id, stage="global"))
                 logger.info("启动恢复：试卷 %s 重新入队整页识别", exam.id)
-        for exam in repo.list_exams_by_status(db, "local_queued"):
-            worker.enqueue(RecognitionJob(exam_id=exam.id, stage="local"))
-            logger.info("启动恢复：试卷 %s 重新入队二次识别", exam.id)
     finally:
         db.close()
     logger.info("应用启动，识别 worker 已就绪")

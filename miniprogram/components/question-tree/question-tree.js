@@ -4,7 +4,6 @@ Component({
   properties: {
     questions: { type: Array, value: [] },
     selectedId: { type: Number, value: null },
-    canReview: { type: Boolean, value: false },
   },
 
   data: {

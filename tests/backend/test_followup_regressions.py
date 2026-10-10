@@ -116,19 +116,18 @@ def test_failed_password_change_does_not_revoke_token(isolated):
     assert client.get("/api/v1/auth/me", headers=old).status_code == 200
 
 
-def test_confirmation_persists_queue_state_and_rejects_duplicate_actions(isolated, monkeypatch):
+def test_legacy_confirmation_completes_without_model_job(isolated, monkeypatch):
     _, client, _, user, exam, _, _ = isolated
     queue = RecognitionWorker()  # 不启动消费，模拟 worker 忙于另一张试卷。
     monkeypatch.setattr(recognition, "worker", queue)
     result = client.post(f"/api/v1/exams/{exam.id}/confirm", headers=headers(user))
     assert result.status_code == 200
-    assert result.json()["status"] == "local_queued"
-    assert queue.queue.qsize() == 1
+    assert result.json()["status"] == "completed"
+    assert queue.queue.qsize() == 0
     detail = client.get(f"/api/v1/exams/{exam.id}", headers=headers(user))
-    assert detail.json()["status"] == "local_queued"
+    assert detail.json()["status"] == "completed"
     assert client.post(f"/api/v1/exams/{exam.id}/confirm", headers=headers(user)).status_code == 409
-    assert client.post(f"/api/v1/exams/{exam.id}/re-recognize", headers=headers(user)).status_code == 409
-    assert queue.queue.qsize() == 1
+    assert queue.queue.qsize() == 0
 
 
 @pytest.mark.asyncio
@@ -146,11 +145,11 @@ async def test_worker_claims_queued_local_job_once(isolated, monkeypatch):
     await pipeline.run_local(exam.id)
     db.refresh(exam)
     assert exam.status == "completed"
-    assert calls == [exam.user_id]
+    assert calls == []
 
 
 @pytest.mark.asyncio
-async def test_restart_recovers_queued_local_jobs(isolated, monkeypatch):
+async def test_restart_completes_legacy_local_jobs_without_recognition(isolated, monkeypatch):
     import app.main as main
     from unittest.mock import AsyncMock
 
@@ -174,7 +173,9 @@ async def test_restart_recovers_queued_local_jobs(isolated, monkeypatch):
     monkeypatch.setattr(main, "setup_logging", lambda: None)
     monkeypatch.setattr(main, "close_http_client", AsyncMock())
     async with main.lifespan(create_app()):
-        assert [(job.exam_id, job.stage) for job in fake.jobs] == [(exam.id, "local")]
+        assert fake.jobs == []
+        db.refresh(exam)
+        assert exam.status == "completed"
 
 
 @pytest.mark.parametrize("number", ["1", ""])
@@ -223,3 +224,30 @@ def test_multiple_threads_do_not_lose_checkins(isolated):
         list(pool.map(checkin, range(8)))
     db.refresh(wrong)
     assert (wrong.correct_count, wrong.wrong_count) == (4, 4)
+
+
+@pytest.mark.asyncio
+async def test_global_recognition_finishes_with_editable_questions(isolated, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    db, _, _, user, exam, _, factory = isolated
+    repo.delete_recognition_results(db, exam.id)
+    repo.set_exam_status(db, exam, "uploaded")
+    monkeypatch.setattr(orchestrator, "SessionLocal", factory)
+    monkeypatch.setattr(orchestrator, "preprocess_image", lambda *args: SimpleNamespace(
+        width=1000, height=1000, path=exam.original_image))
+    monkeypatch.setattr(orchestrator, "get_recognition_provider", lambda user_id: object())
+    recognize = AsyncMock(return_value={"questions": [{
+        "question_no": "1", "text": "A complete recognized question", "bbox": [0, 0, 500, 500],
+        "confidence": 0.2,
+    }]})
+    monkeypatch.setattr(orchestrator, "recognize_global", recognize)
+    await orchestrator.RecognitionPipeline().run_global(exam.id)
+    db.refresh(exam)
+    assert exam.status == "completed"
+    questions = repo.list_questions(db, exam.id)
+    assert len(questions) == 1
+    assert questions[0].status == "completed"
+    assert questions[0].text == "A complete recognized question"
+    assert recognize.await_count == 1

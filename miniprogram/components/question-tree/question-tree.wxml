@@ -30,7 +30,7 @@
           <view wx:if="{{item.illCount > 0}}" class="act-btn" data-id="{{item.id}}" catchtap="onReset">重置插图位置</view>
         </view>
         <view wx:if="{{item.canEdit}}" class="edit-btn" data-id="{{item.id}}" catchtap="onSelect"><view class="edit-icon"></view>编辑题目</view>
-        <text wx:else class="edit-hint">二次识别后可编辑</text>
+        <text wx:else class="edit-hint">识别完成后可编辑</text>
       </view>
     </view>
   </view>

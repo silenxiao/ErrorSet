@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { IllustrationImage } from '@/components/IllustrationImage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { confirmExam, getExam, reRecognizeExam } from '@/api/exam';
+import { getExam, reRecognizeExam } from '@/api/exam';
 import { enableModel, listModels, type ModelProfile } from '@/api/settings';
 import {
   resetBbox,
@@ -163,7 +163,7 @@ export default function RecognitionPage() {
     setSelectedId(qid);
     if (source === 'list') {
       const q = exam?.questions.find((item) => item.id === qid);
-      // 二次识别完成后，单击题目打开编辑弹窗
+      // 识别完成后，单击题目打开编辑弹窗
       if (q && q.status === 'completed') {
         setEditQ(q);
         setEditText(q.text || '');
@@ -209,20 +209,6 @@ export default function RecognitionPage() {
       showToast('题目已更新');
     } catch (e) {
       Alert.alert('保存失败', e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const doConfirm = async () => {
-    if (savingRef.current) return;
-    setSaving(true);
-    try {
-      await confirmExam(examId);
-      showToast('已确认，开始二次识别');
-      await refresh();
-    } catch (e) {
-      Alert.alert('确认失败', e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -329,9 +315,6 @@ export default function RecognitionPage() {
                 <Text style={styles.questionsTitle}>题目列表</Text>
                 <Text style={styles.questionCount}>{questionCount}</Text>
               </View>
-              {exam.status === 'awaiting_review' ? (
-                <Btn small loading={saving} onPress={doConfirm}>二次识别</Btn>
-              ) : null}
               {exam.status === 'failed' || exam.status === 'completed' ? (
                 <Btn small kind="ghost" loading={saving} onPress={openRerecog}>↻ 重新识别</Btn>
               ) : null}
