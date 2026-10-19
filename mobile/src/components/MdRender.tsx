@@ -55,7 +55,8 @@ export function MdRender({ content }: { content: string | null | undefined }) {
       injectedJavaScript={HEIGHT_JS}
       onMessage={onMessage}
       originWhitelist={['*']}
-      pointerEvents="none"
+      // 宽表格在 HTML 容器内横向滚动，需要允许触摸事件。
+      pointerEvents={html.includes('<table ') ? 'auto' : 'none'}
     />
   );
 }

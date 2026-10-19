@@ -17,8 +17,7 @@ import { addWrongQuestion, resetBbox, analyzeQuestion, illustrationSrc, updateQu
 import { ApiError } from "../../api/http";
 import ModelSelector from "../ModelSelector";
 import type { AnalysisResult, Question, QuestionStatus } from "../../types/question";
-import { renderMathText } from "../../utils/math";
-import { renderMarkdown } from "../../utils/markdown";
+import { renderMarkdown, renderQuestionText } from "../../utils/markdown";
 import { AnalysisRequestGuard } from "../../utils/analysisRequest";
 
 interface Props {
@@ -158,7 +157,7 @@ function QuestionItem({
           )}
         </Space>
       </div>
-      <div className="recognition-question-text">{renderMathText(question.text)}</div>
+      <div className="recognition-question-text">{renderQuestionText(question.text)}</div>
       <div className="recognition-question-actions">
         <Space size={[8, 8]} wrap>
           <Button
@@ -368,7 +367,7 @@ function WrongQuestionModal({
         {question && (
           <Form.Item label="题目">
             <div style={{ padding: "10px 12px", border: "1px solid var(--divider)", borderRadius: 8 }}>
-              <div className="recognition-question-text">{renderMathText(question.text)}</div>
+              <div className="recognition-question-text">{renderQuestionText(question.text)}</div>
               {question.illustrations.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
                   {question.illustrations.map((ill) => (
@@ -507,7 +506,7 @@ function EditQuestionModal({
             background: "var(--bg)",
           }}
         >
-          {renderMathText(text)}
+          {renderQuestionText(text)}
         </div>
         {(question?.illustrations ?? []).length > 0 && (
           <div style={{ flexShrink: 0 }}>

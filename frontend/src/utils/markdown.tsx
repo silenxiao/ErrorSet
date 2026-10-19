@@ -2,7 +2,7 @@ import katex from "katex";
 import { Fragment, type ReactNode } from "react";
 import { marked, type Token, type Tokens } from "marked";
 
-import { autoWrapLatex } from "./math";
+import { autoWrapLatex, renderMathText } from "./math";
 import "./markdown.css";
 
 /** 区分块级 token 与行内 token：tight 列表的 item.tokens 直接是行内 token。 */
@@ -29,6 +29,28 @@ function isBlockToken(token: Token): boolean {
 export function renderMarkdown(text: string): ReactNode {
   const tokens = marked.lexer(text, { gfm: true, breaks: true });
   return renderBlocks(tokens);
+}
+
+/** 题干只解析表格，保留其余原文的换行、填空线和公式语义。 */
+export function renderQuestionText(text: string): ReactNode {
+  const tokens = marked.lexer(text, { gfm: true });
+  const blocks: ReactNode[] = [];
+  let plainText = "";
+  const flushText = () => {
+    if (!plainText) return;
+    blocks.push(<div key={blocks.length} style={{ whiteSpace: "pre-wrap" }}>{renderMathText(plainText)}</div>);
+    plainText = "";
+  };
+  for (const token of tokens) {
+    if (token.type === "table") {
+      flushText();
+      blocks.push(renderBlock(token, blocks.length));
+    } else {
+      plainText += token.raw;
+    }
+  }
+  flushText();
+  return <div className="answer-markdown-preview question-markdown-preview">{blocks}</div>;
 }
 
 function renderBlocks(tokens: Token[] | undefined): ReactNode {

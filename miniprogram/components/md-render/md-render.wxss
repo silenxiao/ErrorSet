@@ -1,6 +1,7 @@
 /* Markdown 渲染容器：内部由 <rich-text> 以内联样式 HTML 渲染，
-   因此具体排版样式写在 JS 生成的 HTML 中，这里仅控制外层间距与兜底字号。 */
+   具体排版样式写在 JS 生成的 HTML 中，外层 scroll-view 允许宽表格横向滚动。 */
 .md {
+  width: 100%;
   font-size: 28rpx;
   line-height: 1.7;
   color: #1f2329;

@@ -1,5 +1,5 @@
 // 轻量 Markdown -> HTML 字符串解析器（供 <rich-text> 渲染）。
-// 支持：标题、段落、有序/无序列表、引用、代码块、分隔线、
+// 支持：标题、段落、有序/无序列表、引用、代码块、分隔线、表格、
 // 加粗(**)、斜体(*)、行内代码(`)、链接、数学式($...$ / $$...$$)。
 // 数学式经 utils/latex.js 渲染为真实排版的 HTML（分数/上下标/根号/符号）。
 // 注意：rich-text 字符串模式仅支持标准 HTML + 内联 style（使用 px，不要写 rpx）。
@@ -35,8 +35,8 @@ function inlineHtml(text) {
         i = end + 2;
         continue;
       }
-    } else if (ch === '\\' && s[i + 1] === '_') {
-      out += '_';
+    } else if (ch === '\\' && (s[i + 1] === '_' || s[i + 1] === '|')) {
+      out += s[i + 1];
       i += 2;
       continue;
     } else if (ch === '$' && s[i + 1] === '$') {
@@ -60,6 +60,48 @@ function inlineHtml(text) {
     i++;
   }
   return out;
+}
+
+// 按未转义的竖线分列；转义竖线在普通文本和行内代码中均显示为 |。
+function tableCells(line) {
+  const cells = [];
+  let cell = '';
+  const src = line.trim();
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === '\\' && i + 1 < src.length) {
+      const next = src[++i];
+      cell += next === '|' ? '|' : '\\' + next;
+    } else if (src[i] === '|') {
+      cells.push(cell.trim());
+      cell = '';
+    } else {
+      cell += src[i];
+    }
+  }
+  cells.push(cell.trim());
+  if (src[0] === '|') cells.shift();
+  if (cells[cells.length - 1] === '') cells.pop();
+  return cells;
+}
+
+function tableStart(lines, index) {
+  if (!lines[index] || !lines[index + 1] || lines[index].indexOf('|') === -1) return null;
+  const header = tableCells(lines[index]);
+  const separator = tableCells(lines[index + 1]);
+  if (!header.length || header.length !== separator.length || !separator.every(s => /^:?-+:?$/.test(s))) return null;
+  return {
+    header,
+    align: separator.map(s => s.endsWith(':') ? (s.startsWith(':') ? 'center' : 'right') : 'left'),
+  };
+}
+
+function tableHtml(table, rows) {
+  const rowHtml = (row, tag) => '<tr>' + table.header.map((_, index) => {
+    const heading = tag === 'th' ? 'background:#f6f8fa;font-weight:700;' : '';
+    return '<' + tag + ' style="border:1px solid #d9d9d9;padding:6px 10px;vertical-align:top;white-space:normal;overflow-wrap:anywhere;text-align:' + table.align[index] + ';' + heading + '">' + inlineHtml(row[index] || '') + '</' + tag + '>';
+  }).join('') + '</tr>';
+  return '<table style="border-collapse:collapse;width:100%;min-width:' + (table.header.length * 88) + 'px;margin:6px 0;font-size:14px;line-height:1.7;">' +
+    '<thead>' + rowHtml(table.header, 'th') + '</thead><tbody>' + rows.map(row => rowHtml(row, 'td')).join('') + '</tbody></table>';
 }
 
 function isBlockStart(l) {
@@ -93,6 +135,19 @@ function mdHtml(md) {
       while (i < lines.length && !/^```\s*$/.test(lines[i])) { codeLines.push(lines[i]); i++; }
       i++;
       out.push('<div style="background:#f6f8fa;padding:10px 12px;border-radius:8px;font-family:monospace;font-size:13px;color:#24292e;white-space:pre;overflow:auto;margin:6px 0;">' + esc(codeLines.join('\n')) + '</div>');
+      continue;
+    }
+
+    // GFM 表格：表头后必须有同列数的分隔行。
+    const table = tableStart(lines, i);
+    if (table) {
+      const rows = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim() && lines[i].indexOf('|') !== -1 && !isBlockStart(lines[i])) {
+        rows.push(tableCells(lines[i]));
+        i++;
+      }
+      out.push('<div style="max-width:100%;overflow-x:auto;">' + tableHtml(table, rows) + '</div>');
       continue;
     }
 
@@ -145,7 +200,7 @@ function mdHtml(md) {
 
     // 段落
     const pl = [];
-    while (i < lines.length && lines[i].trim() !== '' && !isBlockStart(lines[i])) { pl.push(lines[i]); i++; }
+    while (i < lines.length && lines[i].trim() !== '' && !isBlockStart(lines[i]) && !tableStart(lines, i)) { pl.push(lines[i]); i++; }
     if (pl.length) out.push('<div style="margin:6px 0;font-size:14px;line-height:1.9;overflow-wrap:anywhere;color:#1D2129;">' + inlineHtml(pl.join('\n')) + '</div>');
   }
   return out.join('');

@@ -32,8 +32,7 @@ import {
   updateWrongQuestion,
 } from "../../api/question";
 import type { Question, WrongQuestion } from "../../types/question";
-import { renderMathText } from "../../utils/math";
-import { renderMarkdown } from "../../utils/markdown";
+import { renderMarkdown, renderQuestionText } from "../../utils/markdown";
 
 /** 常用科目，科目只能从中选择 */
 const SUBJECT_OPTIONS = [
@@ -319,7 +318,7 @@ function WrongQuestionItem({
       <Space size={8} wrap style={{ marginBottom: 4 }} onClick={(event) => event.stopPropagation()}>
         <SubjectTag subject={row.subject} onSave={(v) => onSubject(row, v)} />
       </Space>
-      <div style={{ whiteSpace: "pre-wrap" }}>{renderMathText(row.questionText)}</div>
+      <div style={{ whiteSpace: "pre-wrap" }}>{renderQuestionText(row.questionText)}</div>
       {(row.illustrationImages?.length ?? 0) > 0 || (row.illustrations ?? []).length > 0 ? (
         <div onClick={(event) => event.stopPropagation()} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
           {/* 优先用入库时裁剪的快照（静态 /files，无需鉴权）；旧记录回退到动态裁剪接口 */}
@@ -474,7 +473,7 @@ function DetailBody({
       >
         {originalText ? (
           <div style={{ whiteSpace: "pre-wrap" }}>
-            {renderMathText(originalText)}
+            {renderQuestionText(originalText)}
           </div>
         ) : loadError ? (
           <span style={{ color: "var(--text-3)" }}>原题已删除，且该错题未保存原文快照</span>

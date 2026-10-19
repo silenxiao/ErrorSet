@@ -1,3 +1,3 @@
-<view class="md">
-  <rich-text nodes="{{html}}"></rich-text>
-</view>
+<scroll-view class="md" scroll-x="{{true}}">
+  <rich-text style="display:block;width:100%;" nodes="{{html}}"></rich-text>
+</scroll-view>
