@@ -1,6 +1,6 @@
 """Global Vision Prompt（PROJECT_SPEC.md §31）。"""
 
-PROMPT_VERSION = "global-v5"
+PROMPT_VERSION = "global-v6"
 
 _GLOBAL_SCHEMA_EXAMPLE = """\
 输出 JSON 顶层必须是对象，包含 questions 数组，字段名必须完全一致。
@@ -49,6 +49,13 @@ GLOBAL_PROMPT = f"""\
 16. 无法辨认的文字、数字或符号标记为 [无法辨认]，并降低 confidence；不得凭常识或解题结果补全。
 17. 保留否定词、单位、上下标、正负号和空格编号，不生成答案或解析。
 18. 行内公式用 $...$，独立公式用 $$...$$，分隔符须配对；JSON 内 LaTeX 反斜杠须转义。
+19. 题目中出现表格时，必须在所属题目的 text 中按 Markdown 表格语法完整转录，放在原文对应位置：
+    使用 | 分列、每行一条记录，并在表头后添加 | --- | --- | 形式的分隔行；
+    保留原表的行列顺序、表头、单位、数据和空白单元格，无表头时使用空表头，不编造列名；
+    合并单元格按原文含义展开或留空，不补造内容；无法辨认的单元格标记为 [无法辨认]；
+    单元格内的公式仍使用 LaTeX，文字中的竖线使用反斜杠转义；
+    表格前后保留空行，表格换行及反斜杠须按 JSON 字符串规则转义；不要添加 Markdown 代码围栏或输出 HTML 表格。
+    即使在 illustrations 中记录表格区域，或关闭插图识别，也不能省略 text 中的 Markdown 表格。
 
 {_GLOBAL_SCHEMA_EXAMPLE}
 """
